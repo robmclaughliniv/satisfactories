@@ -5,7 +5,7 @@ const config: Config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    './node_modules/flowbite-react/lib/**/*.js'
+    './node_modules/flowbite-react/**/*.{js,jsx,ts,tsx}'
   ],
   theme: {
     extend: {
@@ -30,17 +30,14 @@ const config: Config = {
           800: '#075985',
           900: '#0c4a6e',
           950: '#082f49',
-        },
-        gray: {
-          900: 'rgb(17 24 39)',
         }
-      },
-    },
+      }
+    }
   },
   plugins: [
-    require('flowbite/plugin'),
+    require('flowbite/plugin')
   ],
-  darkMode: 'class',
+  darkMode: 'class'
 }
 
 export default config

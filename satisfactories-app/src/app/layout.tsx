@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Flowbite } from 'flowbite-react'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -42,21 +42,22 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Satisfactories" />
         <meta name="msapplication-TileColor" content="#0ea5e9" />
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.css" rel="stylesheet" />
       </head>
-      <body className={`${inter.className} h-full antialiased`}>
-        <Flowbite>
-          {/* Skip to main content link for keyboard users */}
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-primary-600"
-          >
-            Skip to main content
-          </a>
-          
-          <main id="main-content" className="min-h-full">
-            {children}
-          </main>
-        </Flowbite>
+      <body className={inter.className}>
+        {/* Skip to main content link for keyboard users */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-primary-600"
+        >
+          Skip to main content
+        </a>
+        
+        <main id="main-content" className="min-h-screen">
+          {children}
+        </main>
+        
+        <Script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js" strategy="afterInteractive" />
       </body>
     </html>
   )
