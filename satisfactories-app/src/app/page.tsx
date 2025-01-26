@@ -9,10 +9,8 @@ import {
   Dropdown,
   Navbar,
   Sidebar,
-  Spinner,
   Table,
 } from 'flowbite-react'
-import { HiMoon, HiSun, HiDesktopComputer } from 'react-icons/hi'
 import { localStorageService } from '@/services/localStorageService'
 import type { World, Factory } from '@/types/storage'
 import { FactoryForm } from '@/components/FactoryForm'
@@ -28,16 +26,6 @@ export default function Home() {
   const [isFactoryModalOpen, setIsFactoryModalOpen] = useState(false)
   const [editingWorld, setEditingWorld] = useState<World | undefined>(undefined)
   const [editingFactory, setEditingFactory] = useState<Factory | undefined>(undefined)
-
-  // Skip to main content link for accessibility
-  const SkipLink = () => (
-    <a
-      href="#main-content"
-      className="fixed left-0 top-0 -translate-y-full bg-blue-700 p-2 text-white transition-transform focus:translate-y-0"
-    >
-      Skip to main content
-    </a>
-  )
 
   useEffect(() => {
     const loadWorlds = () => {
@@ -84,10 +72,8 @@ export default function Home() {
 
   return (
     <>
-      <SkipLink />
-      
       {/* Mobile Navigation */}
-      <Navbar fluid className="sticky top-0 z-50 border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-950">
+      <Navbar fluid className="sticky top-0 z-50 border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-gray-950">
         <Navbar.Brand>
           <Image
             src="/globe.svg"
@@ -156,10 +142,10 @@ export default function Home() {
         </div>
       </Navbar>
 
-      <div className="flex min-h-full">
+      <div className="flex min-h-screen">
         {/* Desktop Sidebar - Hidden on mobile */}
         <Sidebar
-          className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white transition-transform dark:bg-dark-900 lg:block ${
+          className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white transition-transform dark:bg-gray-900 lg:block ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } lg:relative lg:translate-x-0`}
         >
@@ -188,7 +174,7 @@ export default function Home() {
         </Sidebar>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-dark-900 p-4 lg:p-8">
+        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
           {error ? (
             <Alert color="failure">
               <span className="font-medium">Error!</span> {error}
@@ -277,7 +263,7 @@ export default function Home() {
                         {selectedWorld.factories.map((factory) => (
                           <Table.Row
                             key={factory.id}
-                            className="cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-800"
+                            className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                             onClick={() => {
                               setEditingFactory(factory)
                               setIsFactoryModalOpen(true)
