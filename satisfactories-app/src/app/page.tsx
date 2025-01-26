@@ -12,6 +12,7 @@ import {
   Spinner,
   Table,
 } from 'flowbite-react'
+import { HiMoon, HiSun, HiDesktopComputer } from 'react-icons/hi'
 import { localStorageService } from '@/services/localStorageService'
 import type { World, Factory } from '@/types/storage'
 import { FactoryForm } from '@/components/FactoryForm'
@@ -86,7 +87,7 @@ export default function Home() {
       <SkipLink />
       
       {/* Mobile Navigation */}
-      <Navbar fluid className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900 lg:hidden">
+      <Navbar fluid className="sticky top-0 z-50 border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-950">
         <Navbar.Brand>
           <Image
             src="/globe.svg"
@@ -158,7 +159,7 @@ export default function Home() {
       <div className="flex min-h-[calc(100vh-64px)]">
         {/* Desktop Sidebar - Hidden on mobile */}
         <Sidebar
-          className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white transition-transform dark:bg-gray-900 lg:block ${
+          className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white transition-transform dark:bg-dark-900 lg:block ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } lg:relative lg:translate-x-0`}
         >
@@ -189,7 +190,7 @@ export default function Home() {
         {/* Main Content */}
         <main
           id="main-content"
-          className="flex-1 bg-gray-50 p-4 lg:p-8"
+          className="flex-1 bg-gray-50 dark:bg-dark-900 p-4 lg:p-8"
           tabIndex={-1}
         >
           {error ? (
@@ -213,7 +214,7 @@ export default function Home() {
                 <Card>
                   <div className="flex flex-col items-center">
                     <h2 className="text-xl font-bold">Factories</h2>
-                    <p className="mt-2 text-3xl font-bold text-blue-600">
+                    <p className="mt-2 text-3xl font-bold text-blue-500 dark:text-blue-400">
                       {selectedWorld.factories.length}
                     </p>
                   </div>
@@ -223,7 +224,7 @@ export default function Home() {
                     <Card>
                       <div className="flex flex-col items-center">
                         <h2 className="text-xl font-bold">Total Input Rate</h2>
-                        <p className="mt-2 text-3xl font-bold text-green-600">
+                        <p className="mt-2 text-3xl font-bold text-green-500 dark:text-green-400">
                           {calculateWorldMetrics(selectedWorld.factories).totalInputRate}/min
                         </p>
                       </div>
@@ -231,7 +232,7 @@ export default function Home() {
                     <Card>
                       <div className="flex flex-col items-center">
                         <h2 className="text-xl font-bold">Total Output Rate</h2>
-                        <p className="mt-2 text-3xl font-bold text-purple-600">
+                        <p className="mt-2 text-3xl font-bold text-purple-500 dark:text-purple-400">
                           {calculateWorldMetrics(selectedWorld.factories).totalOutputRate}/min
                         </p>
                       </div>
@@ -280,7 +281,7 @@ export default function Home() {
                         {selectedWorld.factories.map((factory) => (
                           <Table.Row
                             key={factory.id}
-                            className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                            className="cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-800"
                             onClick={() => {
                               setEditingFactory(factory)
                               setIsFactoryModalOpen(true)
