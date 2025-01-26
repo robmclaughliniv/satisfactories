@@ -156,7 +156,7 @@ export default function Home() {
         </div>
       </Navbar>
 
-      <div className="flex min-h-[calc(100vh-64px)]">
+      <div className="flex min-h-full">
         {/* Desktop Sidebar - Hidden on mobile */}
         <Sidebar
           className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white transition-transform dark:bg-dark-900 lg:block ${
@@ -188,11 +188,7 @@ export default function Home() {
         </Sidebar>
 
         {/* Main Content */}
-        <main
-          id="main-content"
-          className="flex-1 bg-gray-50 dark:bg-dark-900 p-4 lg:p-8"
-          tabIndex={-1}
-        >
+        <div className="flex-1 flex flex-col bg-gray-50 dark:bg-dark-900 p-4 lg:p-8">
           {error ? (
             <Alert color="failure">
               <span className="font-medium">Error!</span> {error}
@@ -209,7 +205,7 @@ export default function Home() {
               </Button>
             </Alert>
           ) : selectedWorld ? (
-            <div className="space-y-6">
+            <div className="flex-1 space-y-6">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Card>
                   <div className="flex flex-col items-center">
@@ -312,7 +308,7 @@ export default function Home() {
               </div>
             </div>
           ) : null}
-        </main>
+        </div>
       </div>
 
       {/* World Form Modal */}
