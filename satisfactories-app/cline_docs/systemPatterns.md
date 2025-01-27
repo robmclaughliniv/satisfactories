@@ -1,5 +1,56 @@
 # System Architecture Patterns
 
+## Data Hierarchy
+
+### 1. Core Data Model
+```
+User
+  ├── preferences
+  │   ├── theme
+  │   ├── defaultGameVersion
+  │   └── defaultDifficulty
+  │
+  └── worlds[]
+      ├── metadata (name, biome, etc.)
+      ├── gameVersion
+      ├── difficulty
+      ├── coordinates
+      ├── tags
+      ├── powerStats
+      │   ├── totalProduction
+      │   ├── totalConsumption
+      │   └── maxCapacity
+      │
+      └── factories[]
+          ├── metadata
+          ├── category
+          ├── status
+          ├── location
+          ├── power
+          ├── efficiency
+          ├── buildingCount
+          ├── inputs[]
+          │   ├── resourceType
+          │   ├── purity
+          │   ├── rates
+          │   └── transport
+          │
+          └── outputs[]
+              ├── resourceType
+              ├── rates
+              └── transport
+```
+
+### 2. Storage Pattern
+```
+LocalStorage
+  ├── satisfactory-user
+  │   └── Compressed & Chunked JSON
+  │
+  └── satisfactory-worlds (legacy)
+      └── Compressed & Chunked JSON
+```
+
 ## Application Architecture
 
 ### 1. Next.js App Router Structure
@@ -15,48 +66,57 @@ src/
 ├── components/    # Reusable React components
 ├── services/      # Business logic and data services
 ├── types/         # TypeScript type definitions
-└── e2e/           # End-to-end tests
+└── e2e/          # End-to-end tests
 ```
 
 ### 3. State Management
 - Local React state for UI components
 - Local Storage for persistent data
 - Context providers for theme/dark mode
+- User preferences in local storage
 
 ## Data Flow Patterns
 
-### 1. World & Factory Data
+### 1. User & World Data
 ```
 LocalStorage <-> LocalStorageService <-> React Components
 ```
-- Worlds stored in 'satisfactory-worlds' key
-- CRUD operations handled by localStorageService
-- State updates trigger UI re-renders
+- User data as top-level storage
+- Worlds nested under user
+- CRUD operations through service layer
+- Automatic data migration support
 
-### 2. Form Handling
-- Modal-based forms for World/Factory creation
-- Controlled components for input management
-- Validation before storage updates
+### 2. Factory Management
+```
+World -> Factory -> Resources
+```
+- Factories scoped to worlds
+- Resource flows tracked at factory level
+- Power management at both factory and world level
+- Building counts for resource calculations
 
-### 3. Theme Management
+### 3. Resource Flow
 ```
-localStorage -> ThemeProvider -> React Components
+Input -> Factory -> Output
 ```
-- System preference detection
-- Manual toggle support
-- Persistent theme selection
+- Resource type validation
+- Rate calculations
+- Transport method tracking
+- Efficiency monitoring
 
 ## Technical Patterns
 
 ### 1. Type Safety
 - TypeScript for static typing
+- Enum-based categorization
 - Interface-based type definitions
 - Global type declarations
 
 ### 2. Component Patterns
-- Functional components with hooks
-- Props interface definitions
-- Children prop typing
+- Form components with validation
+- Resource management components
+- Coordinate system components
+- Power tracking components
 
 ### 3. Testing Strategy
 ```
@@ -81,7 +141,7 @@ import { Button } from 'flowbite-react'
 
 // Internal imports
 import { localStorageService } from '@/services'
-import type { World } from '@/types'
+import type { User, World, Factory } from '@/types'
 ```
 
 ### 3. Component Structure
@@ -102,20 +162,23 @@ export function Component({ prop1, prop2 }: Props) {
 
 ## Best Practices
 
-### 1. Performance
-- Image optimization with next/image
-- Component code splitting
-- Lazy loading for modals
+### 1. Data Management
+- Chunked storage for large datasets
+- Compression for efficiency
+- Migration paths for updates
+- Type-safe operations
 
-### 2. Accessibility
-- ARIA attributes
-- Keyboard navigation
-- Screen reader support
+### 2. Performance
+- Lazy loading for modals
+- Optimized form rendering
+- Efficient data updates
+- Resource calculation caching
 
 ### 3. Error Handling
-- Try-catch blocks for storage operations
-- Error state management
-- Loading state indicators
+- Type validation
+- Data integrity checks
+- Migration error handling
+- User feedback
 
 ## Development Workflow
 
@@ -125,7 +188,7 @@ export function Component({ prop1, prop2 }: Props) {
 - TypeScript for type checking
 
 ### 2. Testing Requirements
-- Jest for unit tests
+- Unit tests for data operations
 - Component testing with RTL
 - E2E coverage with Playwright
 
