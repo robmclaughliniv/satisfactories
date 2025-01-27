@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { Modal, Label, TextInput, Textarea, Button } from 'flowbite-react'
-import { World } from '../types/storage'
+import { Modal, Label, TextInput, Select, Button, Badge } from 'flowbite-react'
+import { World, GameDifficulty } from '../types/storage'
 import { localStorageService } from '../services/localStorageService'
 
 // Dynamically import MDEditor to avoid SSR issues
@@ -19,14 +19,32 @@ interface WorldFormProps {
   onSubmit: (world: World) => void
 }
 
+interface Coordinates {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export function WorldForm({
   initialWorld,
   isOpen,
   onClose,
   onSubmit,
 }: WorldFormProps) {
+  const user = localStorageService.getUser()
   const [name, setName] = useState(initialWorld?.name || '')
   const [biome, setBiome] = useState(initialWorld?.biome || '')
+  const [gameVersion, setGameVersion] = useState(
+    initialWorld?.gameVersion || user.preferences.defaultGameVersion
+  )
+  const [difficulty, setDifficulty] = useState<GameDifficulty>(
+    initialWorld?.difficulty || user.preferences.defaultDifficulty
+  )
+  const [coordinates, setCoordinates] = useState<Coordinates>(
+    initialWorld?.coordinates || { x: 0, y: 0, z: 0 }
+  )
+  const [tags, setTags] = useState<string[]>(initialWorld?.tags || [])
+  const [newTag, setNewTag] = useState('')
   const [notes, setNotes] = useState(initialWorld?.notes || '')
   const [error, setError] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
@@ -36,11 +54,41 @@ export function WorldForm({
     if (isOpen) {
       setName(initialWorld?.name || '')
       setBiome(initialWorld?.biome || '')
+      setGameVersion(initialWorld?.gameVersion || user.preferences.defaultGameVersion)
+      setDifficulty(initialWorld?.difficulty || user.preferences.defaultDifficulty)
+      setCoordinates(initialWorld?.coordinates || { x: 0, y: 0, z: 0 })
+      setTags(initialWorld?.tags || [])
+      setNewTag('')
       setNotes(initialWorld?.notes || '')
       setError(null)
       setIsPreview(false)
     }
-  }, [isOpen, initialWorld])
+  }, [isOpen, initialWorld, user.preferences])
+
+  const handleAddTag = () => {
+    const trimmedTag = newTag.trim()
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag])
+      setNewTag('')
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove))
+  }
+
+  const handleCoordinateChange = (
+    axis: keyof Coordinates,
+    value: string
+  ) => {
+    const numValue = Number(value)
+    if (!isNaN(numValue)) {
+      setCoordinates(prev => ({
+        ...prev,
+        [axis]: numValue
+      }))
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,12 +99,27 @@ export function WorldForm({
       return
     }
 
+    if (!gameVersion.trim()) {
+      setError('Game version is required')
+      return
+    }
+
     const world: World = {
       id: initialWorld?.id || crypto.randomUUID(),
       name: name.trim(),
       biome: biome.trim(),
+      gameVersion: gameVersion.trim(),
+      difficulty,
+      coordinates,
+      tags,
+      powerStats: initialWorld?.powerStats || {
+        totalProduction: 0,
+        totalConsumption: 0,
+        maxCapacity: 0,
+      },
       notes,
       factories: initialWorld?.factories || [],
+      startDate: initialWorld?.startDate || Date.now(),
       lastModified: Date.now(),
     }
 
@@ -73,7 +136,7 @@ export function WorldForm({
     <Modal
       show={isOpen}
       onClose={onClose}
-      size="3xl"
+      size="4xl"
       dismissible
       popup={false}
       onKeyDown={(e) => {
@@ -97,56 +160,165 @@ export function WorldForm({
             </div>
           )}
 
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="world-name">World Name</Label>
-              <TextInput
-                id="world-name"
-                name="world-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                color={error && !name.trim() ? 'failure' : undefined}
-                helperText={
-                  error && !name.trim() ? 'World name is required' : undefined
-                }
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="world-biome">Biome</Label>
-              <TextInput
-                id="world-biome"
-                name="world-biome"
-                value={biome}
-                onChange={(e) => setBiome(e.target.value)}
-                placeholder="e.g., Grasslands, Desert, etc."
-              />
-            </div>
-
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <Label htmlFor="world-notes">Notes (Markdown)</Label>
-                <Button
-                  size="xs"
-                  color="light"
-                  onClick={() => setIsPreview(!isPreview)}
-                >
-                  {isPreview ? 'Edit' : 'Preview'}
-                </Button>
-              </div>
-              <div data-color-mode="light">
-                <MDEditor
-                  value={notes}
-                  onChange={(value) => setNotes(value || '')}
-                  preview={isPreview ? 'preview' : 'edit'}
-                  height={200}
-                  textareaProps={{
-                    id: 'world-notes',
-                    'aria-label': 'World notes in Markdown format',
-                  }}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Left Column */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="world-name">World Name</Label>
+                <TextInput
+                  id="world-name"
+                  name="world-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  color={error && !name.trim() ? 'failure' : undefined}
+                  helperText={
+                    error && !name.trim() ? 'World name is required' : undefined
+                  }
                 />
               </div>
+
+              <div>
+                <Label htmlFor="world-biome">Biome</Label>
+                <TextInput
+                  id="world-biome"
+                  name="world-biome"
+                  value={biome}
+                  onChange={(e) => setBiome(e.target.value)}
+                  placeholder="e.g., Grasslands, Desert, etc."
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="game-version">Game Version</Label>
+                <TextInput
+                  id="game-version"
+                  name="game-version"
+                  value={gameVersion}
+                  onChange={(e) => setGameVersion(e.target.value)}
+                  required
+                  placeholder="e.g., Update 8"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="difficulty">Difficulty</Label>
+                <Select
+                  id="difficulty"
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as GameDifficulty)}
+                  required
+                >
+                  {Object.values(GameDifficulty).map((diff) => (
+                    <option key={diff} value={diff}>
+                      {diff.charAt(0) + diff.slice(1).toLowerCase()}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-4">
+              <div>
+                <Label>Coordinates</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label htmlFor="coord-x" className="text-xs">X</Label>
+                    <TextInput
+                      id="coord-x"
+                      type="number"
+                      value={coordinates.x}
+                      onChange={(e) => handleCoordinateChange('x', e.target.value)}
+                      sizing="sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="coord-y" className="text-xs">Y</Label>
+                    <TextInput
+                      id="coord-y"
+                      type="number"
+                      value={coordinates.y}
+                      onChange={(e) => handleCoordinateChange('y', e.target.value)}
+                      sizing="sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="coord-z" className="text-xs">Z</Label>
+                    <TextInput
+                      id="coord-z"
+                      type="number"
+                      value={coordinates.z}
+                      onChange={(e) => handleCoordinateChange('z', e.target.value)}
+                      sizing="sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Tags</Label>
+                <div className="flex gap-2 mb-2">
+                  <TextInput
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddTag()
+                      }
+                    }}
+                    placeholder="Add tag..."
+                  />
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleAddTag()
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      color="info"
+                      className="cursor-pointer"
+                      onClick={() => handleRemoveTag(tag)}
+                    >
+                      {tag} ×
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Full Width */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <Label htmlFor="world-notes">Notes (Markdown)</Label>
+              <Button
+                size="xs"
+                color="light"
+                onClick={() => setIsPreview(!isPreview)}
+              >
+                {isPreview ? 'Edit' : 'Preview'}
+              </Button>
+            </div>
+            <div data-color-mode="light">
+              <MDEditor
+                value={notes}
+                onChange={(value) => setNotes(value || '')}
+                preview={isPreview ? 'preview' : 'edit'}
+                height={200}
+                textareaProps={{
+                  id: 'world-notes',
+                  'aria-label': 'World notes in Markdown format',
+                }}
+              />
             </div>
           </div>
         </form>
