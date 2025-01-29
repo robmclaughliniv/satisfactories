@@ -10,26 +10,19 @@ export function getInitialDarkMode(): boolean {
   return savedTheme === 'dark' || (!savedTheme && prefersDark);
 }
 
-// Function to apply dark mode class
+// Function to apply dark mode class and store preference
 export function applyDarkMode(isDark: boolean): void {
   if (!isBrowser) return;
   
   if (isDark) {
     document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
     localStorage.setItem('color-theme', 'dark');
   } else {
     document.documentElement.classList.remove('dark');
+    document.documentElement.style.colorScheme = 'light';
     localStorage.setItem('color-theme', 'light');
   }
-}
-
-// Function to initialize dark mode
-export function initDarkMode(): boolean {
-  if (!isBrowser) return false;
-  
-  const isDark = getInitialDarkMode();
-  applyDarkMode(isDark);
-  return isDark;
 }
 
 // Function to handle system theme changes
@@ -48,3 +41,21 @@ export function handleSystemThemeChange(callback: (isDark: boolean) => void): ()
   mediaQuery.addEventListener('change', handleChange);
   return () => mediaQuery.removeEventListener('change', handleChange);
 }
+
+// Script to run before React hydration
+export const darkModeScript = `
+if (typeof window !== 'undefined') {
+  let darkMode = localStorage.getItem('color-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  if (darkMode === 'dark' || (!darkMode && prefersDark)) {
+    document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
+    localStorage.setItem('color-theme', 'dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.style.colorScheme = 'light';
+    localStorage.setItem('color-theme', 'light');
+  }
+}
+`;

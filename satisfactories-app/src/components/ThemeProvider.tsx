@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { DarkModeToggle } from './DarkModeToggle'
+import { getInitialDarkMode, applyDarkMode, handleSystemThemeChange } from '../app/darkMode'
 
 type ThemeContextType = {
   isDark: boolean
@@ -24,28 +25,23 @@ export function ThemeProvider({
   children: React.ReactNode
 }) {
   const [mounted, setMounted] = useState(false)
-  const [isDark, setIsDark] = useState(false)
+  const [isDark, setIsDark] = useState(getInitialDarkMode())
 
   useEffect(() => {
     setMounted(true)
-    // Check current theme
-    const isDarkMode = document.documentElement.classList.contains('dark')
-    setIsDark(isDarkMode)
+    
+    // Set up system theme change listener
+    const cleanup = handleSystemThemeChange((newIsDark) => {
+      setIsDark(newIsDark)
+    })
+
+    return cleanup
   }, [])
 
   const toggle = () => {
     const newIsDark = !isDark
     setIsDark(newIsDark)
-    
-    if (newIsDark) {
-      document.documentElement.classList.add('dark')
-      document.documentElement.style.colorScheme = 'dark'
-      localStorage.setItem('color-theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      document.documentElement.style.colorScheme = 'light'
-      localStorage.setItem('color-theme', 'light')
-    }
+    applyDarkMode(newIsDark)
   }
 
   // Prevent hydration mismatch

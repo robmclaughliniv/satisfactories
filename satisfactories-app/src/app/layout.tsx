@@ -1,28 +1,10 @@
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import { Providers } from '@/components/Providers'
+import { darkModeScript } from './darkMode'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
-
-// Script to run before React hydration to prevent flash of wrong theme
-const darkModeScript = `
-if (typeof window !== 'undefined') {
-  let darkMode = localStorage.getItem('color-theme')
-  
-  if (!darkMode) {
-    darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  
-  if (darkMode === 'dark') {
-    document.documentElement.classList.add('dark')
-    document.documentElement.style.colorScheme = 'dark'
-  } else {
-    document.documentElement.classList.remove('dark')
-    document.documentElement.style.colorScheme = 'light'
-  }
-}
-`
 
 export default function RootLayout({
   children,
