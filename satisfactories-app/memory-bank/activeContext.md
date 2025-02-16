@@ -1,50 +1,35 @@
-# Active Development Context
+# Active Context
 
-## Current Work
+## Current Focus
+PostgreSQL Integration via Connection Pooling
 
-### Data Model & Storage Migration
-- Completed full migration from local storage to PostgreSQL for core models.
-- Enhanced migration scripts have been implemented:
-  - Versioned up and down SQL files (e.g. 20250216_001_up.sql and 20250216_001_down.sql).
-  - A new migration runner (scripts/migrate.js) now executes migrations in individual transactions with robust error handling, rollback, and detailed logging.
-- The data migration script (scripts/migrateData.js) now supports dry-run mode and provides progress tracking.
+## PostgreSQL Integration Plan
 
-### API Enhancements
-- Extended API endpoints:
-  - Factories API now supports full CRUD operations (GET, POST, PUT, DELETE).
-  - Created a new Worlds API endpoint to create and retrieve world records.
-- Input validation, error handling, and response formatting have been improved across API routes.
+1. **Dependency Update**
+   - Add the "pg" package to package.json. This will enable PostgreSQL connectivity via the pg library.
 
-### Frontend Integration
-- The WorldForm component has been updated:
-  - It now uses the new PostgreSQL-backed API endpoints.
-  - Robust error and loading state handling have been integrated.
-  - Optimistic UI updates ensure consistency between the frontend and backend.
-  - A helper function (`parseGameDifficulty`) has been added to assist with type conversion.
+2. **Environment Configuration**
+   - Update the .env (or .env.example) file with the necessary PostgreSQL connection parameters such as host, port, username, password, and database name (or a complete DATABASE_URL).
+   - Ensure that these environment variables are loaded within the server application (using dotenv if not already set up).
 
-## Next Steps
+3. **Implement Connection Pooling**
+   - Modify `src/services/db.ts` to create a connection pool using `pg.Pool`.
+   - Configure the pool to use the connection parameters from the environment.
+   - Implement helper functions (e.g., a query function) that utilize the pool for executing SQL queries.
+   - Ensure robust error handling and logging for potential connection issues.
 
-### Immediate Tasks
-- Thoroughly test API endpoints and migration scripts.
-- Expand CRUD functionality for the Worlds API (e.g., adding update and deletion support).
-- Increase unit and integration test coverage for both backend and frontend elements.
+4. **Test Database Connectivity**
+   - Create a simple test query (e.g., `SELECT 1`) to verify that the database connection works correctly.
+   - Optionally, expose a minimal API endpoint that can trigger this test to confirm that the server is able to communicate with PostgreSQL.
 
-### Upcoming Phases
-- **Phase 3: API Layer Enhancement**  
-  Further extend API endpoints for worlds and factories, including update and deletion support where missing, and integrate additional features as the application scales.
+5. **Migrations Integration**
+   - Review and adjust existing migration scripts (if necessary) so that they work smoothly with PostgreSQL and the new connection pool.
+   - Ensure that schema migrations run correctly against the database.
 
-- **Phase 4: Frontend Integration**  
-  Develop a centralized API service layer to streamline frontend interactions, enhance UI components based on user feedback, and improve error handling and performance metrics.
+6. **Verification and Documentation**
+   - Document the changes in this file and other relevant documentation (e.g., README.md) to ensure future maintainers understand the new PostgreSQL setup.
+   - Confirm the successful integration of PostgreSQL by testing basic read/write operations.
 
-- **Phase 5: Testing & Validation**  
-  Implement comprehensive unit and integration tests for backend and frontend components, optimize performance, and further refine error handling and transaction management.
-
-### Technical Debt & Planned Enhancements
-- Develop a centralized API service layer for streamlined frontend integration and improved error handling.
-- Optimize database queries and further refine transaction management.
-- Continue enhancing the UI components based on user feedback and performance metrics.
-
-## Recent Changes Summary
-- Migration system enhanced with versioning and transaction safety.
-- Comprehensive CRUD operations added to factories and worlds API routes.
-- WorldForm component updated with improved UX, error handling, and loading indicators, along with helper functions to manage type consistency.
+## Additional Notes
+- Focus on using connection pooling for reliable and efficient database interactions.
+- This plan serves as the guide for the upcoming modifications to ensure that our server-side application properly reads and writes to the PostgreSQL database.

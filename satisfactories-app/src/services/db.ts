@@ -1,39 +1,25 @@
-import { Pool, PoolConfig } from 'pg';
+import { Pool, QueryResult } from "pg";
+import * as dotenv from "dotenv";
 
-const poolConfig: PoolConfig = {
-  // Use the POSTGRES_URL environment variable if available, otherwise build connection string from individual vars.
-  connectionString: process.env.POSTGRES_URL || `postgres://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`,
-  
-  // Pool configuration
-  max: process.env.PG_MAX_POOL_SIZE ? parseInt(process.env.PG_MAX_POOL_SIZE, 10) : 20,
-  idleTimeoutMillis: process.env.PG_IDLE_TIMEOUT ? parseInt(process.env.PG_IDLE_TIMEOUT, 10) : 30000,
-  connectionTimeoutMillis: process.env.PG_CONNECTION_TIMEOUT ? parseInt(process.env.PG_CONNECTION_TIMEOUT, 10) : 2000,
-  
-  // Enable SSL in production if required.
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-};
+dotenv.config();
 
-const pool = new Pool(poolConfig);
-
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+const pool = new Pool({
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "postgres",
+  max: 20, // maximum number of clients in the pool
+  idleTimeoutMillis: 30000, // close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000 // return an error after 2 seconds if connection could not be established
 });
 
-async function query(text: string, params?: any[]) {
+export async function query<T extends import("pg").QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
   const start = Date.now();
-  try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rowCount: res.rowCount });
-    return res;
-  } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
-  }
+  const result = await pool.query<T>(text, params);
+  const duration = Date.now() - start;
+  console.log("executed query", { text, duration, rows: result.rowCount });
+  return result;
 }
 
-export default {
-  query,
-  pool,
-};
+export default pool;

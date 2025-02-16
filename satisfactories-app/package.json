@@ -10,6 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "testdb": "ts-node -P scripts/tsconfig.json scripts/testDb.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
@@ -18,11 +19,13 @@
   },
   "dependencies": {
     "@uiw/react-md-editor": "^4.0.5",
+    "dotenv": "^16.4.7",
     "flowbite": "^3.1.2",
     "flowbite-react": "^0.10.2",
     "lz-string": "^1.5.0",
     "next": "^14.2.24",
     "next-pwa": "^5.6.0",
+    "pg": "^8.10.0",
     "react": "^18",
     "react-dom": "^18",
     "tailwindcss": "^3.4.17"
@@ -46,6 +49,7 @@
     "postcss": "^8",
     "prettier": "^3.2.4",
     "sharp": "^0.33.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   },
   "eslintConfig": {
