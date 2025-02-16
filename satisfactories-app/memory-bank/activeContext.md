@@ -3,48 +3,48 @@
 ## Current Work
 
 ### Data Model & Storage Migration
-1. **User Management**
-   - Migrated user preferences and settings to PostgreSQL.
-   - World collections are now managed in the PostgreSQL database.
-   - Data migration from local storage to PostgreSQL has been implemented for core models, with ongoing testing for edge cases and rollback support.
+- Completed full migration from local storage to PostgreSQL for core models.
+- Enhanced migration scripts have been implemented:
+  - Versioned up and down SQL files (e.g. 20250216_001_up.sql and 20250216_001_down.sql).
+  - A new migration runner (scripts/migrate.js) now executes migrations in individual transactions with robust error handling, rollback, and detailed logging.
+- The data migration script (scripts/migrateData.js) now supports dry-run mode and provides progress tracking.
 
-2. **World Enhancements**
-   - Enhanced world properties including game version tracking, difficulty settings, coordinate system, tagging, and power statistics.
-   - The WorldForm component has been updated to interact with API endpoints that persist data in PostgreSQL.
+### API Enhancements
+- Extended API endpoints:
+  - Factories API now supports full CRUD operations (GET, POST, PUT, DELETE).
+  - Created a new Worlds API endpoint to create and retrieve world records.
+- Input validation, error handling, and response formatting have been improved across API routes.
 
-3. **Factory Improvements**
-   - Advanced factory features such as categorization, operational status, location tracking, power management, building counts, and efficiency tracking have been integrated.
-   - The factories API now queries PostgreSQL to retrieve up-to-date data.
-
-4. **Resource System**
-   - Resource type definitions, purity levels, transport methods, rate calculations, and efficiency tracking have been migrated to PostgreSQL.
-   - A dedicated resources table has been introduced and is managed via database migration scripts.
-
-### Recent Changes
-- Completed full migration from local storage to PostgreSQL for core data models.
-- Updated the WorldForm component to use API endpoints for data persistence.
-- Enhanced form interfaces, error handling, and UI responsiveness for desktop users.
-- Deployment pipeline updated to include database migration steps.
+### Frontend Integration
+- The WorldForm component has been updated:
+  - It now uses the new PostgreSQL-backed API endpoints.
+  - Robust error and loading state handling have been integrated.
+  - Optimistic UI updates ensure consistency between the frontend and backend.
+  - A helper function (`parseGameDifficulty`) has been added to assist with type conversion.
 
 ## Next Steps
 
 ### Immediate Tasks
-1. **Data Migration Testing**
-   - Test the migration of existing world data.
-   - Verify data integrity within PostgreSQL.
-   - Address edge cases and implement robust rollback mechanisms.
+- Thoroughly test API endpoints and migration scripts.
+- Expand CRUD functionality for the Worlds API (e.g., adding update and deletion support).
+- Increase unit and integration test coverage for both backend and frontend elements.
 
-2. **UI Enhancements**
-   - Finalize integration of API-based data persistence in UI components.
-   - Refine error handling and user feedback within forms.
-   - Optimize the desktop UI performance and responsiveness.
+### Upcoming Phases
+- **Phase 3: API Layer Enhancement**  
+  Further extend API endpoints for worlds and factories, including update and deletion support where missing, and integrate additional features as the application scales.
 
-3. **Feature Implementation**
-   - Expand API endpoints to support complete CRUD functionality.
-   - Strengthen server-side validation and security measures.
-   - Enhance integration tests covering data flow between the UI and PostgreSQL.
+- **Phase 4: Frontend Integration**  
+  Develop a centralized API service layer to streamline frontend interactions, enhance UI components based on user feedback, and improve error handling and performance metrics.
 
-### Technical Debt
-- Increase comprehensive test coverage for migration and API endpoints.
-- Implement detailed logging for migration processes and API errors.
-- Update documentation to reflect new PostgreSQL workflows and architecture changes.
+- **Phase 5: Testing & Validation**  
+  Implement comprehensive unit and integration tests for backend and frontend components, optimize performance, and further refine error handling and transaction management.
+
+### Technical Debt & Planned Enhancements
+- Develop a centralized API service layer for streamlined frontend integration and improved error handling.
+- Optimize database queries and further refine transaction management.
+- Continue enhancing the UI components based on user feedback and performance metrics.
+
+## Recent Changes Summary
+- Migration system enhanced with versioning and transaction safety.
+- Comprehensive CRUD operations added to factories and worlds API routes.
+- WorldForm component updated with improved UX, error handling, and loading indicators, along with helper functions to manage type consistency.

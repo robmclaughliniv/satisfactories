@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { Modal, Label, TextInput, Select, Button, Badge } from 'flowbite-react'
+import { Modal, Label, TextInput, Select, Button, Badge, Spinner } from 'flowbite-react'
 import { World, GameDifficulty } from '../types/storage'
-import { localStorageService } from '../services/localStorageService'
 
 // Dynamically import MDEditor to avoid SSR issues
 const MDEditor = dynamic(
@@ -31,14 +30,14 @@ export function WorldForm({
   onClose,
   onSubmit,
 }: WorldFormProps) {
-  const user = localStorageService.getUser()
+  const user = { preferences: { defaultGameVersion: '1.0', defaultDifficulty: 'Normal' } }
   const [name, setName] = useState(initialWorld?.name || '')
   const [biome, setBiome] = useState(initialWorld?.biome || '')
   const [gameVersion, setGameVersion] = useState(
     initialWorld?.gameVersion || user.preferences.defaultGameVersion
   )
   const [difficulty, setDifficulty] = useState<GameDifficulty>(
-    initialWorld?.difficulty || user.preferences.defaultDifficulty
+    initialWorld?.difficulty || (user.preferences.defaultDifficulty as GameDifficulty)
   )
   const [coordinates, setCoordinates] = useState<Coordinates>(
     initialWorld?.coordinates || { x: 0, y: 0, z: 0 }
@@ -48,7 +47,8 @@ export function WorldForm({
   const [notes, setNotes] = useState(initialWorld?.notes || '')
   const [error, setError] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
-  const {defaultGameVersion, defaultDifficulty} = user.preferences
+  const [isLoading, setIsLoading] = useState(false)
+  const { defaultGameVersion, defaultDifficulty } = user.preferences
 
   // Reset form when modal opens
   useEffect(() => {
@@ -91,17 +91,20 @@ export function WorldForm({
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
+    setIsLoading(true)
 
     if (!name.trim()) {
       setError('World name is required')
+      setIsLoading(false)
       return
     }
 
     if (!gameVersion.trim()) {
       setError('Game version is required')
+      setIsLoading(false)
       return
     }
 
@@ -125,11 +128,25 @@ export function WorldForm({
     }
 
     try {
-      localStorageService.updateWorld(world)
+      // Optimistic UI update can be managed by calling onSubmit immediately,
+      // but here we perform the API call first to ensure backend consistency.
+      const response = await fetch('/api/worlds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(world)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save world.');
+      }
       onSubmit(world)
       onClose()
     } catch (err) {
       setError('Failed to save world. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -208,7 +225,7 @@ export function WorldForm({
                 <Select
                   id="difficulty"
                   value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as GameDifficulty)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setDifficulty(parseGameDifficulty(e.target.value))}
                   required
                 >
                   {Object.values(GameDifficulty).map((diff) => (
@@ -327,11 +344,18 @@ export function WorldForm({
       </Modal.Body>
       <Modal.Footer>
         <div className="flex w-full justify-end gap-2">
-          <Button color="gray" onClick={onClose}>
+          <Button color="gray" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>
-            {initialWorld ? 'Save Changes' : 'Create World'}
+          <Button type="submit" form="worldForm" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Spinner size="sm" light={true} />
+                &nbsp;Saving...
+              </>
+            ) : (
+              initialWorld ? 'Save Changes' : 'Create World'
+            )}
           </Button>
         </div>
       </Modal.Footer>
