@@ -48,14 +48,15 @@ export function WorldForm({
   const [notes, setNotes] = useState(initialWorld?.notes || '')
   const [error, setError] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
+  const {defaultGameVersion, defaultDifficulty} = user.preferences
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setName(initialWorld?.name || '')
       setBiome(initialWorld?.biome || '')
-      setGameVersion(initialWorld?.gameVersion || user.preferences.defaultGameVersion)
-      setDifficulty(initialWorld?.difficulty || user.preferences.defaultDifficulty)
+      setGameVersion(initialWorld?.gameVersion || defaultGameVersion)
+      setDifficulty(initialWorld?.difficulty || defaultDifficulty)
       setCoordinates(initialWorld?.coordinates || { x: 0, y: 0, z: 0 })
       setTags(initialWorld?.tags || [])
       setNewTag('')
@@ -63,7 +64,7 @@ export function WorldForm({
       setError(null)
       setIsPreview(false)
     }
-  }, [isOpen, initialWorld, user.preferences])
+  }, [isOpen, initialWorld, defaultGameVersion, defaultDifficulty])
 
   const handleAddTag = () => {
     const trimmedTag = newTag.trim()
@@ -139,6 +140,7 @@ export function WorldForm({
       size="4xl"
       dismissible
       popup={false}
+      root={document.body}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           onClose()
