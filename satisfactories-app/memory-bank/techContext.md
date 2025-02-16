@@ -7,8 +7,11 @@
 - **TypeScript**: v5.x
 - **Next.js**: v14.1.0
 - **React**: v18.x
+- **PostgreSQL**: Utilized for persistent data storage
+- **node-postgres**: For database interactions with PostgreSQL
 
-### Framework & Libraries
+## Framework & Libraries
+
 1. **UI Components**
    - Flowbite React v0.4.3
    - Tailwind CSS v3.3.0
@@ -16,11 +19,11 @@
 
 2. **State Management**
    - React Hooks
-   - Local Storage
    - Context API
 
-3. **Data Compression**
-   - lz-string v1.5.0 (for storage optimization)
+3. **Data Persistence & Legacy Compression**
+   - Transitioned from local storage to PostgreSQL for scalable storage
+   - lz-string v1.5.0 (previously used for local storage compression; now deprecated)
 
 ## Development Tools
 
@@ -35,10 +38,10 @@
 ```
 
 ### Code Quality
-- ESLint with Next.js config
+- ESLint with Next.js configuration
 - Prettier v3.2.4
 - TypeScript strict mode
-- JSX a11y plugin
+- JSX a11y plugin for accessibility
 
 ### Build Tools
 - next-pwa v5.6.0
@@ -67,9 +70,15 @@ npm test
 npm run test:watch
 npm run test:coverage
 
-# E2E tests
+# End-to-end tests
 npm run e2e
 npm run e2e:ui
+```
+
+### Database & Migrations
+```bash
+# Run migrations
+node scripts/migrate.js
 ```
 
 ### Validation
@@ -83,7 +92,7 @@ npm run validate
 ### TypeScript
 - Strict mode enabled
 - Path aliases configured
-- Next.js types included
+- Includes Next.js types
 
 ### ESLint Rules
 ```json
@@ -105,67 +114,54 @@ npm run validate
 ### Jest Configuration
 - Jest DOM environment
 - React Testing Library setup
-- Coverage reporting
+- Coverage reporting enabled
 
 ### PWA Configuration
 - Service worker generation
-- App manifest
-- Icons for various sizes
+- App manifest setup
+- Icons for multiple sizes
 
 ## Technical Constraints
 
 ### Browser Support
 - Modern browsers (Chrome, Firefox, Safari, Edge)
-- PWA support required
-- Mobile-first responsive design
+- PWA support maintained
+- Optimized primarily for desktop usage
 
-### Performance Requirements
-- Lighthouse score targets:
+### Performance Targets
+- Lighthouse score targets: 
   - Performance: 90+
   - Accessibility: 90+
   - Best Practices: 90+
   - SEO: 90+
 
-### Storage Limitations
-- Local Storage size limits
-- Data compression required for large datasets
-- Offline functionality support
+### Storage & Data Migration
+- Complete migration from local storage to PostgreSQL
+- Managed via migration scripts (see scripts/migrate.sql and scripts/migrate.js)
+- Ensuring data integrity and scalability
 
 ### Security Considerations
 - CSP compliance
-- Local data encryption (if needed)
-- Input sanitization
+- Secure database connections via environment variables
+- Input sanitization on API endpoints
 
 ## Development Practices
 
 ### Git Workflow
-- Feature branches
+- Feature branching
 - Pull request reviews
 - Automated CI checks
 
 ### Code Style
-- Prettier formatting
-- TypeScript strict mode
-- Component organization patterns
+- Enforced via Prettier and ESLint
+- TypeScript strict mode for reliability
+- Organized component structure following Next.js best practices
 
 ### Documentation
-- Code comments
-- Type definitions
-- README maintenance
+- Code comments and up-to-date type definitions
+- Comprehensive README and memory bank documentation maintained
 
-## Deployment
-
-### Build Process
-- Next.js static optimization
+### Deployment
+- Next.js static optimization with serverless functions
 - PWA asset generation
-- Environment variable handling
-
-### Infrastructure
-- Static hosting capability
-- CDN support
-- PWA requirements
-
-### Monitoring
-- Error tracking setup
-- Performance monitoring
-- Usage analytics (if implemented)
+- Secure handling of environment variables for database access

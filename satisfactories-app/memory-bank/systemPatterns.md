@@ -3,6 +3,8 @@
 ## Data Hierarchy
 
 ### 1. Core Data Model
+The application now relies on a PostgreSQL database. The core entities and their relationships are defined as follows:
+
 ```
 User
   ├── preferences
@@ -10,189 +12,98 @@ User
   │   ├── defaultGameVersion
   │   └── defaultDifficulty
   │
-  └── worlds[]
-      ├── metadata (name, biome, etc.)
+  └── worlds[] (Associated via PostgreSQL)
+      ├── id (Primary Key)
+      ├── name
+      ├── metadata (e.g., biome, coordinates)
       ├── gameVersion
       ├── difficulty
-      ├── coordinates
       ├── tags
       ├── powerStats
       │   ├── totalProduction
       │   ├── totalConsumption
       │   └── maxCapacity
-      │
-      └── factories[]
-          ├── metadata
-          ├── category
-          ├── status
-          ├── location
-          ├── power
-          ├── efficiency
-          ├── buildingCount
-          ├── inputs[]
-          │   ├── resourceType
-          │   ├── purity
-          │   ├── rates
-          │   └── transport
-          │
-          └── outputs[]
-              ├── resourceType
-              ├── rates
-              └── transport
+      ├── startDate
+      ├── lastModified
+      └── factories[] (Foreign key relationship)
+          ├── id (Primary Key)
+          ├── name
+          ├── created_at
+          └── (Additional attributes managed by migrations)
 ```
 
+Additionally, a separate **resources** table exists for linking resource information to worlds.
+
 ### 2. Storage Pattern
-```
-LocalStorage
-  ├── satisfactory-user
-  │   └── Compressed & Chunked JSON
-  │
-  └── satisfactory-worlds (legacy)
-      └── Compressed & Chunked JSON
-```
+- The previous local storage solution has been completely replaced.
+- Data is now stored in PostgreSQL.
+- Database schema changes are managed via migration scripts (`scripts/migrate.sql` and `scripts/migrate.js`).
+- API endpoints (e.g., factories API route) interact with the database through the node-postgres library.
 
 ## Application Architecture
 
 ### 1. Next.js App Router Structure
-- Uses Next.js 14 with App Router
-- Client components marked with 'use client'
-- Server-side components for layout and metadata
-- Hybrid rendering strategy
+- Uses Next.js with the App Router.
+- Client components are marked with `'use client'`; server components handle layout and metadata.
+- Hybrid rendering strategy to optimize both static and dynamic content.
 
 ### 2. Component Organization
 ```
-src/
-├── app/           # Next.js app router pages and layouts
+satisfactories-app/
+├── app/           # Next.js pages, layouts, and API routes
 ├── components/    # Reusable React components
-├── services/      # Business logic and data services
+├── services/      # Business logic and database interactions (e.g., db.ts)
+├── memory-bank/   # Documentation files and memory bank context
+├── scripts/       # Database migration and utility scripts
 ├── types/         # TypeScript type definitions
-└── e2e/          # End-to-end tests
+└── e2e/           # End-to-end tests with Playwright
 ```
 
-### 3. State Management
-- Local React state for UI components
-- Local Storage for persistent data
-- Context providers for theme/dark mode
-- User preferences in local storage
+### 3. State & Data Flow Patterns
 
-## Data Flow Patterns
+#### Data Flow
+```
+PostgreSQL Database <--> Server-side API Routes (Next.js) <--> React Components (Client)
+```
+- CRUD operations are performed via the API routes.
+- The server interacts with PostgreSQL using the node-postgres library.
+- Client components fetch data from these API endpoints.
 
-### 1. User & World Data
-```
-LocalStorage <-> LocalStorageService <-> React Components
-```
-- User data as top-level storage
-- Worlds nested under user
-- CRUD operations through service layer
-- Automatic data migration support
-
-### 2. Factory Management
-```
-World -> Factory -> Resources
-```
-- Factories scoped to worlds
-- Resource flows tracked at factory level
-- Power management at both factory and world level
-- Building counts for resource calculations
-
-### 3. Resource Flow
-```
-Input -> Factory -> Output
-```
-- Resource type validation
-- Rate calculations
-- Transport method tracking
-- Efficiency monitoring
+#### API Structure
+- API routes (e.g., `/api/factories`) handle database queries and return JSON responses.
+- Server components manage secure data access and input validation.
 
 ## Technical Patterns
 
-### 1. Type Safety
-- TypeScript for static typing
-- Enum-based categorization
-- Interface-based type definitions
-- Global type declarations
+### 1. Type Safety & Code Organization
+- Use of TypeScript for static type-checking.
+- Strict typing with interfaces and enums for core data models.
+- Organized import structure for maintainability.
 
-### 2. Component Patterns
-- Form components with validation
-- Resource management components
-- Coordinate system components
-- Power tracking components
+### 2. Component & Data Management Patterns
+- Form components integrate with API endpoints for real-time data updates.
+- Local state (via React Hooks) is used for UI responsiveness.
+- Server-side API routes mediate all interactions with the PostgreSQL database.
 
-### 3. Testing Strategy
-```
-Unit Tests (Jest) -> Integration Tests -> E2E Tests (Playwright)
-```
-- Jest for component/service testing
-- React Testing Library for integration
-- Playwright for end-to-end flows
-
-## Code Organization
-
-### 1. File Naming
-- PascalCase for components
-- camelCase for utilities/services
-- kebab-case for configuration files
-
-### 2. Import Structure
-```typescript
-// External imports
-import { useState } from 'react'
-import { Button } from 'flowbite-react'
-
-// Internal imports
-import { localStorageService } from '@/services'
-import type { User, World, Factory } from '@/types'
-```
-
-### 3. Component Structure
-```typescript
-// Types
-interface Props {
-  // ...
-}
-
-// Component
-export function Component({ prop1, prop2 }: Props) {
-  // State hooks
-  // Effect hooks
-  // Helper functions
-  // Render
-}
-```
+### 3. Database Migration Pattern
+- Migrations are triggered via scripts:
+  - `scripts/migrate.sql` defines schema changes.
+  - `scripts/migrate.js` executes these migrations using node-postgres.
+- This ensures data integrity and systematic schema evolution.
 
 ## Best Practices
 
 ### 1. Data Management
-- Chunked storage for large datasets
-- Compression for efficiency
-- Migration paths for updates
-- Type-safe operations
+- Perform data migrations with rollback support.
+- Validate data changes through comprehensive testing.
+- Maintain clear separation between database schema and application logic.
 
 ### 2. Performance
-- Lazy loading for modals
-- Optimized form rendering
-- Efficient data updates
-- Resource calculation caching
+- Employ lazy loading and code-splitting for UI components.
+- Optimize API endpoints for quick database queries.
+- Use caching mechanisms where appropriate.
 
-### 3. Error Handling
-- Type validation
-- Data integrity checks
-- Migration error handling
-- User feedback
-
-## Development Workflow
-
-### 1. Code Quality
-- ESLint for code linting
-- Prettier for formatting
-- TypeScript for type checking
-
-### 2. Testing Requirements
-- Unit tests for data operations
-- Component testing with RTL
-- E2E coverage with Playwright
-
-### 3. Build Process
-- Next.js build optimization
-- PWA asset generation
-- Environment-based configuration
+### 3. Security & Error Handling
+- Sanitize API inputs to prevent SQL injection.
+- Use environment variables for secure database connection management.
+- Implement robust error handling both at the API and UI levels.
