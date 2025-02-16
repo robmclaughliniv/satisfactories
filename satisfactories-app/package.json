@@ -18,13 +18,14 @@
   },
   "dependencies": {
     "@uiw/react-md-editor": "^4.0.5",
-    "flowbite": "^1.6.5",
-    "flowbite-react": "^0.4.3",
+    "flowbite": "^3.1.2",
+    "flowbite-react": "^0.10.2",
     "lz-string": "^1.5.0",
-    "next": "14.1.0",
+    "next": "^14.2.24",
     "next-pwa": "^5.6.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
     "@playwright/test": "^1.41.1",
@@ -44,7 +45,6 @@
     "postcss": "^8",
     "prettier": "^3.2.4",
     "sharp": "^0.33.5",
-    "tailwindcss": "^3.3.0",
     "typescript": "^5"
   },
   "eslintConfig": {
