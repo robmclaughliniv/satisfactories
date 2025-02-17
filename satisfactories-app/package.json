@@ -10,7 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "testdb": "ts-node -P scripts/tsconfig.json scripts/testDb.ts",
+    "testdb": "ts-node -P scripts/tsconfig.json src/services/db.test.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
