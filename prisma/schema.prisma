@@ -13,6 +13,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User model
+model User {
+  id          String      @id @default(uuid())
+  email       String      @unique
+  name        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  worlds      World[]
+}
+
 // Game world representation
 model World {
   id          String      @id @default(uuid())
@@ -20,23 +30,88 @@ model World {
   description String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   factories   Factory[]
   resources   Resource[]
 }
 
 // Factory representation
 model Factory {
-  id          String      @id @default(uuid())
-  name        String
+  id              String          @id @default(uuid())
+  name            String
+  description     String?
+  location        String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  worldId         String
+  world           World           @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  buildings       Building[]
+  inputs          ItemFlow[]      @relation("FactoryInputs")
+  outputs         ItemFlow[]      @relation("FactoryOutputs")
+  resourceInputs  ResourceInput[]
+  resourceOutputs ResourceOutput[]
+  // Factory as origin/destination for resources
+  asOrigin        InputResource[] @relation("FactoryOrigin")
+  asDestination   OutputResource[] @relation("FactoryDestination")
+}
+
+// Resource Input for a Factory
+model ResourceInput {
+  id          String          @id @default(uuid())
+  name        String?
   description String?
-  location    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  worldId     String
-  world       World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  buildings   Building[]
-  inputs      ItemFlow[]  @relation("FactoryInputs")
-  outputs     ItemFlow[]  @relation("FactoryOutputs")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  factoryId   String
+  factory     Factory         @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  resources   InputResource[]
+}
+
+// Resource Output for a Factory
+model ResourceOutput {
+  id          String           @id @default(uuid())
+  name        String?
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  factoryId   String
+  factory     Factory          @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  resources   OutputResource[]
+}
+
+// Input Resource with origin
+model InputResource {
+  id              String        @id @default(uuid())
+  rate            Float         // Items per minute
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  itemId          String
+  item            Item          @relation(fields: [itemId], references: [id])
+  resourceInputId String
+  resourceInput   ResourceInput @relation(fields: [resourceInputId], references: [id], onDelete: Cascade)
+  
+  // Origin can be either a Resource Node or another Factory
+  resourceNodeId  String?
+  resourceNode    Resource?     @relation("ResourceNodeOrigin", fields: [resourceNodeId], references: [id])
+  factoryOriginId String?
+  factoryOrigin   Factory?      @relation("FactoryOrigin", fields: [factoryOriginId], references: [id])
+}
+
+// Output Resource with destination
+model OutputResource {
+  id                String         @id @default(uuid())
+  rate              Float          // Items per minute
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  itemId            String
+  item              Item           @relation(fields: [itemId], references: [id])
+  resourceOutputId  String
+  resourceOutput    ResourceOutput @relation(fields: [resourceOutputId], references: [id], onDelete: Cascade)
+  
+  // Destination is another Factory
+  factoryDestinationId String?
+  factoryDestination   Factory?     @relation("FactoryDestination", fields: [factoryDestinationId], references: [id])
 }
 
 // Building representation (constructors, assemblers, etc.)
@@ -85,26 +160,30 @@ model RecipeItem {
 
 // Item representation (iron ore, iron plate, etc.)
 model Item {
-  id          String      @id @default(uuid())
-  name        String      @unique
-  description String?
-  category    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  recipeItems RecipeItem[]
-  itemFlows   ItemFlow[]
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  category        String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  recipeItems     RecipeItem[]
+  itemFlows       ItemFlow[]
+  inputResources  InputResource[]
+  outputResources OutputResource[]
 }
 
 // Resource node representation
 model Resource {
-  id          String      @id @default(uuid())
-  type        String      // e.g., Iron, Copper, Coal
-  purity      String      // Impure, Normal, Pure
+  id          String          @id @default(uuid())
+  type        String          // e.g., Iron, Copper, Coal
+  purity      String          // Impure, Normal, Pure
   location    String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   worldId     String
-  world       World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  world       World           @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  // Resource node as origin for input resources
+  asOrigin    InputResource[] @relation("ResourceNodeOrigin")
 }
 
 // Flow of items between buildings or factories
