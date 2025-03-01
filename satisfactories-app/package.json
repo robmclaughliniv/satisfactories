@@ -15,7 +15,8 @@
     "e2e:ui": "playwright test --ui",
     "format": "prettier --write .",
     "type-check": "tsc --noEmit",
-    "validate": "npm run lint && npm run type-check && npm run test"
+    "validate": "npm run lint && npm run type-check && npm run test",
+    "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
     "@uiw/react-md-editor": "^4.0.5",

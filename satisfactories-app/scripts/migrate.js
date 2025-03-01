@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const db = require('../src/services/db');
+const db = require('../src/services/db.ts');
 
 async function runMigrations() {
   try {
