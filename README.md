@@ -1,6 +1,6 @@
-# Satisfactories
+# Satisfactory Planner
 
-The ultimate planning tool for Satisfactory, the factory-building game. This web application helps you keep track of your in-game worlds and factories—from managing production rates and resource flows to planning future builds.
+A planning tool for the game Satisfactory.
 
 ## Features
 
@@ -18,6 +18,61 @@ The ultimate planning tool for Satisfactory, the factory-building game. This web
 - **Tailwind CSS**: Utility-first CSS framework for styling
 - **TypeScript**: Type-safe JavaScript
 - **Jest & Playwright**: Testing frameworks
+
+## Game Data Import
+
+This application uses official game data from the Satisfactory wiki. To import or update this data:
+
+### Fetching Latest Game Data
+
+To fetch the latest game data from the Satisfactory wiki:
+
+```bash
+npm run update:game-data
+```
+
+This will download the latest JSON data for items, recipes, and buildings from the wiki and save it to the `src/data` directory.
+
+### Database Setup
+
+Before importing the game data into your database, you need to set up your PostgreSQL database:
+
+1. Install PostgreSQL if you haven't already
+2. Create a new database called `satisfactory_planner`
+3. Update the `.env` file with your database credentials:
+
+```
+DATABASE_URL="postgresql://username:password@localhost:5432/satisfactory_planner?schema=public"
+```
+
+Replace `username` and `password` with your PostgreSQL credentials.
+
+### Importing Game Data to Database
+
+To import the game data into your database:
+
+```bash
+npm run import:game-data
+```
+
+This will:
+1. Fetch the latest game data from the wiki
+2. Run Prisma migrations to ensure the database schema is up to date
+3. Generate the Prisma client
+4. Import all game data into your database
+
+### Accessing Game Data
+
+Once imported, you can browse and use the game data at:
+
+```
+/game-data
+```
+
+This page allows you to:
+- Browse all items, recipes, and buildings from the game
+- Search for specific game data
+- Create application items, recipes, and buildings based on game data
 
 ## Getting Started
 
@@ -81,3 +136,18 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - [Satisfactory](https://www.satisfactorygame.com/) - The game that inspired this project
 - [Coffee Stain Studios](https://www.coffeestainstudios.com/) - Developers of Satisfactory
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.

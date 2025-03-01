@@ -129,6 +129,10 @@ model Building {
   recipe      Recipe?     @relation(fields: [recipeId], references: [id])
   inputs      ItemFlow[]  @relation("BuildingInputs")
   outputs     ItemFlow[]  @relation("BuildingOutputs")
+  
+  // Reference to game building data
+  gameClassName String?
+  gameBuilding  GameBuilding? @relation(fields: [gameClassName], references: [className])
 }
 
 // Recipe representation
@@ -140,8 +144,11 @@ model Recipe {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   buildings   Building[]
-  inputs      RecipeItem[] @relation("RecipeInputs")
-  outputs     RecipeItem[] @relation("RecipeOutputs")
+  recipeItems RecipeItem[]
+  
+  // Reference to game recipe data
+  gameClassName String?
+  gameRecipe    GameRecipe? @relation(fields: [gameClassName], references: [className])
 }
 
 // Recipe input/output items
@@ -153,9 +160,8 @@ model RecipeItem {
   recipeId    String
   recipe      Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   isInput     Boolean     // true for input, false for output
-  
-  @@relation(name: "RecipeInputs", fields: [recipeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  @@relation(name: "RecipeOutputs", fields: [recipeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([recipeId, isInput])
 }
 
 // Item representation (iron ore, iron plate, etc.)
@@ -170,6 +176,10 @@ model Item {
   itemFlows       ItemFlow[]
   inputResources  InputResource[]
   outputResources OutputResource[]
+  
+  // Reference to game item data
+  gameClassName   String?
+  gameItem        GameItem?        @relation(fields: [gameClassName], references: [className])
 }
 
 // Resource node representation
@@ -206,4 +216,101 @@ model ItemFlow {
   sourceFactoryId   String?
   targetFactory     Factory?   @relation("FactoryInputs", fields: [targetFactoryId], references: [id])
   targetFactoryId   String?
+}
+
+// ======= GAME DATA MODELS =======
+
+// Game Item data from Satisfactory wiki
+model GameItem {
+  className     String    @id
+  name          String
+  description   String?
+  stackSize     Int?
+  energy        Float?
+  radioactive   Float?
+  canBeDiscarded Boolean?
+  sinkPoints    Int?
+  abbreviation  String?
+  form          String?   // solid, liquid, gas
+  fluidColor    String?
+  alienItem     Boolean?
+  stable        Boolean?
+  experimental  Boolean?
+  
+  // Relations
+  items         Item[]
+  asInput       GameRecipeItem[] @relation("GameItemInput")
+  asOutput      GameRecipeItem[] @relation("GameItemOutput")
+}
+
+// Game Recipe data from Satisfactory wiki
+model GameRecipe {
+  className     String    @id
+  name          String
+  unlockedBy    String?
+  duration      Float     // In seconds
+  alternate     Boolean?
+  inCraftBench  Boolean?
+  inWorkshop    Boolean?
+  inBuildGun    Boolean?
+  inCustomizer  Boolean?
+  manualCraftingMultiplier Float?
+  minPower      Float?
+  maxPower      Float?
+  stable        Boolean?
+  experimental  Boolean?
+  
+  // Relations
+  recipes       Recipe[]
+  recipeItems   GameRecipeItem[]
+  producedIn    GameRecipeBuilding[]
+}
+
+// Game Recipe Item (inputs/outputs)
+model GameRecipeItem {
+  id            String    @id @default(uuid())
+  amount        Float
+  isInput       Boolean   // true for input, false for output
+  
+  // Relations
+  recipeId      String
+  recipe        GameRecipe @relation(fields: [recipeId], references: [className], onDelete: Cascade)
+  
+  // Item relations - one field for the actual relation, but we need to map to different relations
+  itemId        String
+  inputItem     GameItem  @relation("GameItemInput", fields: [itemId], references: [className], map: "GameRecipeItem_inputItem_fkey")
+  outputItem    GameItem  @relation("GameItemOutput", fields: [itemId], references: [className], map: "GameRecipeItem_outputItem_fkey")
+
+  @@index([recipeId, isInput])
+}
+
+// Game Building data from Satisfactory wiki
+model GameBuilding {
+  className     String    @id
+  name          String
+  description   String?
+  unlockedBy    String?
+  powerUsage    Float?
+  powerGenerated Float?
+  supplementPerMinute Float?
+  overclockable Boolean?
+  somersloopSlots Int?
+  isVehicle     Boolean?
+  stable        Boolean?
+  experimental  Boolean?
+  
+  // Relations
+  buildings     Building[]
+  recipes       GameRecipeBuilding[]
+}
+
+// Many-to-many relation between GameRecipe and GameBuilding
+model GameRecipeBuilding {
+  id            String    @id @default(uuid())
+  recipeId      String
+  recipe        GameRecipe @relation(fields: [recipeId], references: [className], onDelete: Cascade)
+  buildingId    String
+  building      GameBuilding @relation(fields: [buildingId], references: [className], onDelete: Cascade)
+  
+  @@unique([recipeId, buildingId])
 }

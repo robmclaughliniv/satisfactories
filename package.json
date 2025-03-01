@@ -11,7 +11,9 @@
     "test:e2e": "playwright test",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "import:game-data": "node src/scripts/runImport.js",
+    "update:game-data": "node src/scripts/runImport.js --fetch-only"
   },
   "dependencies": {
     "@prisma/client": "^5.10.2",
@@ -36,6 +38,7 @@
     "postcss": "^8",
     "prisma": "^5.10.2",
     "tailwindcss": "^3.3.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }
