@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Game world representation
+model World {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  factories   Factory[]
+  resources   Resource[]
+}
+
+// Factory representation
+model Factory {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  location    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  worldId     String
+  world       World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  buildings   Building[]
+  inputs      ItemFlow[]  @relation("FactoryInputs")
+  outputs     ItemFlow[]  @relation("FactoryOutputs")
+}
+
+// Building representation (constructors, assemblers, etc.)
+model Building {
+  id          String      @id @default(uuid())
+  name        String
+  type        String
+  quantity    Int         @default(1)
+  clockSpeed  Float       @default(100.0) // Percentage
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  factoryId   String
+  factory     Factory     @relation(fields: [factoryId], references: [id], onDelete: Cascade)
+  recipeId    String?
+  recipe      Recipe?     @relation(fields: [recipeId], references: [id])
+  inputs      ItemFlow[]  @relation("BuildingInputs")
+  outputs     ItemFlow[]  @relation("BuildingOutputs")
+}
+
+// Recipe representation
+model Recipe {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  craftTime   Float       // In seconds
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  buildings   Building[]
+  inputs      RecipeItem[] @relation("RecipeInputs")
+  outputs     RecipeItem[] @relation("RecipeOutputs")
+}
+
+// Recipe input/output items
+model RecipeItem {
+  id          String      @id @default(uuid())
+  quantity    Float
+  itemId      String
+  item        Item        @relation(fields: [itemId], references: [id])
+  recipeId    String
+  recipe      Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  isInput     Boolean     // true for input, false for output
+  
+  @@relation(name: "RecipeInputs", fields: [recipeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@relation(name: "RecipeOutputs", fields: [recipeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+// Item representation (iron ore, iron plate, etc.)
+model Item {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  category    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  recipeItems RecipeItem[]
+  itemFlows   ItemFlow[]
+}
+
+// Resource node representation
+model Resource {
+  id          String      @id @default(uuid())
+  type        String      // e.g., Iron, Copper, Coal
+  purity      String      // Impure, Normal, Pure
+  location    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  worldId     String
+  world       World       @relation(fields: [worldId], references: [id], onDelete: Cascade)
+}
+
+// Flow of items between buildings or factories
+model ItemFlow {
+  id          String      @id @default(uuid())
+  rate        Float       // Items per minute
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  itemId      String
+  item        Item        @relation(fields: [itemId], references: [id])
+  
+  // Building relations
+  sourceBuilding    Building?  @relation("BuildingOutputs", fields: [sourceBuildingId], references: [id])
+  sourceBuildingId  String?
+  targetBuilding    Building?  @relation("BuildingInputs", fields: [targetBuildingId], references: [id])
+  targetBuildingId  String?
+  
+  // Factory relations
+  sourceFactory     Factory?   @relation("FactoryOutputs", fields: [sourceFactoryId], references: [id])
+  sourceFactoryId   String?
+  targetFactory     Factory?   @relation("FactoryInputs", fields: [targetFactoryId], references: [id])
+  targetFactoryId   String?
+}
