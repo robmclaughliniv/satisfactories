@@ -1,4 +1,4 @@
-# Satisfactory Planner - Game Data Import
+# Satisfactories - Game Data Import
 
 ## What We've Accomplished
 

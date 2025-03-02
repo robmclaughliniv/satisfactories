@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo  Satisfactory Planner - Game Data Import Utility
+echo  Satisfactories - Game Data Import Utility
 echo ===================================================
 echo.
 echo This script will:

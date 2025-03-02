@@ -1,4 +1,4 @@
-# Satisfactory Planner
+# Satisfactories
 
 A planning tool for the game Satisfactory.
 

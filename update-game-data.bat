@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo  Satisfactory Planner - Game Data Update Utility
+echo  Satisfactories - Game Data Update Utility
 echo ===================================================
 echo.
 echo This script will fetch the latest game data from the Satisfactory wiki.
