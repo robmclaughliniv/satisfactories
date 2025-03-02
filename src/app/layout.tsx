@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,10 +22,21 @@ export default function RootLayout({
           <header className="sticky top-0 z-10 border-b bg-white dark:bg-gray-950 dark:border-gray-800">
             <div className="container mx-auto flex h-16 items-center justify-between px-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold">Satisfactories</span>
+                <Link href="/" className="text-xl font-bold">Satisfactories</Link>
               </div>
               <nav className="flex items-center gap-4">
-                {/* Add navigation items here */}
+                <Link href="/users" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                  Users
+                </Link>
+                <Link href="/worlds" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                  Worlds
+                </Link>
+                <Link href="/recipes" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                  Recipes
+                </Link>
+                <Link href="/game-data" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                  Game Data
+                </Link>
               </nav>
             </div>
           </header>

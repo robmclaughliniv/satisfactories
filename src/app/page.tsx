@@ -11,6 +11,22 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Users Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+          <h2 className="text-xl font-bold mb-4">Users</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Manage users and their Satisfactory game worlds.
+          </p>
+          <div className="mt-auto">
+            <Link 
+              href="/users" 
+              className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              View Users
+            </Link>
+          </div>
+        </div>
+
         {/* Worlds Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
           <h2 className="text-xl font-bold mb-4">My Worlds</h2>
@@ -75,34 +91,18 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Analytics Card */}
+        {/* Game Data Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <h2 className="text-xl font-bold mb-4">Analytics</h2>
+          <h2 className="text-xl font-bold mb-4">Game Data</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Analyze your factory performance and optimize production.
+            Browse game data including items, recipes, and buildings.
           </p>
           <div className="mt-auto">
             <Link 
-              href="/analytics" 
+              href="/game-data" 
               className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
-              View Analytics
-            </Link>
-          </div>
-        </div>
-
-        {/* Settings Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <h2 className="text-xl font-bold mb-4">Settings</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Configure your planner settings and preferences.
-          </p>
-          <div className="mt-auto">
-            <Link 
-              href="/settings" 
-              className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              View Settings
+              View Game Data
             </Link>
           </div>
         </div>
