@@ -32,6 +32,8 @@ export type Factory = {
   worldId: string;
   world?: World;
   buildings?: Building[];
+  resourceInputs?: ResourceInput[];
+  resourceOutputs?: ResourceOutput[];
 };
 
 export type Building = {
@@ -56,6 +58,59 @@ export type Resource = {
   updatedAt: string;
   worldId: string;
   world?: World;
+};
+
+export type Item = {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  createdAt: string;
+  updatedAt: string;
+  gameClassName: string | null;
+};
+
+export type ResourceInput = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  factoryId: string;
+  resources: InputResource[];
+};
+
+export type ResourceOutput = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  factoryId: string;
+  resources: OutputResource[];
+};
+
+export type InputResource = {
+  id: string;
+  rate: number;
+  createdAt: string;
+  updatedAt: string;
+  itemId: string;
+  resourceInputId: string;
+  resourceNodeId: string | null;
+  factoryOriginId: string | null;
+  item: Item;
+};
+
+export type OutputResource = {
+  id: string;
+  rate: number;
+  createdAt: string;
+  updatedAt: string;
+  itemId: string;
+  resourceOutputId: string;
+  factoryDestinationId: string | null;
+  item: Item;
 };
 
 // API Error
@@ -276,6 +331,163 @@ export const resourceApi = {
   // Delete a resource
   deleteResource: async (resourceId: string): Promise<{ message: string }> => {
     const response = await fetch(`/api/resources/${resourceId}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<{ message: string }>(response);
+  },
+};
+
+// Item API
+export const itemApi = {
+  // Get all items
+  getItems: async (): Promise<Item[]> => {
+    const response = await fetch('/api/items');
+    return handleResponse<Item[]>(response);
+  },
+  
+  // Get a specific item
+  getItem: async (itemId: string): Promise<Item> => {
+    const response = await fetch(`/api/items/${itemId}`);
+    return handleResponse<Item>(response);
+  },
+};
+
+// Factory Resource Input API
+export const resourceInputApi = {
+  // Get all resource inputs for a factory
+  getResourceInputs: async (factoryId: string): Promise<ResourceInput[]> => {
+    const response = await fetch(`/api/factories/${factoryId}/resource-inputs`);
+    return handleResponse<ResourceInput[]>(response);
+  },
+  
+  // Get a specific resource input
+  getResourceInput: async (resourceInputId: string): Promise<ResourceInput> => {
+    const response = await fetch(`/api/resource-inputs/${resourceInputId}`);
+    return handleResponse<ResourceInput>(response);
+  },
+  
+  // Create a new resource input
+  createResourceInput: async (resourceInputData: { 
+    factoryId: string;
+    name?: string;
+    description?: string;
+  }): Promise<ResourceInput> => {
+    const response = await fetch('/api/resource-inputs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(resourceInputData),
+    });
+    return handleResponse<ResourceInput>(response);
+  },
+  
+  // Add an input resource to a resource input
+  addInputResource: async (resourceInputId: string, inputResourceData: {
+    itemId: string;
+    rate: number;
+    resourceNodeId?: string;
+    factoryOriginId?: string;
+  }): Promise<InputResource> => {
+    const response = await fetch(`/api/resource-inputs/${resourceInputId}/resources`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(inputResourceData),
+    });
+    return handleResponse<InputResource>(response);
+  },
+  
+  // Update an input resource
+  updateInputResource: async (inputResourceId: string, inputResourceData: {
+    rate?: number;
+    resourceNodeId?: string;
+    factoryOriginId?: string;
+  }): Promise<InputResource> => {
+    const response = await fetch(`/api/input-resources/${inputResourceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(inputResourceData),
+    });
+    return handleResponse<InputResource>(response);
+  },
+  
+  // Delete an input resource
+  deleteInputResource: async (inputResourceId: string): Promise<{ message: string }> => {
+    const response = await fetch(`/api/input-resources/${inputResourceId}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<{ message: string }>(response);
+  },
+};
+
+// Factory Resource Output API
+export const resourceOutputApi = {
+  // Get all resource outputs for a factory
+  getResourceOutputs: async (factoryId: string): Promise<ResourceOutput[]> => {
+    const response = await fetch(`/api/factories/${factoryId}/resource-outputs`);
+    return handleResponse<ResourceOutput[]>(response);
+  },
+  
+  // Get a specific resource output
+  getResourceOutput: async (resourceOutputId: string): Promise<ResourceOutput> => {
+    const response = await fetch(`/api/resource-outputs/${resourceOutputId}`);
+    return handleResponse<ResourceOutput>(response);
+  },
+  
+  // Create a new resource output
+  createResourceOutput: async (resourceOutputData: { 
+    factoryId: string;
+    name?: string;
+    description?: string;
+  }): Promise<ResourceOutput> => {
+    const response = await fetch('/api/resource-outputs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(resourceOutputData),
+    });
+    return handleResponse<ResourceOutput>(response);
+  },
+  
+  // Add an output resource to a resource output
+  addOutputResource: async (resourceOutputId: string, outputResourceData: {
+    itemId: string;
+    rate: number;
+    factoryDestinationId?: string;
+  }): Promise<OutputResource> => {
+    const response = await fetch(`/api/resource-outputs/${resourceOutputId}/resources`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(outputResourceData),
+    });
+    return handleResponse<OutputResource>(response);
+  },
+  
+  // Update an output resource
+  updateOutputResource: async (outputResourceId: string, outputResourceData: {
+    rate?: number;
+    factoryDestinationId?: string;
+  }): Promise<OutputResource> => {
+    const response = await fetch(`/api/output-resources/${outputResourceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(outputResourceData),
+    });
+    return handleResponse<OutputResource>(response);
+  },
+  
+  // Delete an output resource
+  deleteOutputResource: async (outputResourceId: string): Promise<{ message: string }> => {
+    const response = await fetch(`/api/output-resources/${outputResourceId}`, {
       method: 'DELETE',
     });
     return handleResponse<{ message: string }>(response);
