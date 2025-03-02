@@ -1,7 +1,8 @@
 'use client';
 
+import React from 'react';
 import { useState } from 'react';
-import GameDataBrowser from '@/components/GameDataBrowser';
+import GameDataBrowser from '../../components/GameDataBrowser';
 
 type GameItem = {
   className: string;

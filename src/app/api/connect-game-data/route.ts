@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as gameData from '@/lib/gameData';
+import * as gameData from '../../../lib/gameData';
 
 export async function POST(request: NextRequest) {
   try {
