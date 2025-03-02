@@ -55,6 +55,7 @@ export type Resource = {
   createdAt: string;
   updatedAt: string;
   worldId: string;
+  world?: World;
 };
 
 // API Error
@@ -160,6 +161,121 @@ export const worldApi = {
   // Delete a world
   deleteWorld: async (worldId: string): Promise<{ message: string }> => {
     const response = await fetch(`/api/worlds/${worldId}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<{ message: string }>(response);
+  },
+};
+
+// Factory API
+export const factoryApi = {
+  // Get all factories
+  getFactories: async (worldId?: string): Promise<Factory[]> => {
+    const url = worldId ? `/api/factories?worldId=${worldId}` : '/api/factories';
+    const response = await fetch(url);
+    return handleResponse<Factory[]>(response);
+  },
+  
+  // Get a specific factory
+  getFactory: async (factoryId: string): Promise<Factory> => {
+    const response = await fetch(`/api/factories/${factoryId}`);
+    return handleResponse<Factory>(response);
+  },
+  
+  // Create a new factory
+  createFactory: async (factoryData: { 
+    name: string; 
+    description?: string; 
+    location?: string; 
+    worldId: string 
+  }): Promise<Factory> => {
+    const response = await fetch('/api/factories', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(factoryData),
+    });
+    return handleResponse<Factory>(response);
+  },
+  
+  // Update a factory
+  updateFactory: async (factoryId: string, factoryData: { 
+    name?: string; 
+    description?: string; 
+    location?: string 
+  }): Promise<Factory> => {
+    const response = await fetch(`/api/factories/${factoryId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(factoryData),
+    });
+    return handleResponse<Factory>(response);
+  },
+  
+  // Delete a factory
+  deleteFactory: async (factoryId: string): Promise<{ message: string }> => {
+    const response = await fetch(`/api/factories/${factoryId}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<{ message: string }>(response);
+  },
+};
+
+// Resource API
+export const resourceApi = {
+  // Get all resources
+  getResources: async (worldId?: string): Promise<Resource[]> => {
+    const url = worldId ? `/api/resources?worldId=${worldId}` : '/api/resources';
+    const response = await fetch(url);
+    return handleResponse<Resource[]>(response);
+  },
+  
+  // Get a specific resource
+  getResource: async (resourceId: string): Promise<Resource> => {
+    const response = await fetch(`/api/resources/${resourceId}`);
+    return handleResponse<Resource>(response);
+  },
+  
+  // Create a new resource
+  createResource: async (resourceData: { 
+    type: string; 
+    purity: string;
+    worldId: string;
+    location?: string 
+  }): Promise<Resource> => {
+    const response = await fetch('/api/resources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(resourceData),
+    });
+    return handleResponse<Resource>(response);
+  },
+  
+  // Update a resource
+  updateResource: async (resourceId: string, resourceData: { 
+    type?: string; 
+    purity?: string;
+    worldId?: string;
+    location?: string 
+  }): Promise<Resource> => {
+    const response = await fetch(`/api/resources/${resourceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(resourceData),
+    });
+    return handleResponse<Resource>(response);
+  },
+  
+  // Delete a resource
+  deleteResource: async (resourceId: string): Promise<{ message: string }> => {
+    const response = await fetch(`/api/resources/${resourceId}`, {
       method: 'DELETE',
     });
     return handleResponse<{ message: string }>(response);
