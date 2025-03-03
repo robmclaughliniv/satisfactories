@@ -21,7 +21,7 @@ type Factory = {
 type ResourceFormProps = {
   items: Item[];
   factories: Factory[];
-  onAddInput: (data: { itemId: string; rate: number; factoryOriginId?: string }) => Promise<void>;
+  onAddInput: (data: { itemId: string; rate: number; factoryOriginId?: string; isResourceNode?: boolean }) => Promise<void>;
   onAddOutput: (data: { itemId: string; rate: number; factoryDestinationId?: string }) => Promise<void>;
   isLoading: boolean;
 };
@@ -37,6 +37,7 @@ export function ResourceForm({
   const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [rate, setRate] = useState<string>('');
   const [selectedFactoryId, setSelectedFactoryId] = useState<string>('none');
+  const [sourceType, setSourceType] = useState<'factory' | 'resource-node'>('factory');
 
   const resetForm = () => {
     setSelectedItemId('');
@@ -57,7 +58,8 @@ export function ResourceForm({
         await onAddInput({
           itemId: selectedItemId,
           rate: rateValue,
-          factoryOriginId: selectedFactoryId && selectedFactoryId !== 'none' ? selectedFactoryId : undefined,
+          factoryOriginId: sourceType === 'factory' && selectedFactoryId !== 'none' ? selectedFactoryId : undefined,
+          isResourceNode: sourceType === 'resource-node',
         });
       } else {
         await onAddOutput({
@@ -97,16 +99,7 @@ export function ResourceForm({
                 <SelectContent>
                   {items.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
-                      <div className="flex items-center gap-2">
-                        {item.icon && (
-                          <img 
-                            src={item.icon} 
-                            alt={item.name} 
-                            className="h-4 w-4 object-contain"
-                          />
-                        )}
-                        {item.name}
-                      </div>
+                      {item.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -126,27 +119,50 @@ export function ResourceForm({
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="factory">
-                {activeTab === 'input' ? 'Source Factory (optional)' : 'Destination Factory (optional)'}
-              </Label>
-              <Select
-                value={selectedFactoryId}
-                onValueChange={setSelectedFactoryId}
-              >
-                <SelectTrigger id="factory">
-                  <SelectValue placeholder="Select a factory" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {factories.map((factory) => (
-                    <SelectItem key={factory.id} value={factory.id}>
-                      {factory.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {activeTab === 'input' && (
+              <div className="space-y-2">
+                <Label htmlFor="sourceType">Source Type</Label>
+                <Select
+                  value={sourceType}
+                  onValueChange={(value) => {
+                    setSourceType(value as 'factory' | 'resource-node');
+                    setSelectedFactoryId('none');
+                  }}
+                >
+                  <SelectTrigger id="sourceType">
+                    <SelectValue placeholder="Select source type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="factory">Factory</SelectItem>
+                    <SelectItem value="resource-node">Resource Node</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {(activeTab === 'output' || (activeTab === 'input' && sourceType === 'factory')) && (
+              <div className="space-y-2">
+                <Label htmlFor="factory">
+                  {activeTab === 'input' ? 'Source Factory (optional)' : 'Destination Factory (optional)'}
+                </Label>
+                <Select
+                  value={selectedFactoryId}
+                  onValueChange={setSelectedFactoryId}
+                >
+                  <SelectTrigger id="factory">
+                    <SelectValue placeholder="Select a factory" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {factories.map((factory) => (
+                      <SelectItem key={factory.id} value={factory.id}>
+                        {factory.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             <Button type="submit" disabled={isLoading || !selectedItemId || !rate}>
               {isLoading ? (

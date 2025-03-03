@@ -116,8 +116,8 @@ export default function FactoryDetailPage({ params }: { params: { factoryId: str
         const itemsData = await itemsResponse.json();
         setItems(itemsData);
         
-        // Fetch factories
-        const factoriesResponse = await fetch('/api/factories');
+        // Fetch factories from the same world
+        const factoriesResponse = await fetch(`/api/factories?worldId=${factoryData.worldId}`);
         if (!factoriesResponse.ok) throw new Error('Failed to fetch factories');
         const factoriesData = await factoriesResponse.json();
         setFactories(factoriesData.filter((f: any) => f.id !== params.factoryId));

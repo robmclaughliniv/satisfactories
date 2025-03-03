@@ -10,9 +10,21 @@ const prisma = new PrismaClient();
  * Get all game items
  */
 export async function getAllGameItems() {
-  return prisma.gameItem.findMany({
-    orderBy: { name: 'asc' }
+  const items = await prisma.gameItem.findMany({
+    orderBy: { name: 'asc' },
+    select: {
+      className: true,
+      name: true,
+      description: true
+    }
   });
+
+  // Transform the data to match the ResourceForm component's expected structure
+  return items.map(item => ({
+    id: item.className, // Use className as the id since it's unique
+    name: item.name,
+    description: item.description
+  }));
 }
 
 /**
