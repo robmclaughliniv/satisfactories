@@ -1,77 +1,51 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { userApi } from "@/lib/api";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Input } from '../../../components/ui/input';
+import { Button } from '../../../components/ui/button';
+import { Label } from '../../../components/ui/label';
+import Link from 'next/link';
 
 export default function NewUserPage() {
-  const router = useRouter();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-  });
-  const [errors, setErrors] = useState<{
-    name?: string;
-    email?: string;
-    general?: string;
-  }>({});
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    
-    // Clear error when user types
-    if (errors[name as keyof typeof errors]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: undefined,
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: typeof errors = {};
-    
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const [error, setError] = useState('');
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    if (!name.trim()) {
+      setError('Name is required');
       return;
     }
     
-    setIsSubmitting(true);
-    
     try {
-      await userApi.createUser({
-        name: formData.name || undefined, // Don't send empty string
-        email: formData.email,
+      setIsSubmitting(true);
+      setError('');
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          name,
+          email: email.trim() || undefined // Only send email if provided
+        }),
       });
       
-      // Redirect to users list on success
-      router.push("/users");
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create user');
+      }
+      
+      router.push('/');
     } catch (err) {
-      console.error("Error creating user:", err);
-      setErrors({
-        general: err instanceof Error ? err.message : "Failed to create user. Please try again.",
-      });
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -79,68 +53,50 @@ export default function NewUserPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center mb-6">
-        <Link href="/users" className="mr-4">
-          <Button variant="outline" size="sm">
-            Back
-          </Button>
-        </Link>
-        <h1 className="text-3xl font-bold">Create New User</h1>
-      </div>
-
       <div className="max-w-md mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>User Information</CardTitle>
-            <CardDescription>Enter the details for the new user.</CardDescription>
+            <CardTitle className="text-2xl font-bold">Create New User</CardTitle>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent>
-              <div className="space-y-4">
-                {errors.general && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    <p>{errors.general}</p>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <label htmlFor="name" className="text-sm font-medium">
-                    Name
-                  </label>
-                  <Input 
-                    id="name" 
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Enter user name" 
-                  />
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  {error}
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    Email
-                  </label>
-                  <Input 
-                    id="email" 
-                    name="email"
-                    type="email" 
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Enter email address" 
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500">{errors.email}</p>
-                  )}
-                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="name">User Name</Label>
+                <Input 
+                  id="name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter user name" 
+                />
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Link href="/users">
-                <Button type="button" variant="outline">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create User"}
-              </Button>
-            </CardFooter>
-          </form>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email (Optional)</Label>
+                <Input 
+                  id="email" 
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter email address" 
+                />
+              </div>
+              
+              <div className="flex items-center justify-between pt-4">
+                <Button variant="outline" asChild>
+                  <Link href="/">Cancel</Link>
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creating...' : 'Create User'}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
         </Card>
       </div>
     </div>

@@ -3,21 +3,25 @@ import { prisma } from '@/lib/prisma';
 
 // GET /api/users/[userId] - Get a specific user
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { userId: string } }
 ) {
+  const { userId } = params;
+  
   try {
-    const userId = params.userId;
-    
+    // Find the user
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        worlds: {
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        _count: {
+          select: {
+            worlds: true
+          }
+        }
+      }
     });
     
     if (!user) {
@@ -27,7 +31,13 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(user);
+    // Format the response
+    return NextResponse.json({
+      id: user.id,
+      name: user.name || user.email.split('@')[0],
+      email: user.email,
+      worldCount: user._count.worlds
+    });
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(
