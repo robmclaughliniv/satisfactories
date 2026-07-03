@@ -1,6 +1,18 @@
-export type Status = 'planned' | 'construction' | 'operational' | 'decommissioned';
+import type { Status, Transport } from './model/schema';
 
-export type Transport = 'Belt' | 'Train' | 'Truck' | 'Drone' | 'Pipe' | 'Unset';
+// Persisted data shapes live in src/model/schema.ts (zod) — re-exported here
+// so the rest of the app keeps importing from types.ts.
+export type {
+  Status,
+  Transport,
+  Row,
+  Section,
+  Factory,
+  Route,
+  World,
+  WorldTemplate,
+  PersistedStateV2,
+} from './model/schema';
 
 export type Screen = 'map' | 'factory' | 'rollup' | 'reference' | 'worlds';
 
@@ -17,51 +29,6 @@ export interface Recipe {
   inputs: RecipeIO[];
   outputs: RecipeIO[];
   alt: boolean;
-}
-
-export interface Row {
-  id: string;
-  recipeId: string;
-  count: number;
-  export?: boolean;
-}
-
-export interface Section {
-  id: string;
-  name: string;
-  rows: Row[];
-}
-
-export interface Factory {
-  id: string;
-  name: string;
-  color: string;
-  status: Status;
-  tier: string;
-  tagline: string;
-  tags: string[];
-  cover: string;
-  x: number;
-  y: number;
-  sections: Section[];
-  /** JSON snapshot of sections at last commit — used for the dirty indicator. */
-  baseline: string;
-}
-
-export interface Route {
-  id: string;
-  from: string;
-  to: string;
-  item: string;
-  rate: number;
-  t: Transport;
-}
-
-export interface World {
-  id: string;
-  name: string;
-  factories: Factory[];
-  routes: Route[];
 }
 
 export type MapFocus =

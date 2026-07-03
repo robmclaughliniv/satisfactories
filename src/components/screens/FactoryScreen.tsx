@@ -2,12 +2,13 @@ import type { CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
 import { aggregate } from '../../state/derive';
 import { buildFlows } from '../../state/flows';
-import { useActions, useStore } from '../../state/store';
-import type { Factory } from '../../types';
+import { useActions, useStore, useWorld } from '../../state/store';
+import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel } from '../bits';
 
 export function FactoryScreen() {
-  const { st, up, world, factory, openFactory } = useStore();
+  const { st, up, factory, openFactory } = useStore();
+  const world = useWorld();
   const f = factory(st.selFactory);
   if (!f) return null;
 
@@ -32,7 +33,7 @@ function IdentityPanel({
   f: Factory;
   agg: ReturnType<typeof aggregate>;
   openFactory: (id: string) => void;
-  world: ReturnType<typeof useStore>['world'];
+  world: World;
 }) {
   const sm = statusMeta(f.status);
   const linked: { name: string; color: string; dir: string; item: string; id: string }[] = [];
@@ -125,7 +126,8 @@ function IdentityPanel({
 // ===================== production (center) =====================
 
 function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggregate> }) {
-  const { st, up, world } = useStore();
+  const { st, up } = useStore();
+  const world = useWorld();
   const { setRowCount, toggleRowExport, removeRow, addSection, openRecipePicker, resetFactory, commitFactory } = useActions();
 
   const dirty = JSON.stringify(f.sections) !== f.baseline;
@@ -453,7 +455,8 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 // ===================== right panel: picker or balance =====================
 
 function RightPanel({ f }: { f: Factory }) {
-  const { st, up, world } = useStore();
+  const { st, up } = useStore();
+  const world = useWorld();
   const { pickRecipe, addFlowLeg } = useActions();
 
   const agg = aggregate(f);

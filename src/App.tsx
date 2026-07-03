@@ -10,7 +10,9 @@ import { WorldsScreen } from './components/screens/WorldsScreen';
 import { StoreProvider, useStore } from './state/store';
 
 function Shell() {
-  const { st } = useStore();
+  // Effective screen from the store: world-bound screens (map, factory,
+  // rollup) fall back to 'worlds' when no world is active.
+  const { screen } = useStore();
   return (
     <div
       style={{
@@ -28,11 +30,11 @@ function Shell() {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <Header />
         <main style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
-          {st.screen === 'map' && <MapScreen />}
-          {st.screen === 'factory' && <FactoryScreen />}
-          {st.screen === 'rollup' && <RollupScreen />}
-          {st.screen === 'reference' && <ReferenceScreen />}
-          {st.screen === 'worlds' && <WorldsScreen />}
+          {screen === 'map' && <MapScreen />}
+          {screen === 'factory' && <FactoryScreen />}
+          {screen === 'rollup' && <RollupScreen />}
+          {screen === 'reference' && <ReferenceScreen />}
+          {screen === 'worlds' && <WorldsScreen />}
         </main>
       </div>
       <FactoryModal />

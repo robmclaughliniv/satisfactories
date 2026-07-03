@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { seedWorlds } from '../data/seed';
+import { SAMPLE_WORLD } from '../data/templates';
+import { migratePersisted } from '../model/migrations';
+import { SCHEMA_VERSION, type PersistedStateV2 } from '../model/schema';
+import { createEmptyWorld, instantiateTemplate, touchWorld } from '../model/world';
 import type {
   FactoryModalState,
   Factory,
@@ -13,7 +16,7 @@ import type {
 
 export interface AppState {
   screen: Screen;
-  worldId: string;
+  worldId: string | null;
   selFactory: string | null;
   worldMenuOpen: boolean;
   statusFilter: string;
@@ -38,33 +41,39 @@ export interface AppState {
   worlds: World[];
 }
 
-const STORAGE_KEY = 'satisfactories:v1';
+const STORAGE_KEY = 'satisfactories:v2';
+const LEGACY_STORAGE_KEY = 'satisfactories:v1';
+
+const EMPTY: Pick<AppState, 'worlds' | 'worldId' | 'favItems'> = {
+  worlds: [],
+  worldId: null,
+  favItems: [],
+};
+
+function readAndMigrate(key: string): PersistedStateV2 | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return migratePersisted(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
 
 function loadInitial(): Pick<AppState, 'worlds' | 'worldId' | 'favItems'> {
-  const fallback = {
-    worlds: seedWorlds(),
-    worldId: 'w1',
-    favItems: ['Quickwire', 'Heavy Modular Frame', 'Reinforced Iron Plate'],
-  };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.worlds) || parsed.worlds.length === 0) return fallback;
-    return {
-      worlds: parsed.worlds,
-      worldId: typeof parsed.worldId === 'string' ? parsed.worldId : parsed.worlds[0].id,
-      favItems: Array.isArray(parsed.favItems) ? parsed.favItems : fallback.favItems,
-    };
-  } catch {
-    return fallback;
-  }
+  const persisted = readAndMigrate(STORAGE_KEY) ?? readAndMigrate(LEGACY_STORAGE_KEY);
+  if (!persisted) return EMPTY;
+  // Normalize a stale active-world pointer.
+  const worldId = persisted.worlds.some((w) => w.id === persisted.worldId)
+    ? persisted.worldId
+    : persisted.worlds[0]?.id ?? null;
+  return { worlds: persisted.worlds, worldId, favItems: persisted.favItems };
 }
 
 function initialState(): AppState {
   const persisted = loadInitial();
   return {
-    screen: 'map',
+    screen: persisted.worldId ? 'map' : 'worlds',
     selFactory: null,
     worldMenuOpen: false,
     statusFilter: 'all',
@@ -94,12 +103,16 @@ export type Updater = (patch: Partial<AppState> | ((s: AppState) => Partial<AppS
 interface StoreValue {
   st: AppState;
   up: Updater;
-  world: World;
+  world: World | null;
+  /** Effective screen: world-bound screens fall back to 'worlds' when no world is active. */
+  screen: Screen;
   factory: (id: string | null) => Factory | undefined;
   go: (screen: Screen) => void;
   openFactory: (id: string) => void;
   mutateWorld: (fn: (w: World) => void) => void;
 }
+
+const WORLD_SCREENS: Screen[] = ['map', 'factory', 'rollup'];
 
 const StoreCtx = createContext<StoreValue | null>(null);
 
@@ -112,19 +125,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ worlds: st.worlds, worldId: st.worldId, favItems: st.favItems }),
-      );
+      const envelope: PersistedStateV2 = {
+        schemaVersion: SCHEMA_VERSION,
+        worlds: st.worlds,
+        worldId: st.worldId,
+        favItems: st.favItems,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
     } catch {
       // storage full / unavailable — persistence is best-effort
     }
   }, [st.worlds, st.worldId, st.favItems]);
 
-  const world = st.worlds.find((w) => w.id === st.worldId) || st.worlds[0];
+  const world = st.worlds.find((w) => w.id === st.worldId) ?? null;
+  const screen: Screen = !world && WORLD_SCREENS.includes(st.screen) ? 'worlds' : st.screen;
 
   const factory = useCallback(
-    (id: string | null) => (id ? world.factories.find((f) => f.id === id) : undefined),
+    (id: string | null) => (id && world ? world.factories.find((f) => f.id === id) : undefined),
     [world],
   );
 
@@ -138,13 +155,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [up],
   );
 
-  /** Clone worlds, apply a mutation to the current world, commit. */
+  /** Clone worlds, apply a mutation to the current world, commit. No-op when no world is active. */
   const mutateWorld = useCallback(
     (fn: (w: World) => void) => {
       setSt((s) => {
         const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
-        const w = worlds.find((x) => x.id === s.worldId) || worlds[0];
+        const w = worlds.find((x) => x.id === s.worldId);
+        if (!w) return s;
         fn(w);
+        touchWorld(w);
         return { ...s, worlds };
       });
     },
@@ -152,8 +171,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ st, up, world, factory, go, openFactory, mutateWorld }),
-    [st, up, world, factory, go, openFactory, mutateWorld],
+    () => ({ st, up, world, screen, factory, go, openFactory, mutateWorld }),
+    [st, up, world, screen, factory, go, openFactory, mutateWorld],
   );
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
@@ -163,6 +182,13 @@ export function useStore(): StoreValue {
   const v = useContext(StoreCtx);
   if (!v) throw new Error('useStore outside provider');
   return v;
+}
+
+/** For screens only rendered when a world is active (map, factory, rollup). */
+export function useWorld(): World {
+  const { world } = useStore();
+  if (!world) throw new Error('useWorld with no active world');
+  return world;
 }
 
 // ---------- higher-level actions (used across screens) ----------
@@ -264,12 +290,14 @@ export function useActions() {
   };
 
   const openRoute = () => {
+    if (!world) return;
     const facs = world.factories;
     if (facs.length < 2) return;
     up({ routeModal: { from: facs[0].id, to: facs[1].id, item: 'Iron Rod', rate: 60, t: 'Belt' } });
   };
 
   const addFlowLeg = (item: string, dir: 'export' | 'import', factoryId: string) => {
+    if (!world) return;
     const facs = world.factories;
     const other = facs.find((x) => x.id !== factoryId);
     const partner = other ? other.id : factoryId;
@@ -305,10 +333,41 @@ export function useActions() {
   const createWorld = () => {
     up((s) => {
       const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
-      const id = 'w_' + Date.now();
-      worlds.push({ id, name: 'New Save ' + (worlds.length + 1), factories: [], routes: [] });
-      return { worlds, worldId: id, screen: 'map' as Screen, selFactory: null };
+      const w = createEmptyWorld('New Save ' + (worlds.length + 1));
+      worlds.push(w);
+      return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null };
     });
+  };
+
+  const loadSampleWorld = () => {
+    up((s) => {
+      const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
+      const w = instantiateTemplate(SAMPLE_WORLD);
+      worlds.push(w);
+      return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null };
+    });
+  };
+
+  const renameWorld = (id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    up((s) => {
+      const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
+      const w = worlds.find((x) => x.id === id);
+      if (!w) return {};
+      w.name = trimmed;
+      touchWorld(w);
+      return { worlds };
+    });
+  };
+
+  const deleteWorld = (id: string) => {
+    up((s) => ({
+      worlds: s.worlds.filter((w) => w.id !== id),
+      worldId: s.worldId === id ? null : s.worldId,
+      selFactory: s.worldId === id ? null : s.selFactory,
+      screen: s.worldId === id ? ('worlds' as Screen) : s.screen,
+    }));
   };
 
   const movePin = (fid: string, x: number, y: number) => {
@@ -337,6 +396,9 @@ export function useActions() {
     saveRoute,
     toggleFav,
     createWorld,
+    loadSampleWorld,
+    renameWorld,
+    deleteWorld,
     movePin,
     openFactory,
   };

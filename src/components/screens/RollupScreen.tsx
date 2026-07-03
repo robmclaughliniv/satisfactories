@@ -1,10 +1,11 @@
 import { fmt, itemColor } from '../../data/gameData';
 import { rollupWorld } from '../../state/derive';
-import { useActions, useStore } from '../../state/store';
+import { useActions, useStore, useWorld } from '../../state/store';
 import { ItemSquare, MONO, SG } from '../bits';
 
 export function RollupScreen() {
-  const { st, up, world, openFactory } = useStore();
+  const { st, up, openFactory } = useStore();
+  const world = useWorld();
   const { toggleFav } = useActions();
 
   const per = rollupWorld(world);
@@ -251,7 +252,7 @@ export function RollupScreen() {
 
 export function DrillDrawer() {
   const { st, up, world, openFactory } = useStore();
-  if (!st.drillItem) return null;
+  if (!st.drillItem || !world) return null;
   const per = rollupWorld(world);
   const r = per[st.drillItem] || { produced: 0, consumed: 0, producers: [], consumers: [] };
   const net = r.produced - r.consumed;

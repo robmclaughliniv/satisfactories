@@ -11,10 +11,10 @@ const screenTitle: Record<string, string> = {
 };
 
 export function Header() {
-  const { st, up, world, factory, go } = useStore();
+  const { st, up, world, screen, factory, go } = useStore();
   const { openRoute } = useActions();
 
-  const leaf = st.screen === 'factory' ? factory(st.selFactory)?.name ?? null : null;
+  const leaf = screen === 'factory' ? factory(st.selFactory)?.name ?? null : null;
 
   return (
     <header
@@ -45,8 +45,8 @@ export function Header() {
           color: '#E7E9ED',
         }}
       >
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F5882E', boxShadow: '0 0 7px #F5882E' }}></span>
-        <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 13 }}>{world.name}</span>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: world ? '#F5882E' : '#4B515B', boxShadow: world ? '0 0 7px #F5882E' : 'none' }}></span>
+        <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 13, color: world ? '#E7E9ED' : '#7B828D' }}>{world ? world.name : 'No world'}</span>
         <span style={{ color: '#6B7280', fontSize: 10 }}>▾</span>
       </button>
       {st.worldMenuOpen && (
@@ -105,8 +105,8 @@ export function Header() {
       )}
       <div style={{ width: 1, height: 20, background: '#262B34' }}></div>
       <div data-m-crumb="" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, color: '#9AA0AA', fontSize: 12.5 }}>
-        <span onClick={() => go(st.screen === 'factory' ? 'map' : st.screen)} style={{ cursor: 'pointer' }}>
-          {screenTitle[st.screen] || 'Map'}
+        <span onClick={() => go(screen === 'factory' ? 'map' : screen)} style={{ cursor: 'pointer' }}>
+          {screenTitle[screen] || 'Map'}
         </span>
         {leaf && (
           <>
@@ -116,7 +116,7 @@ export function Header() {
         )}
       </div>
       <div style={{ flex: 1 }}></div>
-      {st.screen === 'map' && (
+      {screen === 'map' && (
         <button
           onClick={openRoute}
           style={{
@@ -135,7 +135,7 @@ export function Header() {
           ⛓ Add route
         </button>
       )}
-      {st.screen === 'reference' && <div style={{ fontSize: 12, color: '#6B7280' }}>{RECIPES.length} recipes</div>}
+      {screen === 'reference' && <div style={{ fontSize: 12, color: '#6B7280' }}>{RECIPES.length} recipes</div>}
     </header>
   );
 }

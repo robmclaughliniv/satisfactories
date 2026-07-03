@@ -19,7 +19,7 @@ export function RouteModal() {
   const { st, up, world } = useStore();
   const { saveRoute } = useActions();
   const m = st.routeModal;
-  if (!m) return null;
+  if (!m || !world) return null;
 
   const upd = (patch: Partial<typeof m>) => up({ routeModal: { ...m, ...patch } });
   const close = () => up({ routeModal: null });

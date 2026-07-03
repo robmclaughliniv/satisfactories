@@ -8,7 +8,8 @@ import type { Recipe } from '../../types';
 export function ReferenceScreen() {
   const { st, up, world } = useStore();
 
-  const rollupPer = rollupWorld(world);
+  // No active world: reference stays browsable, world stats just read as zero.
+  const rollupPer = world ? rollupWorld(world) : {};
   const refQ = (st.refSearch || '').toLowerCase();
   const allNames = Object.keys(ITEMS);
   const buildingNames = Object.keys(BUILDINGS);

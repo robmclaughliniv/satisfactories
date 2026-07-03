@@ -2,7 +2,7 @@ import { useRef, type CSSProperties } from 'react';
 import { fmt, initials, itemColor, statusMeta, transportColor } from '../../data/gameData';
 import { aggregate, rollupWorld } from '../../state/derive';
 import { buildFlows } from '../../state/flows';
-import { useActions, useStore } from '../../state/store';
+import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
 
@@ -29,7 +29,8 @@ interface Conn {
 }
 
 export function MapScreen() {
-  const { st, up, world, openFactory } = useStore();
+  const { st, up, openFactory } = useStore();
+  const world = useWorld();
   const { openCreateFactory, movePin } = useActions();
 
   const viewEl = useRef<HTMLDivElement | null>(null);
@@ -449,7 +450,8 @@ export function MapScreen() {
 // ===================== sidebar =====================
 
 function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facById: Record<string, Factory> }) {
-  const { st, up, world, openFactory } = useStore();
+  const { st, up, openFactory } = useStore();
+  const world = useWorld();
   const facs = world.factories;
   const mfoc = st.mapFocus;
 

@@ -10,31 +10,31 @@ const icons: Record<string, string> = {
   worlds: '<circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18"/>',
 };
 
-function navStyle(active: boolean): CSSProperties {
+function navStyle(active: boolean, disabled = false): CSSProperties {
   return {
     width: 52,
     padding: '7px 0 5px',
     borderRadius: 10,
     border: 'none',
-    cursor: 'pointer',
+    cursor: disabled ? 'default' : 'pointer',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: 3,
     background: active ? 'rgba(245,136,46,.14)' : 'transparent',
-    color: active ? '#F5A95B' : '#727A85',
+    color: active ? '#F5A95B' : disabled ? '#3D434C' : '#727A85',
     transition: 'all .12s',
   };
 }
 
-const NAV_ITEMS: { key: Screen; label: string }[] = [
-  { key: 'map', label: 'Map' },
-  { key: 'rollup', label: 'World Rollup' },
-  { key: 'reference', label: 'Reference' },
+const NAV_ITEMS: { key: Screen; label: string; needsWorld: boolean }[] = [
+  { key: 'map', label: 'Map', needsWorld: true },
+  { key: 'rollup', label: 'World Rollup', needsWorld: true },
+  { key: 'reference', label: 'Reference', needsWorld: false },
 ];
 
 export function NavRail() {
-  const { st, go } = useStore();
+  const { world, screen, go } = useStore();
   return (
     <nav
       data-m-nav=""
@@ -53,7 +53,7 @@ export function NavRail() {
     >
       <div
         data-m-logo=""
-        onClick={() => go('map')}
+        onClick={() => go(world ? 'map' : 'worlds')}
         style={{
           width: 34,
           height: 34,
@@ -73,15 +73,24 @@ export function NavRail() {
       >
         S
       </div>
-      {NAV_ITEMS.map((item) => (
-        <button key={item.key} onClick={() => go(item.key)} title={item.label} style={navStyle(st.screen === item.key)}>
-          <span style={{ display: 'flex' }} dangerouslySetInnerHTML={svgIcon(icons[item.key])} />
-          <span style={{ fontSize: 8, fontWeight: 500, letterSpacing: '.01em' }}>{item.label}</span>
-        </button>
-      ))}
+      {NAV_ITEMS.map((item) => {
+        const disabled = item.needsWorld && !world;
+        return (
+          <button
+            key={item.key}
+            onClick={() => !disabled && go(item.key)}
+            disabled={disabled}
+            title={disabled ? `${item.label} — select a world first` : item.label}
+            style={navStyle(screen === item.key, disabled)}
+          >
+            <span style={{ display: 'flex' }} dangerouslySetInnerHTML={svgIcon(icons[item.key])} />
+            <span style={{ fontSize: 8, fontWeight: 500, letterSpacing: '.01em' }}>{item.label}</span>
+          </button>
+        );
+      })}
       <div data-m-navspacer="" style={{ flex: 1 }}></div>
       <div data-m-navspacer="" style={{ width: 28, height: 1, background: '#20242D', margin: '2px 0 4px' }}></div>
-      <button onClick={() => go('worlds')} title="Worlds" style={navStyle(st.screen === 'worlds')}>
+      <button onClick={() => go('worlds')} title="Worlds" style={navStyle(screen === 'worlds')}>
         <span style={{ display: 'flex' }} dangerouslySetInnerHTML={svgIcon(icons.worlds)} />
         <span style={{ fontSize: 8, fontWeight: 500, letterSpacing: '.01em' }}>Worlds</span>
       </button>
