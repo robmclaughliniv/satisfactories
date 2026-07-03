@@ -23,6 +23,13 @@ export const SectionSchema = z.object({
   rows: z.array(RowSchema),
 });
 
+export const LocalInputSchema = z.object({
+  id: z.string(),
+  item: z.string(),
+  rate: z.number(),
+  t: TransportSchema,
+});
+
 export const FactorySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -35,6 +42,8 @@ export const FactorySchema = z.object({
   x: z.number(),
   y: z.number(),
   sections: z.array(SectionSchema),
+  /** On-site supply belted in from local nodes (miners, etc.). */
+  localInputs: z.array(LocalInputSchema).default([]),
   /** JSON snapshot of sections at last commit — used for the dirty indicator. */
   baseline: z.string(),
 });
@@ -57,7 +66,7 @@ export const WorldSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 2 as const;
+export const SCHEMA_VERSION = 3 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({
@@ -71,6 +80,7 @@ export type Status = z.infer<typeof StatusSchema>;
 export type Transport = z.infer<typeof TransportSchema>;
 export type Row = z.infer<typeof RowSchema>;
 export type Section = z.infer<typeof SectionSchema>;
+export type LocalInput = z.infer<typeof LocalInputSchema>;
 export type Factory = z.infer<typeof FactorySchema>;
 export type Route = z.infer<typeof RouteSchema>;
 export type World = z.infer<typeof WorldSchema>;

@@ -1,6 +1,7 @@
 import { Header } from './components/Header';
 import { NavRail } from './components/NavRail';
 import { FactoryModal } from './components/modals/FactoryModal';
+import { LocalInputModal } from './components/modals/LocalInputModal';
 import { RouteModal } from './components/modals/RouteModal';
 import { FactoryScreen } from './components/screens/FactoryScreen';
 import { MapScreen } from './components/screens/MapScreen';
@@ -39,6 +40,7 @@ function Shell() {
       </div>
       <FactoryModal />
       <RouteModal />
+      <LocalInputModal />
       <DrillDrawer />
     </div>
   );

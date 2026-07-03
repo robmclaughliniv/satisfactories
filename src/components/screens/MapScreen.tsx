@@ -1,10 +1,11 @@
-import { useRef, type CSSProperties } from 'react';
-import { fmt, initials, itemColor, statusMeta, transportColor } from '../../data/gameData';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { fmt, initials, statusMeta } from '../../data/gameData';
 import { aggregate, rollupWorld } from '../../state/derive';
 import { buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
+import { useMapCamera } from './useMapCamera';
 
 function chipStyle(active: boolean): CSSProperties {
   return {
@@ -21,199 +22,479 @@ function chipStyle(active: boolean): CSSProperties {
   };
 }
 
-interface Conn {
+export interface Conn {
   key: string;
   a: string;
   b: string;
   items: { item: string; rate: number; t: string; from: string; to: string }[];
 }
 
+function pt(e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) {
+  const ev = e as TouchEvent;
+  if (ev.touches?.[0]) return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
+  if (ev.changedTouches?.[0]) return { x: ev.changedTouches[0].clientX, y: ev.changedTouches[0].clientY };
+  const me = e as MouseEvent;
+  return { x: me.clientX, y: me.clientY };
+}
+
+const FOCUS_DEBOUNCE_MS = 80;
+
+function useDebouncedMapFocus() {
+  const { st, up } = useStore();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const setHoverPin = useCallback(
+    (id: string | null) => {
+      up({ hoverPin: id });
+      clearTimeout(timerRef.current);
+      if (id) {
+        timerRef.current = setTimeout(() => {
+          up({ mapFocus: { type: 'factory', id } });
+        }, FOCUS_DEBOUNCE_MS);
+      } else {
+        up({ mapFocus: null });
+      }
+    },
+    [up],
+  );
+
+  const setHoverRoute = useCallback(
+    (key: string | null) => {
+      up({ hoverRoute: key });
+      clearTimeout(timerRef.current);
+      if (key) {
+        timerRef.current = setTimeout(() => {
+          up({ mapFocus: { type: 'route', key } });
+        }, FOCUS_DEBOUNCE_MS);
+      } else {
+        up({ mapFocus: null });
+      }
+    },
+    [up],
+  );
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  return { hoverPin: st.hoverPin, hoverRoute: st.hoverRoute, setHoverPin, setHoverRoute };
+}
+
+interface MapPinProps {
+  factory: Factory;
+  hovered: boolean;
+  dragging: boolean;
+  onHover: (id: string | null) => void;
+  onDragStart: (e: React.MouseEvent | React.TouchEvent, id: string, el: HTMLDivElement) => void;
+}
+
+const MapPin = memo(function MapPin({ factory: f, hovered, dragging, onHover, onDragStart }: MapPinProps) {
+  const elRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={elRef}
+      onMouseEnter={() => onHover(f.id)}
+      onMouseLeave={() => onHover(null)}
+      onMouseDown={(e) => elRef.current && onDragStart(e, f.id, elRef.current)}
+      onTouchStart={(e) => elRef.current && onDragStart(e, f.id, elRef.current)}
+      style={{
+        position: 'absolute',
+        left: `${f.x}%`,
+        top: `${f.y}%`,
+        width: 34,
+        height: 34,
+        marginLeft: -17,
+        marginTop: -17,
+        cursor: 'pointer',
+        zIndex: hovered || dragging ? 30 : 22,
+        willChange: dragging ? 'left, top' : undefined,
+      }}
+    >
+      {f.status === 'operational' && (
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: f.color,
+            animation: dragging ? 'none' : 'scPulse 2.4s ease-out infinite',
+          }}
+        />
+      )}
+      <span
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: '50%',
+          background: f.color,
+          border: `2px solid ${hovered ? '#fff' : 'rgba(255,255,255,.55)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: SG,
+          fontWeight: 700,
+          fontSize: 11,
+          color: '#0C0D11',
+          boxShadow: `0 3px 10px rgba(0,0,0,.5),0 0 0 ${hovered ? '4px' : '0px'} ${f.color}44`,
+          transform: `scale(${hovered ? 1.12 : 1})`,
+          transition: dragging ? 'none' : 'transform .12s',
+        }}
+      >
+        {initials(f.name)}
+      </span>
+    </div>
+  );
+});
+
+interface MapRoutesProps {
+  connections: Conn[];
+  facById: Record<string, Factory>;
+  hoverRoute: string | null;
+  animating: boolean;
+  onRouteHover: (key: string | null) => void;
+}
+
+const MapRoutes = memo(function MapRoutes({ connections, facById, hoverRoute, animating, onRouteHover }: MapRoutesProps) {
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+      {connections.map((c) => {
+        const a = facById[c.a];
+        const b = facById[c.b];
+        if (!a || !b) return null;
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const cx = mx - dy * 0.12;
+        const cy = my + dx * 0.12;
+        const hov = hoverRoute === c.key;
+        const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+        return (
+          <g key={c.key}>
+            <path d={d} fill="none" stroke={a.color} strokeWidth={hov ? 0.8 : 0.5} strokeLinecap="round" opacity={hov ? 1 : 0.92} style={{ vectorEffect: 'non-scaling-stroke' }} />
+            <path
+              d={d}
+              fill="none"
+              stroke={a.color}
+              strokeWidth={hov ? 1.05 : 0.78}
+              strokeLinecap="round"
+              strokeDasharray="2 4"
+              opacity={0.95}
+              style={{
+                vectorEffect: 'non-scaling-stroke',
+                animation: animating ? 'none' : 'scFlow .9s linear infinite',
+              }}
+            />
+            <path
+              d={d}
+              fill="none"
+              stroke="rgba(0,0,0,0)"
+              strokeWidth={2.6}
+              style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+              onMouseEnter={() => onRouteHover(c.key)}
+              onMouseLeave={() => onRouteHover(null)}
+            />
+          </g>
+        );
+      })}
+    </svg>
+  );
+});
+
+interface MapViewportProps {
+  visible: Factory[];
+  connections: Conn[];
+  facById: Record<string, Factory>;
+  hoverPin: string | null;
+  hoverRoute: string | null;
+  setHoverPin: (id: string | null) => void;
+  setHoverRoute: (key: string | null) => void;
+  onPinDragStart: (e: React.MouseEvent | React.TouchEvent, id: string, el: HTMLDivElement) => void;
+  draggingPinId: string | null;
+  openCreateFactory: () => void;
+  blockInteractionRef: React.RefObject<boolean>;
+}
+
+function MapViewport({
+  visible,
+  connections,
+  facById,
+  hoverPin,
+  hoverRoute,
+  setHoverPin,
+  setHoverRoute,
+  onPinDragStart,
+  draggingPinId,
+  openCreateFactory,
+  blockInteractionRef,
+}: MapViewportProps) {
+  const viewEl = useRef<HTMLDivElement>(null);
+  const mapEl = useRef<HTMLDivElement>(null);
+
+  const { camera, zoomed, gesturing, panning, onWheel, onMouseDown, onTouchStart, setZoom, resetCamera } = useMapCamera(
+    viewEl,
+    mapEl,
+    blockInteractionRef,
+  );
+
+  const onPinHover = useCallback(
+    (id: string | null) => {
+      if (blockInteractionRef.current) return;
+      setHoverPin(id);
+    },
+    [setHoverPin],
+  );
+
+  const worldLayerStyle: CSSProperties = {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    height: '100%',
+    width: 'auto',
+    maxWidth: '100%',
+    aspectRatio: '1',
+    transformOrigin: 'center',
+    contain: 'layout style paint',
+  };
+
+  return (
+    <>
+      <div
+        ref={viewEl}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 12,
+          overflow: 'hidden',
+          border: '1px solid #1C2027',
+          cursor: panning ? 'grabbing' : zoomed ? 'grab' : 'default',
+          touchAction: 'none',
+        }}
+      >
+        <div ref={mapEl} style={worldLayerStyle}>
+          <img
+            src="/assets/map.jpg"
+            alt="World map"
+            draggable={false}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              filter: 'saturate(.78) brightness(.62) contrast(1.04)',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          />
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 45%,rgba(11,12,15,0) 55%,rgba(11,12,15,.72))', pointerEvents: 'none' }} />
+
+          <MapRoutes
+            connections={connections}
+            facById={facById}
+            hoverRoute={hoverRoute}
+            animating={gesturing}
+            onRouteHover={setHoverRoute}
+          />
+
+          {visible.map((f) => (
+            <MapPin
+              key={f.id}
+              factory={f}
+              hovered={hoverPin === f.id}
+              dragging={draggingPinId === f.id}
+              onHover={onPinHover}
+              onDragStart={onPinDragStart}
+            />
+          ))}
+        </div>
+
+        <div
+          style={{
+            position: 'absolute',
+            right: 14,
+            top: 14,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            background: 'rgba(12,13,17,.85)',
+            border: '1px solid #20242D',
+            borderRadius: 9,
+            overflow: 'hidden',
+            backdropFilter: 'blur(6px)',
+            zIndex: 38,
+          }}
+        >
+          <button
+            onClick={() => setZoom(camera.zoom + 0.45, undefined, undefined, true)}
+            style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: '#C2C8D2', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ＋
+          </button>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, color: '#8A909A', textAlign: 'center', padding: '1px 0', borderTop: '1px solid #20242D', borderBottom: '1px solid #20242D' }}>
+            {Math.round(camera.zoom * 100)}%
+          </div>
+          <button
+            onClick={() => setZoom(camera.zoom - 0.45, undefined, undefined, true)}
+            style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: '#C2C8D2', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            −
+          </button>
+          <button
+            onClick={resetCamera}
+            title="Reset"
+            style={{ width: 32, height: 26, background: 'transparent', border: 'none', borderTop: '1px solid #20242D', color: '#727A85', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            ⤢
+          </button>
+        </div>
+      </div>
+      <button
+        onClick={openCreateFactory}
+        style={{
+          position: 'absolute',
+          right: 16,
+          bottom: 14,
+          background: '#F5882E',
+          color: '#120A03',
+          border: 'none',
+          borderRadius: 9,
+          padding: '10px 15px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          boxShadow: '0 6px 18px rgba(245,136,46,.32)',
+        }}
+      >
+        ＋ Factory
+      </button>
+    </>
+  );
+}
+
 export function MapScreen() {
   const { st, up, openFactory } = useStore();
   const world = useWorld();
   const { openCreateFactory, movePin } = useActions();
+  const { hoverPin, hoverRoute, setHoverPin, setHoverRoute } = useDebouncedMapFocus();
 
-  const viewEl = useRef<HTMLDivElement | null>(null);
-  const mapEl = useRef<HTMLDivElement | null>(null);
-  const panningRef = useRef(false);
-  const dragRef = useRef<{ id: string; moved: boolean; startX: number; startY: number } | null>(null);
-  const camRef = useRef({ zoom: st.zoom, panX: st.panX, panY: st.panY });
-  camRef.current = { zoom: st.zoom, panX: st.panX, panY: st.panY };
+  const mapElRef = useRef<HTMLDivElement | null>(null);
+  const blockInteractionRef = useRef(false);
+  const dragRef = useRef<{ id: string; moved: boolean; startX: number; startY: number; x: number; y: number; el: HTMLDivElement } | null>(null);
+  const [draggingPinId, setDraggingPinId] = useState<string | null>(null);
 
   const facs = world.factories;
 
-  // ----- camera helpers (ported from the prototype) -----
-  const viewRect = () => {
-    if (viewEl.current) return viewEl.current.getBoundingClientRect();
-    if (mapEl.current?.parentElement) return mapEl.current.parentElement.getBoundingClientRect();
-    return { left: 0, top: 0, width: 600, height: 600 } as DOMRect;
-  };
-  const baseSize = (v?: { width: number; height: number }) => {
-    const r = v || viewRect();
-    return Math.min(r.width, r.height);
-  };
-  const clampPan = (zoom: number, px: number, py: number, v?: DOMRect) => {
-    const r = v || viewRect();
-    const ns = baseSize(r) * zoom;
-    const ox = (ns - r.width) / 2;
-    const oy = (ns - r.height) / 2;
-    return {
-      x: ox > 0 ? Math.min(ox, Math.max(-ox, px)) : 0,
-      y: oy > 0 ? Math.min(oy, Math.max(-oy, py)) : 0,
-    };
-  };
-  const setZoom = (nz: number, fcx?: number, fcy?: number) => {
-    const z = Math.max(1, Math.min(4, nz));
-    const v = viewRect();
-    const base = baseSize(v);
-    const { zoom: oz, panX, panY } = camRef.current;
-    const curSize = base * oz;
-    const curLeft = v.left + v.width / 2 - curSize / 2 + panX;
-    const curTop = v.top + v.height / 2 - curSize / 2 + panY;
-    const fx = fcx != null ? fcx : v.left + v.width / 2;
-    const fy = fcy != null ? fcy : v.top + v.height / 2;
-    const ux = (fx - curLeft) / curSize;
-    const uy = (fy - curTop) / curSize;
-    const ns = base * z;
-    const newLeft = fx - ux * ns;
-    const newTop = fy - uy * ns;
-    const baseLeft = v.left + v.width / 2 - ns / 2;
-    const baseTop = v.top + v.height / 2 - ns / 2;
-    const c = clampPan(z, newLeft - baseLeft, newTop - baseTop, v);
-    up({ zoom: z, panX: c.x, panY: c.y });
-  };
+  const startPinDrag = useCallback(
+    (e: React.MouseEvent | React.TouchEvent, id: string, pinEl: HTMLDivElement) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-  const pt = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
-    const ev = e as TouchEvent;
-    if (ev.touches && ev.touches[0]) return { x: ev.touches[0].clientX, y: ev.touches[0].clientY };
-    if (ev.changedTouches && ev.changedTouches[0]) return { x: ev.changedTouches[0].clientX, y: ev.changedTouches[0].clientY };
-    const me = e as MouseEvent;
-    return { x: me.clientX, y: me.clientY };
-  };
+      const mapEl = pinEl.parentElement;
+      if (!mapEl) {
+        openFactory(id);
+        return;
+      }
+      mapElRef.current = mapEl as HTMLDivElement;
 
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.16 : 1 / 1.16;
-    setZoom(camRef.current.zoom * factor, e.clientX, e.clientY);
-  };
+      const p0 = pt(e);
+      const f = facs.find((ff) => ff.id === id);
+      const drag = { id, moved: false, startX: p0.x, startY: p0.y, x: f?.x ?? 50, y: f?.y ?? 50, el: pinEl };
+      dragRef.current = drag;
+      blockInteractionRef.current = true;
+      setDraggingPinId(id);
+      setHoverPin(null);
 
-  const onPanStart = (e: React.MouseEvent | React.TouchEvent) => {
-    if (camRef.current.zoom <= 1 || dragRef.current) return;
-    const p0 = pt(e);
-    const sx = p0.x;
-    const sy = p0.y;
-    const px0 = camRef.current.panX;
-    const py0 = camRef.current.panY;
-    panningRef.current = true;
-    const move = (ev: MouseEvent | TouchEvent) => {
-      if (ev.cancelable) ev.preventDefault();
-      const p = pt(ev);
-      const c = clampPan(camRef.current.zoom, px0 + (p.x - sx), py0 + (p.y - sy));
-      up({ panX: c.x, panY: c.y });
-    };
-    const upFn = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', upFn);
-      window.removeEventListener('touchmove', move);
-      window.removeEventListener('touchend', upFn);
-      panningRef.current = false;
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', upFn);
-    window.addEventListener('touchmove', move, { passive: false });
-    window.addEventListener('touchend', upFn);
-  };
+      const move = (ev: MouseEvent | TouchEvent) => {
+        if (!dragRef.current || !mapElRef.current) return;
+        if (ev.cancelable) ev.preventDefault();
+        const p = pt(ev);
+        if (Math.abs(p.x - drag.startX) + Math.abs(p.y - drag.startY) > 3) drag.moved = true;
+        const rect = mapElRef.current.getBoundingClientRect();
+        let x = ((p.x - rect.left) / rect.width) * 100;
+        let y = ((p.y - rect.top) / rect.height) * 100;
+        x = Math.max(2.5, Math.min(97.5, x));
+        y = Math.max(2.5, Math.min(97.5, y));
+        drag.x = x;
+        drag.y = y;
+        drag.el.style.left = `${x}%`;
+        drag.el.style.top = `${y}%`;
+      };
 
-  const startPinDrag = (e: React.MouseEvent | React.TouchEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!mapEl.current) {
-      openFactory(id);
-      return;
-    }
-    const p0 = pt(e);
-    const drag = { id, moved: false, startX: p0.x, startY: p0.y };
-    dragRef.current = drag;
-    up({ hoverPin: null });
-    const move = (ev: MouseEvent | TouchEvent) => {
-      if (!dragRef.current || !mapEl.current) return;
-      if (ev.cancelable) ev.preventDefault();
-      const p = pt(ev);
-      if (Math.abs(p.x - drag.startX) + Math.abs(p.y - drag.startY) > 3) drag.moved = true;
-      const rect = mapEl.current.getBoundingClientRect();
-      let x = ((p.x - rect.left) / rect.width) * 100;
-      let y = ((p.y - rect.top) / rect.height) * 100;
-      x = Math.max(2.5, Math.min(97.5, x));
-      y = Math.max(2.5, Math.min(97.5, y));
-      movePin(drag.id, x, y);
-    };
-    const upFn = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', upFn);
-      window.removeEventListener('touchmove', move);
-      window.removeEventListener('touchend', upFn);
-      const d = dragRef.current;
-      dragRef.current = null;
-      if (d && !d.moved) openFactory(d.id);
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', upFn);
-    window.addEventListener('touchmove', move, { passive: false });
-    window.addEventListener('touchend', upFn);
-  };
+      const finish = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', finish);
+        window.removeEventListener('touchmove', move);
+        window.removeEventListener('touchend', finish);
+        window.removeEventListener('touchcancel', finish);
+        const d = dragRef.current;
+        dragRef.current = null;
+        blockInteractionRef.current = false;
+        setDraggingPinId(null);
+        if (d) {
+          if (d.moved) movePin(d.id, d.x, d.y);
+          else openFactory(d.id);
+        }
+      };
 
-  // ----- filters -----
-  const counts: Record<string, number> = { all: facs.length, planned: 0, construction: 0, operational: 0, decommissioned: 0 };
-  facs.forEach((f) => {
-    counts[f.status] = (counts[f.status] || 0) + 1;
-  });
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', finish);
+      window.addEventListener('touchmove', move, { passive: false });
+      window.addEventListener('touchend', finish);
+      window.addEventListener('touchcancel', finish);
+    },
+    [facs, openFactory, movePin, setHoverPin],
+  );
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: facs.length, planned: 0, construction: 0, operational: 0, decommissioned: 0 };
+    facs.forEach((f) => {
+      c[f.status] = (c[f.status] || 0) + 1;
+    });
+    return c;
+  }, [facs]);
+
   const statusFilters: [string, string][] = [
     ['all', 'All'],
     ['operational', 'Operational'],
     ['construction', 'Building'],
     ['planned', 'Planned'],
   ];
-  const allTags: string[] = [];
-  facs.forEach((f) => f.tags.forEach((t) => {
-    if (!allTags.includes(t)) allTags.push(t);
-  }));
-  const tagFilters = [{ label: 'All tags', key: 'all' }].concat(allTags.slice(0, 5).map((t) => ({ label: t, key: t })));
 
-  const visible = facs.filter(
-    (f) => (st.statusFilter === 'all' || f.status === st.statusFilter) && (st.tagFilter === 'all' || f.tags.includes(st.tagFilter)),
+  const tagFilters = useMemo(() => {
+    const allTags: string[] = [];
+    facs.forEach((f) => f.tags.forEach((t) => {
+      if (!allTags.includes(t)) allTags.push(t);
+    }));
+    return [{ label: 'All tags', key: 'all' }].concat(allTags.slice(0, 5).map((t) => ({ label: t, key: t })));
+  }, [facs]);
+
+  const visible = useMemo(
+    () => facs.filter((f) => (st.statusFilter === 'all' || f.status === st.statusFilter) && (st.tagFilter === 'all' || f.tags.includes(st.tagFilter))),
+    [facs, st.statusFilter, st.tagFilter],
   );
-  const visibleIds = visible.map((f) => f.id);
-  const facById: Record<string, Factory> = {};
-  facs.forEach((f) => (facById[f.id] = f));
 
-  // ----- route connections (grouped per factory pair) -----
-  const routesVis = world.routes.filter((r) => visibleIds.includes(r.from) && visibleIds.includes(r.to));
-  const connMap: Record<string, Conn> = {};
-  routesVis.forEach((r) => {
-    const key = [r.from, r.to].slice().sort().join('__');
-    if (!connMap[key]) connMap[key] = { key, a: r.from, b: r.to, items: [] };
-    connMap[key].items.push({ item: r.item, rate: r.rate, t: r.t, from: r.from, to: r.to });
-  });
-  const connections = Object.values(connMap);
+  const facById = useMemo(() => {
+    const m: Record<string, Factory> = {};
+    facs.forEach((f) => (m[f.id] = f));
+    return m;
+  }, [facs]);
 
-  const zoomed = st.zoom > 1.001;
-  const zp = st.zoom * 100;
-  const worldLayerStyle: CSSProperties = {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    height: `${zp}%`,
-    width: 'auto',
-    maxWidth: `${zp}%`,
-    aspectRatio: '1',
-    transform: `translate(calc(-50% + ${st.panX}px),calc(-50% + ${st.panY}px))`,
-    transformOrigin: 'center',
-    ...(panningRef.current ? {} : { transition: 'transform .14s ease' }),
-  };
+  const { connMap, connections } = useMemo(() => {
+    const visibleIds = visible.map((f) => f.id);
+    const routesVis = world.routes.filter((r) => visibleIds.includes(r.from) && visibleIds.includes(r.to));
+    const cm: Record<string, Conn> = {};
+    routesVis.forEach((r) => {
+      const key = [r.from, r.to].slice().sort().join('__');
+      if (!cm[key]) cm[key] = { key, a: r.from, b: r.to, items: [] };
+      cm[key].items.push({ item: r.item, rate: r.rate, t: r.t, from: r.from, to: r.to });
+    });
+    return { connMap: cm, connections: Object.values(cm) };
+  }, [world.routes, visible]);
 
   return (
     <div data-m-screen="" style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-      {/* filter toolbar */}
       <div
         data-m-scrollx=""
         style={{
@@ -267,177 +548,19 @@ export function MapScreen() {
           )}
 
           {facs.length > 0 && (
-            <>
-              <div
-                ref={viewEl}
-                onWheel={onWheel}
-                onMouseDown={onPanStart}
-                onTouchStart={onPanStart}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  border: '1px solid #1C2027',
-                  cursor: zoomed ? 'grab' : 'default',
-                }}
-              >
-                <div ref={mapEl} style={worldLayerStyle}>
-                  <img
-                    src="/assets/map.jpg"
-                    alt="World map"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.78) brightness(.62) contrast(1.04)' }}
-                  />
-                  <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 50% 45%,rgba(11,12,15,0) 55%,rgba(11,12,15,.72))', pointerEvents: 'none' }}></div>
-
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-                    {connections.map((c) => {
-                      const a = facById[c.a];
-                      const b = facById[c.b];
-                      const mx = (a.x + b.x) / 2;
-                      const my = (a.y + b.y) / 2;
-                      const dx = b.x - a.x;
-                      const dy = b.y - a.y;
-                      const cx = mx - dy * 0.12;
-                      const cy = my + dx * 0.12;
-                      const hov = st.hoverRoute === c.key;
-                      const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
-                      return (
-                        <g key={c.key}>
-                          <path d={d} fill="none" stroke={a.color} strokeWidth={hov ? 0.8 : 0.5} strokeLinecap="round" opacity={hov ? 1 : 0.92} style={{ vectorEffect: 'non-scaling-stroke' }} />
-                          <path
-                            d={d}
-                            fill="none"
-                            stroke={a.color}
-                            strokeWidth={hov ? 1.05 : 0.78}
-                            strokeLinecap="round"
-                            strokeDasharray="2 4"
-                            opacity={0.95}
-                            style={{ vectorEffect: 'non-scaling-stroke', animation: 'scFlow .9s linear infinite' }}
-                          />
-                          <path
-                            d={d}
-                            fill="none"
-                            stroke="rgba(0,0,0,0)"
-                            strokeWidth={2.6}
-                            style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-                            onMouseEnter={() => up({ hoverRoute: c.key, mapFocus: { type: 'route', key: c.key } })}
-                            onMouseLeave={() => up({ hoverRoute: null })}
-                          />
-                        </g>
-                      );
-                    })}
-                  </svg>
-
-                  {visible.map((f) => {
-                    const hov = st.hoverPin === f.id;
-                    return (
-                      <div
-                        key={f.id}
-                        onMouseEnter={() => {
-                          if (dragRef.current) return;
-                          up({ hoverPin: f.id, mapFocus: { type: 'factory', id: f.id } });
-                        }}
-                        onMouseLeave={() => {
-                          if (dragRef.current) return;
-                          up({ hoverPin: null });
-                        }}
-                        onMouseDown={(e) => startPinDrag(e, f.id)}
-                        onTouchStart={(e) => startPinDrag(e, f.id)}
-                        style={{
-                          position: 'absolute',
-                          left: `${f.x}%`,
-                          top: `${f.y}%`,
-                          width: 34,
-                          height: 34,
-                          marginLeft: -17,
-                          marginTop: -17,
-                          cursor: 'pointer',
-                          zIndex: hov ? 30 : 22,
-                        }}
-                      >
-                        {f.status === 'operational' && (
-                          <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: f.color, animation: 'scPulse 2.4s ease-out infinite' }}></span>
-                        )}
-                        <span
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            borderRadius: '50%',
-                            background: f.color,
-                            border: `2px solid ${hov ? '#fff' : 'rgba(255,255,255,.55)'}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontFamily: SG,
-                            fontWeight: 700,
-                            fontSize: 11,
-                            color: '#0C0D11',
-                            boxShadow: `0 3px 10px rgba(0,0,0,.5),0 0 0 ${hov ? '4px' : '0px'} ${f.color}44`,
-                            transform: `scale(${hov ? 1.12 : 1})`,
-                            transition: 'transform .12s',
-                          }}
-                        >
-                          {initials(f.name)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 14,
-                    top: 14,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                    background: 'rgba(12,13,17,.85)',
-                    border: '1px solid #20242D',
-                    borderRadius: 9,
-                    overflow: 'hidden',
-                    backdropFilter: 'blur(6px)',
-                    zIndex: 38,
-                  }}
-                >
-                  <button onClick={() => setZoom(camRef.current.zoom + 0.45)} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: '#C2C8D2', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    ＋
-                  </button>
-                  <div style={{ fontFamily: MONO, fontSize: 9.5, color: '#8A909A', textAlign: 'center', padding: '1px 0', borderTop: '1px solid #20242D', borderBottom: '1px solid #20242D' }}>
-                    {Math.round(st.zoom * 100)}%
-                  </div>
-                  <button onClick={() => setZoom(camRef.current.zoom - 0.45)} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: '#C2C8D2', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    −
-                  </button>
-                  <button
-                    onClick={() => up({ zoom: 1, panX: 0, panY: 0 })}
-                    title="Reset"
-                    style={{ width: 32, height: 26, background: 'transparent', border: 'none', borderTop: '1px solid #20242D', color: '#727A85', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    ⤢
-                  </button>
-                </div>
-              </div>
-              <button
-                onClick={openCreateFactory}
-                style={{
-                  position: 'absolute',
-                  right: 16,
-                  bottom: 14,
-                  background: '#F5882E',
-                  color: '#120A03',
-                  border: 'none',
-                  borderRadius: 9,
-                  padding: '10px 15px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 6px 18px rgba(245,136,46,.32)',
-                }}
-              >
-                ＋ Factory
-              </button>
-            </>
+            <MapViewport
+              visible={visible}
+              connections={connections}
+              facById={facById}
+              hoverPin={hoverPin}
+              hoverRoute={hoverRoute}
+              setHoverPin={setHoverPin}
+              setHoverRoute={setHoverRoute}
+              onPinDragStart={startPinDrag}
+              draggingPinId={draggingPinId}
+              openCreateFactory={openCreateFactory}
+              blockInteractionRef={blockInteractionRef}
+            />
           )}
         </div>
 
@@ -446,8 +569,6 @@ export function MapScreen() {
     </div>
   );
 }
-
-// ===================== sidebar =====================
 
 function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facById: Record<string, Factory> }) {
   const { st, up, openFactory } = useStore();

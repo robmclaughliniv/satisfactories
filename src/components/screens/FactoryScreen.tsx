@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
-import { aggregate } from '../../state/derive';
+import { aggregate, localInputByItem } from '../../state/derive';
 import { buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
-import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel } from '../bits';
+import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
 
 export function FactoryScreen() {
   const { st, up, factory, openFactory } = useStore();
@@ -128,11 +128,13 @@ function IdentityPanel({
 function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggregate> }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { setRowCount, toggleRowExport, removeRow, addSection, openRecipePicker, resetFactory, commitFactory } = useActions();
+  const { setRowCount, toggleRowExport, removeRow, addSection, openRecipePicker, resetFactory, commitFactory, openLocalInput } = useActions();
 
   const dirty = JSON.stringify(f.sections) !== f.baseline;
 
-  // resource balance: supply (made + imported) vs demand (required + exported)
+  const localByItem = localInputByItem(f);
+
+  // resource balance: supply (made + imported + local) vs demand (required + exported)
   const impByItem: Record<string, number> = {};
   const expByItem: Record<string, number> = {};
   world.routes.forEach((r) => {
@@ -143,13 +145,15 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
   Object.keys(agg.per).forEach((k) => (resKeys[k] = 1));
   Object.keys(impByItem).forEach((k) => (resKeys[k] = 1));
   Object.keys(expByItem).forEach((k) => (resKeys[k] = 1));
+  Object.keys(localByItem).forEach((k) => (resKeys[k] = 1));
   const resBalance = Object.keys(resKeys)
     .map((item) => {
       const made = agg.per[item]?.out || 0;
       const need = agg.per[item]?.in || 0;
       const imp = impByItem[item] || 0;
+      const local = localByItem[item] || 0;
       const exp = expByItem[item] || 0;
-      return { item, made, need, imp, exp, net: made + imp - need - exp };
+      return { item, made, need, imp, local, exp, net: made + imp + local - need - exp };
     })
     .sort((a, b) => a.net - b.net);
 
@@ -203,7 +207,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 13, color: '#C2C8D2' }}>Resource balance</span>
             <span style={{ fontSize: 11, color: '#5E646E' }}>{resBalance.length}</span>
-            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: '#6B7280' }}>Made + imported − required − exported</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: '#6B7280' }}>Made + imported + local − required − exported</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(158px,1fr))', gap: 10, marginBottom: 24 }}>
             {resBalance.map((rb) => {
@@ -212,6 +216,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
               const nc = deficit ? '#E5604D' : surplus ? '#5BCB86' : '#9097A1';
               const stats: { label: string; value: string; color: string }[] = [{ label: 'Made here', value: fmt(rb.made), color: '#7FBE98' }];
               if (rb.imp > 0.001) stats.push({ label: 'Imported', value: '+' + fmt(rb.imp), color: '#F5A95B' });
+              if (rb.local > 0.001) stats.push({ label: 'Local', value: '+' + fmt(rb.local), color: '#8B9DC3' });
               if (rb.need > 0.001) stats.push({ label: 'Required', value: '−' + fmt(rb.need), color: '#D98176' });
               if (rb.exp > 0.001) stats.push({ label: 'Exported', value: '−' + fmt(rb.exp), color: '#9097A1' });
               return (
@@ -245,6 +250,24 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
                         <span style={{ fontFamily: MONO, fontSize: 10.5, color: stt.color }}>{stt.value}</span>
                       </div>
                     ))}
+                    {deficit && (
+                      <button
+                        onClick={() => openLocalInput(f.id, rb.item, undefined, -rb.net)}
+                        style={{
+                          marginTop: 6,
+                          background: 'transparent',
+                          border: '1px dashed #3A2020',
+                          color: '#E5604D',
+                          borderRadius: 6,
+                          padding: '5px 8px',
+                          fontSize: 10,
+                          cursor: 'pointer',
+                          width: '100%',
+                        }}
+                      >
+                        ＋ Add local input
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -457,7 +480,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 function RightPanel({ f }: { f: Factory }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { pickRecipe, addFlowLeg } = useActions();
+  const { pickRecipe, addFlowLeg, openLocalInput } = useActions();
 
   const agg = aggregate(f);
   const pk = st.picker;
@@ -540,6 +563,7 @@ function RightPanel({ f }: { f: Factory }) {
       .filter((i) => agg.per[i].out > 0.001)
       .map((i) => ({ item: i, out: agg.per[i].out }))
       .sort((a, b) => b.out - a.out);
+    const localInputs = f.localInputs || [];
     const flows = buildFlows(world, f, true);
     content = (
       <>
@@ -553,6 +577,56 @@ function RightPanel({ f }: { f: Factory }) {
             <ProducedRow key={x.item} name={x.item} rate={'+' + fmt(x.out) + '/m'} />
           ))}
           {produced.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>Nothing produced yet — add a recipe.</div>}
+        </div>
+
+        <SectionLabel color="#8B9DC3" mb={8}>
+          Local inputs <span style={{ color: '#5E646E' }}>{localInputs.length}</span>
+        </SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 18 }}>
+          {localInputs.map((li) => (
+            <div
+              key={li.id}
+              onClick={() => openLocalInput(f.id, li.item, li.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 9,
+                background: '#101318',
+                border: '1px solid #1C2027',
+                borderRadius: 7,
+                padding: '6px 8px',
+                cursor: 'pointer',
+              }}
+            >
+              <ItemSquare item={li.item} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{li.item}</div>
+                <div style={{ fontSize: 9.5, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                  <TransportBadge t={li.t || 'Belt'} pad="1px 4px" />
+                  Local node
+                </div>
+              </div>
+              <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#F5A95B' }}>{fmt(li.rate)}/m</span>
+            </div>
+          ))}
+          {localInputs.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>No local inputs — belt in ore from nearby nodes.</div>}
+          <button
+            onClick={() => openLocalInput(f.id)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'transparent',
+              border: '1px dashed #2A2F39',
+              color: '#8A909A',
+              borderRadius: 6,
+              padding: '5px 8px',
+              fontSize: 10.5,
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ color: '#8B9DC3', fontWeight: 600 }}>＋</span> Add input
+          </button>
         </div>
 
         <SectionLabel>

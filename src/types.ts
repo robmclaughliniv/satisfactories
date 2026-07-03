@@ -7,6 +7,7 @@ export type {
   Transport,
   Row,
   Section,
+  LocalInput,
   Factory,
   Route,
   World,
@@ -60,4 +61,12 @@ export interface RouteModalState {
   item: string;
   rate: number | string;
   t: Transport;
+}
+
+export interface LocalInputModalState {
+  factoryId: string;
+  item: string;
+  rate: number | string;
+  t: Transport;
+  editingId?: string;
 }

@@ -6,6 +6,7 @@ import { createEmptyWorld, instantiateTemplate, touchWorld } from '../model/worl
 import type {
   FactoryModalState,
   Factory,
+  LocalInputModalState,
   MapFocus,
   PickerState,
   RouteModalState,
@@ -25,9 +26,6 @@ export interface AppState {
   hoverRoute: string | null;
   mapFocus: MapFocus;
   expandedFlow: Record<string, boolean>;
-  zoom: number;
-  panX: number;
-  panY: number;
   expanded: Record<string, boolean>;
   picker: PickerState | null;
   pickerSearch: string;
@@ -38,6 +36,7 @@ export interface AppState {
   refSearch: string;
   factoryModal: FactoryModalState | null;
   routeModal: RouteModalState | null;
+  localInputModal: LocalInputModalState | null;
   worlds: World[];
 }
 
@@ -82,9 +81,6 @@ function initialState(): AppState {
     hoverRoute: null,
     mapFocus: null,
     expandedFlow: {},
-    zoom: 1,
-    panX: 0,
-    panY: 0,
     expanded: {},
     picker: null,
     pickerSearch: '',
@@ -94,6 +90,7 @@ function initialState(): AppState {
     refSearch: '',
     factoryModal: null,
     routeModal: null,
+    localInputModal: null,
     ...persisted,
   };
 }
@@ -283,6 +280,7 @@ export function useActions() {
         x: 45 + (Math.random() * 10 - 5),
         y: 45 + (Math.random() * 10 - 5),
         sections: [],
+        localInputs: [],
         baseline: JSON.stringify([]),
       });
     });
@@ -322,6 +320,61 @@ export function useActions() {
       });
     });
     up({ routeModal: null });
+  };
+
+  const openLocalInput = (factoryId: string, item?: string, editingId?: string, rate?: number) => {
+    const f = world?.factories.find((x) => x.id === factoryId);
+    if (editingId && f) {
+      const li = (f.localInputs || []).find((x) => x.id === editingId);
+      if (li) {
+        up({ localInputModal: { factoryId, item: li.item, rate: li.rate, t: li.t, editingId } });
+        return;
+      }
+    }
+    up({
+      localInputModal: {
+        factoryId,
+        item: item || 'Iron Ore',
+        rate: rate ?? 60,
+        t: 'Belt',
+        editingId,
+      },
+    });
+  };
+
+  const saveLocalInput = () => {
+    const m = st.localInputModal;
+    if (!m || !m.factoryId) return;
+    const rate = Math.max(0, parseFloat(String(m.rate)) || 0);
+    mutateWorld((w) => {
+      const f = w.factories.find((x) => x.id === m.factoryId);
+      if (!f) return;
+      if (!f.localInputs) f.localInputs = [];
+      if (m.editingId) {
+        const li = f.localInputs.find((x) => x.id === m.editingId);
+        if (li) {
+          li.item = m.item;
+          li.rate = rate;
+          li.t = (m.t || 'Belt') as Transport;
+        }
+      } else {
+        f.localInputs.push({
+          id: 'li_' + Date.now(),
+          item: m.item,
+          rate,
+          t: (m.t || 'Belt') as Transport,
+        });
+      }
+    });
+    up({ localInputModal: null });
+  };
+
+  const removeLocalInput = (factoryId: string, inputId: string) => {
+    mutateWorld((w) => {
+      const f = w.factories.find((x) => x.id === factoryId);
+      if (f) f.localInputs = (f.localInputs || []).filter((x) => x.id !== inputId);
+    });
+    up({ localInputModal: null });
   };
 
   const toggleFav = (name: string) => {
@@ -394,6 +447,9 @@ export function useActions() {
     openRoute,
     addFlowLeg,
     saveRoute,
+    openLocalInput,
+    saveLocalInput,
+    removeLocalInput,
     toggleFav,
     createWorld,
     loadSampleWorld,

@@ -9,6 +9,15 @@ export interface Aggregate {
   inputs: { item: string; rate: number }[];
 }
 
+/** Sum local input rates by item for a factory. */
+export function localInputByItem(factory: Factory): Record<string, number> {
+  const byItem: Record<string, number> = {};
+  (factory.localInputs || []).forEach((li) => {
+    byItem[li.item] = (byItem[li.item] || 0) + li.rate;
+  });
+  return byItem;
+}
+
 export function aggregate(factory: Factory): Aggregate {
   const per: Aggregate['per'] = {};
   let power = 0;
@@ -58,6 +67,12 @@ export function rollupWorld(world: World): Record<string, RollupEntry> {
       per[item].consumed += a.per[item].in;
       if (a.per[item].out > 0.001) per[item].producers.push({ id: f.id, name: f.name, color: f.color, rate: a.per[item].out });
       if (a.per[item].in > 0.001) per[item].consumers.push({ id: f.id, name: f.name, color: f.color, rate: a.per[item].in });
+    });
+    Object.entries(localInputByItem(f)).forEach(([item, rate]) => {
+      if (rate <= 0.001) return;
+      per[item] = per[item] || { produced: 0, consumed: 0, producers: [], consumers: [] };
+      per[item].produced += rate;
+      per[item].producers.push({ id: f.id, name: f.name + ' (local)', color: f.color, rate });
     });
   });
   return per;
