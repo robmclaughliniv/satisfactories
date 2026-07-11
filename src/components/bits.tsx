@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { fmt, initials, itemColor, transportColor } from '../data/gameData';
-import type { Flow } from '../state/flows';
+import type { Flow, FlowLeg } from '../state/flows';
 
 export const SG = "'Space Grotesk'";
 export const MONO = "'IBM Plex Mono'";
@@ -79,6 +79,7 @@ export function FlowList({
   onToggle,
   emptyText,
   addLeg,
+  onLegClick,
 }: {
   flows: Flow[];
   expandedFlow: Record<string, boolean>;
@@ -86,6 +87,7 @@ export function FlowList({
   onToggle: (key: string) => void;
   emptyText: string;
   addLeg?: (flow: Flow) => ReactNode;
+  onLegClick?: (leg: FlowLeg) => void;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -121,16 +123,31 @@ export function FlowList({
                   gap: 6,
                 }}
               >
-                {fl.legs.map((leg, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <TransportBadge t={leg.transport} />
-                    <span style={{ width: 7, height: 7, borderRadius: 2, background: leg.color, flex: '0 0 auto' }}></span>
-                    <span style={{ flex: 1, fontSize: 11, color: '#AEB4BE', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {leg.partner}
-                    </span>
-                    <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}</span>
-                  </div>
-                ))}
+                {fl.legs.map((leg, i) => {
+                  const editable = !!(leg.routeId || leg.localInputId);
+                  return (
+                    <div
+                      key={i}
+                      onClick={editable && onLegClick ? () => onLegClick(leg) : undefined}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: editable && onLegClick ? 'pointer' : undefined,
+                        borderRadius: 5,
+                        padding: editable && onLegClick ? '2px 4px' : undefined,
+                        margin: editable && onLegClick ? '-2px -4px' : undefined,
+                      }}
+                    >
+                      <TransportBadge t={leg.transport} />
+                      <span style={{ width: 7, height: 7, borderRadius: 2, background: leg.color, flex: '0 0 auto' }}></span>
+                      <span style={{ flex: 1, fontSize: 11, color: '#AEB4BE', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {leg.partner}
+                      </span>
+                      <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}</span>
+                    </div>
+                  );
+                })}
                 {addLeg?.(fl)}
               </div>
             )}

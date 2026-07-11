@@ -250,24 +250,69 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
                         <span style={{ fontFamily: MONO, fontSize: 10.5, color: stt.color }}>{stt.value}</span>
                       </div>
                     ))}
-                    {deficit && (
-                      <button
-                        onClick={() => openLocalInput(f.id, rb.item, undefined, -rb.net)}
-                        style={{
-                          marginTop: 6,
-                          background: 'transparent',
-                          border: '1px dashed #3A2020',
-                          color: '#E5604D',
-                          borderRadius: 6,
-                          padding: '5px 8px',
-                          fontSize: 10,
-                          cursor: 'pointer',
-                          width: '100%',
-                        }}
-                      >
-                        ＋ Add local input
-                      </button>
-                    )}
+                    {deficit && (() => {
+                      const existingLocal = (f.localInputs || []).find((li) => li.item === rb.item);
+                      if (existingLocal) {
+                        return (
+                          <button
+                            onClick={() => openLocalInput(f.id, rb.item, existingLocal.id)}
+                            style={{
+                              marginTop: 6,
+                              background: 'transparent',
+                              border: '1px dashed #2A3040',
+                              color: '#8B9DC3',
+                              borderRadius: 6,
+                              padding: '5px 8px',
+                              fontSize: 10,
+                              cursor: 'pointer',
+                              width: '100%',
+                            }}
+                          >
+                            Edit local input
+                          </button>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={() => openLocalInput(f.id, rb.item, undefined, -rb.net)}
+                          style={{
+                            marginTop: 6,
+                            background: 'transparent',
+                            border: '1px dashed #3A2020',
+                            color: '#E5604D',
+                            borderRadius: 6,
+                            padding: '5px 8px',
+                            fontSize: 10,
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                        >
+                          ＋ Add local input
+                        </button>
+                      );
+                    })()}
+                    {!deficit && rb.local > 0.001 && (() => {
+                      const existingLocal = (f.localInputs || []).find((li) => li.item === rb.item);
+                      if (!existingLocal) return null;
+                      return (
+                        <button
+                          onClick={() => openLocalInput(f.id, rb.item, existingLocal.id)}
+                          style={{
+                            marginTop: 6,
+                            background: 'transparent',
+                            border: '1px dashed #2A3040',
+                            color: '#8B9DC3',
+                            borderRadius: 6,
+                            padding: '5px 8px',
+                            fontSize: 10,
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                        >
+                          Edit local input
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -480,7 +525,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 function RightPanel({ f }: { f: Factory }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { pickRecipe, addFlowLeg, openLocalInput } = useActions();
+  const { pickRecipe, addFlowLeg, openLocalInput, openRoute } = useActions();
 
   const agg = aggregate(f);
   const pk = st.picker;
@@ -607,6 +652,7 @@ function RightPanel({ f }: { f: Factory }) {
                 </div>
               </div>
               <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#F5A95B' }}>{fmt(li.rate)}/m</span>
+              <span style={{ fontSize: 9.5, color: '#5E646E' }}>Edit</span>
             </div>
           ))}
           {localInputs.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>No local inputs — belt in ore from nearby nodes.</div>}
@@ -640,6 +686,10 @@ function RightPanel({ f }: { f: Factory }) {
           keyPrefix="d_"
           onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
           emptyText="No routes connected. Draw one from the map."
+          onLegClick={(leg) => {
+            if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+            else if (leg.routeId) openRoute(leg.routeId);
+          }}
           addLeg={(fl) => (
             <button
               onClick={() => addFlowLeg(fl.item, fl.dir, f.id)}

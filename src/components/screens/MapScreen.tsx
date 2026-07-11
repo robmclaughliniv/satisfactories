@@ -572,6 +572,7 @@ export function MapScreen() {
 
 function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facById: Record<string, Factory> }) {
   const { st, up, openFactory } = useStore();
+  const { openLocalInput, openRoute } = useActions();
   const world = useWorld();
   const facs = world.factories;
   const mfoc = st.mapFocus;
@@ -629,6 +630,10 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
             expandedFlow={st.expandedFlow}
             onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
             emptyText="No routes connected. Draw one from the map."
+            onLegClick={(leg) => {
+              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+              else if (leg.routeId) openRoute(leg.routeId);
+            }}
           />
         </div>
         <div style={{ padding: '12px 14px', borderTop: '1px solid #161A21' }}>

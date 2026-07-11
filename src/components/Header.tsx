@@ -69,7 +69,7 @@ export function Header() {
           {st.worlds.map((w) => (
             <div
               key={w.id}
-              onClick={() => up({ worldId: w.id, worldMenuOpen: false, screen: 'map', selFactory: null })}
+              onClick={() => up({ worldId: w.id, worldMenuOpen: false, screen: 'map', selFactory: null, mapLock: null })}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -118,7 +118,7 @@ export function Header() {
       <div style={{ flex: 1 }}></div>
       {screen === 'map' && (
         <button
-          onClick={openRoute}
+          onClick={() => openRoute()}
           style={{
             display: 'flex',
             alignItems: 'center',
