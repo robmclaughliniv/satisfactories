@@ -6,6 +6,7 @@ import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel } from '../bits';
+import { SplitLayout } from '../SplitLayout';
 
 export function FactoryScreen() {
   const { st, up, factory, openFactory } = useStore();
@@ -15,11 +16,18 @@ export function FactoryScreen() {
 
   const agg = aggregate(f);
   return (
-    <div data-m-screen="" data-m-stack="" style={{ position: 'absolute', inset: 0, display: 'flex', overflow: 'hidden' }}>
-      <IdentityPanel f={f} agg={agg} openFactory={openFactory} world={world} />
-      <ProductionPanel f={f} agg={agg} />
-      <RightPanel f={f} />
-    </div>
+    <SplitLayout
+      id="factory"
+      screen
+      stackOnMobile
+      left={{ defaultWidth: 280, minWidth: 200, maxWidth: 420 }}
+      right={{ defaultWidth: 262, minWidth: 200, maxWidth: 420 }}
+      panes={{
+        left: <IdentityPanel f={f} agg={agg} openFactory={openFactory} world={world} />,
+        main: <ProductionPanel f={f} agg={agg} />,
+        right: <RightPanel f={f} />,
+      }}
+    />
   );
 }
 
@@ -58,7 +66,7 @@ function IdentityPanel({
       : { background: `linear-gradient(150deg,${f.color}55,${f.color}10),repeating-linear-gradient(135deg,#0D0E12,#0D0E12 9px,#111319 9px,#111319 18px)` }),
   };
   return (
-    <aside data-m-panel="" style={{ width: 280, flex: '0 0 280px', borderRight: '1px solid #1A1E25', overflowY: 'auto', background: '#0D0E12' }}>
+    <aside data-m-panel="" style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: '#0D0E12' }}>
       <div style={coverStyle}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(13,14,18,.1),rgba(13,14,18,.92))' }}></div>
         <div style={{ position: 'absolute', left: 16, bottom: 13, right: 16 }}>
@@ -159,7 +167,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
     .sort((a, b) => a.net - b.net);
 
   return (
-    <section data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '18px 20px 60px' }}>
+    <section data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', padding: '18px 20px 60px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 15 }}>Production</div>
@@ -736,7 +744,7 @@ function RightPanel({ f }: { f: Factory }) {
   }
 
   return (
-    <aside data-m-panel="" style={{ width: 262, flex: '0 0 262px', borderLeft: '1px solid #1A1E25', overflowY: 'auto', background: '#0D0E12', padding: '16px 15px' }}>
+    <aside data-m-panel="" style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: '#0D0E12', padding: '16px 15px' }}>
       {content}
     </aside>
   );

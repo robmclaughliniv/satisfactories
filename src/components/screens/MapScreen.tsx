@@ -5,6 +5,7 @@ import { buildFlows, applyFlowOrder } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
+import { SplitLayout } from '../SplitLayout';
 import { useMapCamera } from './useMapCamera';
 
 function chipStyle(active: boolean): CSSProperties {
@@ -595,48 +596,54 @@ export function MapScreen() {
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        <div style={{ flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden', background: 'radial-gradient(circle at 50% 40%,#0F1318,#070809)' }}>
-          {facs.length === 0 && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, textAlign: 'center' }}>
-              <div style={{ width: 78, height: 78, borderRadius: 20, border: '1.5px dashed #2E343F', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F5882E', fontSize: 30 }}>
-                ⬡
-              </div>
-              <div>
-                <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 18, color: '#E7E9ED' }}>Drop your first factory on the map</div>
-                <div style={{ color: '#7B828D', marginTop: 6, maxWidth: 320 }}>Pins are placed manually. Each one is a factory you can fill with production lines.</div>
-              </div>
-              <button
-                onClick={openCreateFactory}
-                style={{ background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 9, padding: '10px 18px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                ＋ Place a factory
-              </button>
+      <SplitLayout
+        id="map"
+        style={{ flex: 1, minHeight: 0 }}
+        right={{ defaultWidth: 316, minWidth: 200, maxWidth: 480 }}
+        panes={{
+          main: (
+            <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative', overflow: 'hidden', background: 'radial-gradient(circle at 50% 40%,#0F1318,#070809)' }}>
+              {facs.length === 0 && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, textAlign: 'center' }}>
+                  <div style={{ width: 78, height: 78, borderRadius: 20, border: '1.5px dashed #2E343F', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F5882E', fontSize: 30 }}>
+                    ⬡
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 18, color: '#E7E9ED' }}>Drop your first factory on the map</div>
+                    <div style={{ color: '#7B828D', marginTop: 6, maxWidth: 320 }}>Pins are placed manually. Each one is a factory you can fill with production lines.</div>
+                  </div>
+                  <button
+                    onClick={openCreateFactory}
+                    style={{ background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 9, padding: '10px 18px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    ＋ Place a factory
+                  </button>
+                </div>
+              )}
+
+              {facs.length > 0 && (
+                <MapViewport
+                  visible={visible}
+                  connections={connections}
+                  facById={facById}
+                  hoverPin={hoverPin}
+                  hoverRoute={hoverRoute}
+                  lockedPinId={lockedPinId}
+                  setHoverPin={setHoverPin}
+                  setHoverRoute={setHoverRoute}
+                  onPinDragStart={startPinDrag}
+                  onPinOpen={openPinDetail}
+                  onClearLock={clearLock}
+                  draggingPinId={draggingPinId}
+                  openCreateFactory={openCreateFactory}
+                  blockInteractionRef={blockInteractionRef}
+                />
+              )}
             </div>
-          )}
-
-          {facs.length > 0 && (
-            <MapViewport
-              visible={visible}
-              connections={connections}
-              facById={facById}
-              hoverPin={hoverPin}
-              hoverRoute={hoverRoute}
-              lockedPinId={lockedPinId}
-              setHoverPin={setHoverPin}
-              setHoverRoute={setHoverRoute}
-              onPinDragStart={startPinDrag}
-              onPinOpen={openPinDetail}
-              onClearLock={clearLock}
-              draggingPinId={draggingPinId}
-              openCreateFactory={openCreateFactory}
-              blockInteractionRef={blockInteractionRef}
-            />
-          )}
-        </div>
-
-        <MapSidebar connMap={connMap} facById={facById} />
-      </div>
+          ),
+          right: <MapSidebar connMap={connMap} facById={facById} />,
+        }}
+      />
     </div>
   );
 }
@@ -886,7 +893,7 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
   return (
     <aside
       data-m-hide=""
-      style={{ width: 316, flex: '0 0 316px', borderLeft: '1px solid #161A21', background: '#0B0C0F', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ flex: 1, minHeight: 0, background: '#0B0C0F', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       {body}
     </aside>

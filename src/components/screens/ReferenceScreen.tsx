@@ -3,6 +3,7 @@ import { BUILDINGS, ITEMS, RECIPES, fmt, initials, itemColor } from '../../data/
 import { rollupWorld } from '../../state/derive';
 import { useStore } from '../../state/store';
 import { ItemSquare, MONO, SG } from '../bits';
+import { SplitLayout } from '../SplitLayout';
 import type { Recipe } from '../../types';
 
 export function ReferenceScreen() {
@@ -187,8 +188,14 @@ export function ReferenceScreen() {
   }
 
   return (
-    <div data-m-screen="" data-m-stack="" style={{ position: 'absolute', inset: 0, display: 'flex', overflow: 'hidden' }}>
-      <div data-m-reflist="" style={{ width: 252, flex: '0 0 252px', borderRight: '1px solid #161A21', background: '#0C0D11', display: 'flex', flexDirection: 'column' }}>
+    <SplitLayout
+      id="reference"
+      screen
+      stackOnMobile
+      left={{ defaultWidth: 252, minWidth: 180, maxWidth: 380 }}
+      panes={{
+        left: (
+      <div data-m-reflist="" style={{ flex: 1, minHeight: 0, background: '#0C0D11', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '12px 12px 10px', borderBottom: '1px solid #161A21' }}>
           <input
             value={st.refSearch}
@@ -229,10 +236,13 @@ export function ReferenceScreen() {
           ))}
         </div>
       </div>
-
-      <div data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '24px 28px 60px' }}>
+        ),
+        main: (
+      <div data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', padding: '24px 28px 60px' }}>
         {detail}
       </div>
-    </div>
+        ),
+      }}
+    />
   );
 }

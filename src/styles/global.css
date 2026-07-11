@@ -131,6 +131,14 @@ select:focus {
     border-right: none !important;
     border-bottom: 1px solid #161a21 !important;
   }
+  [data-m-split-pane] {
+    width: 100% !important;
+    flex: none !important;
+  }
+  [data-m-split-handle],
+  [data-m-split-tab] {
+    display: none !important;
+  }
   [data-m-pad] {
     padding: 16px 14px 40px !important;
   }

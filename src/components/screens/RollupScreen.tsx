@@ -2,6 +2,7 @@ import { fmt, itemColor } from '../../data/gameData';
 import { rollupWorld } from '../../state/derive';
 import { useActions, useStore, useWorld } from '../../state/store';
 import { ItemSquare, MONO, SG } from '../bits';
+import { SplitLayout } from '../SplitLayout';
 
 export function RollupScreen() {
   const { st, up, openFactory } = useStore();
@@ -25,8 +26,14 @@ export function RollupScreen() {
   const rsb = fc && per[fc] ? { name: fc, ...per[fc], net: per[fc].produced - per[fc].consumed } : null;
 
   return (
-    <div data-m-screen="" data-m-stack="" style={{ position: 'absolute', inset: 0, display: 'flex', overflow: 'hidden' }}>
-      <div data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '22px 26px 60px' }}>
+    <SplitLayout
+      id="rollup"
+      screen
+      stackOnMobile
+      right={{ defaultWidth: 312, minWidth: 200, maxWidth: 420 }}
+      panes={{
+        main: (
+      <div data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', padding: '22px 26px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 6 }}>
           <h1 style={{ fontFamily: SG, fontWeight: 700, fontSize: 22, margin: 0 }}>World Rollup</h1>
           <span style={{ fontSize: 12.5, color: '#6B7280', paddingBottom: 3 }}>Net production across {world.factories.length} factories</span>
@@ -169,10 +176,11 @@ export function RollupScreen() {
           })}
         </div>
       </div>
-
+        ),
+        right: (
       <aside
         data-m-hide=""
-        style={{ width: 312, flex: '0 0 312px', borderLeft: '1px solid #161A21', background: '#0B0C0F', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ flex: 1, minHeight: 0, background: '#0B0C0F', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         {rsb ? (
           <>
@@ -244,7 +252,9 @@ export function RollupScreen() {
           </div>
         )}
       </aside>
-    </div>
+        ),
+      }}
+    />
   );
 }
 
