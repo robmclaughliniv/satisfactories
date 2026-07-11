@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fmt, initials, statusMeta } from '../../data/gameData';
 import { aggregate, rollupWorld } from '../../state/derive';
-import { buildFlows } from '../../state/flows';
+import { buildFlows, applyFlowOrder } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
@@ -81,21 +81,30 @@ function useDebouncedMapFocus() {
 interface MapPinProps {
   factory: Factory;
   hovered: boolean;
+  locked: boolean;
   dragging: boolean;
   onHover: (id: string | null) => void;
   onDragStart: (e: React.MouseEvent | React.TouchEvent, id: string, el: HTMLDivElement) => void;
+  onOpen: (id: string) => void;
 }
 
-const MapPin = memo(function MapPin({ factory: f, hovered, dragging, onHover, onDragStart }: MapPinProps) {
+const MapPin = memo(function MapPin({ factory: f, hovered, locked, dragging, onHover, onDragStart, onOpen }: MapPinProps) {
   const elRef = useRef<HTMLDivElement>(null);
+  const active = hovered || locked;
 
   return (
     <div
       ref={elRef}
+      data-map-pin=""
       onMouseEnter={() => onHover(f.id)}
       onMouseLeave={() => onHover(null)}
       onMouseDown={(e) => elRef.current && onDragStart(e, f.id, elRef.current)}
       onTouchStart={(e) => elRef.current && onDragStart(e, f.id, elRef.current)}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpen(f.id);
+      }}
       style={{
         position: 'absolute',
         left: `${f.x}%`,
@@ -105,7 +114,7 @@ const MapPin = memo(function MapPin({ factory: f, hovered, dragging, onHover, on
         marginLeft: -17,
         marginTop: -17,
         cursor: 'pointer',
-        zIndex: hovered || dragging ? 30 : 22,
+        zIndex: active || dragging ? 30 : 22,
         willChange: dragging ? 'left, top' : undefined,
       }}
     >
@@ -126,7 +135,7 @@ const MapPin = memo(function MapPin({ factory: f, hovered, dragging, onHover, on
           inset: 0,
           borderRadius: '50%',
           background: f.color,
-          border: `2px solid ${hovered ? '#fff' : 'rgba(255,255,255,.55)'}`,
+          border: `2px solid ${locked ? '#fff' : hovered ? '#fff' : 'rgba(255,255,255,.55)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -134,8 +143,10 @@ const MapPin = memo(function MapPin({ factory: f, hovered, dragging, onHover, on
           fontWeight: 700,
           fontSize: 11,
           color: '#0C0D11',
-          boxShadow: `0 3px 10px rgba(0,0,0,.5),0 0 0 ${hovered ? '4px' : '0px'} ${f.color}44`,
-          transform: `scale(${hovered ? 1.12 : 1})`,
+          boxShadow: locked
+            ? `0 3px 10px rgba(0,0,0,.5),0 0 0 5px ${f.color}88,0 0 0 8px rgba(255,255,255,.22)`
+            : `0 3px 10px rgba(0,0,0,.5),0 0 0 ${hovered ? '4px' : '0px'} ${f.color}44`,
+          transform: `scale(${locked ? 1.14 : hovered ? 1.12 : 1})`,
           transition: dragging ? 'none' : 'transform .12s',
         }}
       >
@@ -189,6 +200,7 @@ const MapRoutes = memo(function MapRoutes({ connections, facById, hoverRoute, an
               fill="none"
               stroke="rgba(0,0,0,0)"
               strokeWidth={2.6}
+              data-map-route-hit=""
               style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
               onMouseEnter={() => onRouteHover(c.key)}
               onMouseLeave={() => onRouteHover(null)}
@@ -206,9 +218,12 @@ interface MapViewportProps {
   facById: Record<string, Factory>;
   hoverPin: string | null;
   hoverRoute: string | null;
+  lockedPinId: string | null;
   setHoverPin: (id: string | null) => void;
   setHoverRoute: (key: string | null) => void;
   onPinDragStart: (e: React.MouseEvent | React.TouchEvent, id: string, el: HTMLDivElement) => void;
+  onPinOpen: (id: string) => void;
+  onClearLock: () => void;
   draggingPinId: string | null;
   openCreateFactory: () => void;
   blockInteractionRef: React.RefObject<boolean>;
@@ -220,9 +235,12 @@ function MapViewport({
   facById,
   hoverPin,
   hoverRoute,
+  lockedPinId,
   setHoverPin,
   setHoverRoute,
   onPinDragStart,
+  onPinOpen,
+  onClearLock,
   draggingPinId,
   openCreateFactory,
   blockInteractionRef,
@@ -244,6 +262,15 @@ function MapViewport({
     [setHoverPin],
   );
 
+  const onMapBackgroundClick = useCallback(
+    (e: React.MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('[data-map-pin]') || t.closest('[data-map-route-hit]')) return;
+      onClearLock();
+    },
+    [onClearLock],
+  );
+
   const worldLayerStyle: CSSProperties = {
     position: 'absolute',
     left: '50%',
@@ -263,6 +290,7 @@ function MapViewport({
         onWheel={onWheel}
         onMouseDown={onMouseDown}
         onTouchStart={onTouchStart}
+        onClick={onMapBackgroundClick}
         style={{
           position: 'absolute',
           inset: 0,
@@ -304,9 +332,11 @@ function MapViewport({
               key={f.id}
               factory={f}
               hovered={hoverPin === f.id}
+              locked={lockedPinId === f.id}
               dragging={draggingPinId === f.id}
               onHover={onPinHover}
               onDragStart={onPinDragStart}
+              onOpen={onPinOpen}
             />
           ))}
         </div>
@@ -381,8 +411,44 @@ export function MapScreen() {
 
   const mapElRef = useRef<HTMLDivElement | null>(null);
   const blockInteractionRef = useRef(false);
+  const mapLockRef = useRef(st.mapLock);
+  mapLockRef.current = st.mapLock;
+  const pinOpenTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const dragRef = useRef<{ id: string; moved: boolean; startX: number; startY: number; x: number; y: number; el: HTMLDivElement } | null>(null);
   const [draggingPinId, setDraggingPinId] = useState<string | null>(null);
+
+  const lockedPinId = st.mapLock?.type === 'factory' ? st.mapLock.id : null;
+
+  const clearLock = useCallback(() => {
+    up({ mapLock: null });
+  }, [up]);
+
+  const openPinDetail = useCallback(
+    (id: string) => {
+      clearTimeout(pinOpenTimerRef.current);
+      openFactory(id);
+    },
+    [openFactory],
+  );
+
+  const scheduleOpenPinDetail = useCallback(
+    (id: string) => {
+      clearTimeout(pinOpenTimerRef.current);
+      pinOpenTimerRef.current = setTimeout(() => openFactory(id), 280);
+    },
+    [openFactory],
+  );
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clearLock();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      clearTimeout(pinOpenTimerRef.current);
+    };
+  }, [clearLock]);
 
   const facs = world.factories;
 
@@ -393,7 +459,8 @@ export function MapScreen() {
 
       const mapEl = pinEl.parentElement;
       if (!mapEl) {
-        openFactory(id);
+        if (mapLockRef.current?.type === 'factory' && mapLockRef.current.id === id) scheduleOpenPinDetail(id);
+        else up({ mapLock: { type: 'factory', id }, mapFocus: { type: 'factory', id } });
         return;
       }
       mapElRef.current = mapEl as HTMLDivElement;
@@ -434,7 +501,8 @@ export function MapScreen() {
         setDraggingPinId(null);
         if (d) {
           if (d.moved) movePin(d.id, d.x, d.y);
-          else openFactory(d.id);
+          else if (mapLockRef.current?.type === 'factory' && mapLockRef.current.id === d.id) scheduleOpenPinDetail(d.id);
+          else up({ mapLock: { type: 'factory', id: d.id }, mapFocus: { type: 'factory', id: d.id } });
         }
       };
 
@@ -444,7 +512,7 @@ export function MapScreen() {
       window.addEventListener('touchend', finish);
       window.addEventListener('touchcancel', finish);
     },
-    [facs, openFactory, movePin, setHoverPin],
+    [facs, movePin, scheduleOpenPinDetail, setHoverPin, up],
   );
 
   const counts = useMemo(() => {
@@ -554,9 +622,12 @@ export function MapScreen() {
               facById={facById}
               hoverPin={hoverPin}
               hoverRoute={hoverRoute}
+              lockedPinId={lockedPinId}
               setHoverPin={setHoverPin}
               setHoverRoute={setHoverRoute}
               onPinDragStart={startPinDrag}
+              onPinOpen={openPinDetail}
+              onClearLock={clearLock}
               draggingPinId={draggingPinId}
               openCreateFactory={openCreateFactory}
               blockInteractionRef={blockInteractionRef}
@@ -572,15 +643,17 @@ export function MapScreen() {
 
 function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facById: Record<string, Factory> }) {
   const { st, up, openFactory } = useStore();
-  const { openLocalInput, openRoute } = useActions();
+  const { openLocalInput, openRoute, removeLocalInput, removeRoute, reorderFlows } = useActions();
   const world = useWorld();
   const facs = world.factories;
-  const mfoc = st.mapFocus;
+  const mfoc = st.mapLock ?? st.mapFocus;
+  const lockedFactoryId = st.mapLock?.type === 'factory' ? st.mapLock.id : null;
 
   let body: React.ReactNode;
 
   if (mfoc && mfoc.type === 'factory' && facById[mfoc.id]) {
     const f = facById[mfoc.id];
+    const isLocked = lockedFactoryId === f.id;
     const agg = aggregate(f);
     const sm = statusMeta(f.status);
     const produced = Object.keys(agg.per)
@@ -588,8 +661,14 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
       .map((i) => ({ item: i, out: agg.per[i].out }))
       .sort((a, b) => b.out - a.out);
     const flows = buildFlows(world, f, false);
-    const imports = flows.filter((fl) => fl.dir === 'import');
-    const exports = flows.filter((fl) => fl.dir === 'export');
+    const imports = applyFlowOrder(
+      flows.filter((fl) => fl.dir === 'import'),
+      f.importOrder,
+    );
+    const exportFlows = applyFlowOrder(
+      flows.filter((fl) => fl.dir === 'export'),
+      f.exportOrder,
+    );
     body = (
       <>
         <div style={{ height: 3, background: f.color }}></div>
@@ -626,18 +705,51 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
             Imports <span style={{ color: '#5E646E' }}>{imports.length}</span>
             <span style={{ fontSize: 9 }}>↓ in</span>
           </SectionLabel>
-          <FlowList
-            flows={flows}
-            expandedFlow={st.expandedFlow}
-            onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
-            emptyText="No routes connected. Draw one from the map."
-            onLegClick={(leg) => {
-              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-              else if (leg.routeId) openRoute(leg.routeId);
-            }}
-          />
+          <div style={{ borderLeft: '2px solid #F5A95B33', paddingLeft: 10, marginBottom: 18 }}>
+            <FlowList
+              flows={imports}
+              expandedFlow={st.expandedFlow}
+              onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+              emptyText="No imports yet."
+              onLegClick={(leg) => {
+                if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+                else if (leg.routeId) openRoute(leg.routeId);
+              }}
+              onLegDelete={(leg) => {
+                if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
+                else if (leg.routeId) removeRoute(leg.routeId);
+              }}
+              onReorder={(orderedItems) => reorderFlows(f.id, 'import', orderedItems)}
+            />
+          </div>
+          <SectionLabel color="#5BCB86" mb={8}>
+            Exports <span style={{ color: '#5E646E' }}>{exportFlows.length}</span>
+            <span style={{ fontSize: 9 }}>↑ out</span>
+          </SectionLabel>
+          <div style={{ borderLeft: '2px solid #5BCB8633', paddingLeft: 10 }}>
+            <FlowList
+              flows={exportFlows}
+              expandedFlow={st.expandedFlow}
+              onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+              emptyText="No exports yet."
+              onLegClick={(leg) => {
+                if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+                else if (leg.routeId) openRoute(leg.routeId);
+              }}
+              onLegDelete={(leg) => {
+                if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
+                else if (leg.routeId) removeRoute(leg.routeId);
+              }}
+              onReorder={(orderedItems) => reorderFlows(f.id, 'export', orderedItems)}
+            />
+          </div>
         </div>
         <div style={{ padding: '12px 14px', borderTop: '1px solid #161A21' }}>
+          {isLocked && (
+            <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 8 }}>
+              Click again or double-click to open
+            </div>
+          )}
           <button
             onClick={() => openFactory(f.id)}
             style={{ width: '100%', background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 8, padding: 9, fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}

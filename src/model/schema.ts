@@ -44,6 +44,9 @@ export const FactorySchema = z.object({
   sections: z.array(SectionSchema),
   /** On-site supply belted in from local nodes (miners, etc.). */
   localInputs: z.array(LocalInputSchema).default([]),
+  /** User-defined order of import/export resource rows (by item name). */
+  importOrder: z.array(z.string()).default([]),
+  exportOrder: z.array(z.string()).default([]),
   /** JSON snapshot of sections at last commit — used for the dirty indicator. */
   baseline: z.string(),
 });
@@ -66,7 +69,7 @@ export const WorldSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({

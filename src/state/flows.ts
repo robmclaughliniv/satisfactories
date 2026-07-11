@@ -70,7 +70,28 @@ export function buildFlows(world: World, f: Factory, includeMarked: boolean): Fl
       const A = flowMap[a];
       const B = flowMap[b];
       if (A.dir !== B.dir) return A.dir === 'import' ? -1 : 1;
-      return B.total - A.total;
+      return 0;
     })
-    .map((k) => flowMap[k]);
+    .map((k) => {
+      const flow = flowMap[k];
+      flow.legs.sort((a, b) => a.rate - b.rate);
+      return flow;
+    });
+}
+
+/** Apply a saved item-name order; unknown items keep relative discovery order at the end. */
+export function applyFlowOrder(flows: Flow[], order: string[] | undefined): Flow[] {
+  if (!order?.length) return flows;
+  const remaining = new Map(flows.map((fl) => [fl.item, fl]));
+  const ordered: Flow[] = [];
+  for (const item of order) {
+    const fl = remaining.get(item);
+    if (!fl) continue;
+    ordered.push(fl);
+    remaining.delete(item);
+  }
+  for (const fl of flows) {
+    if (remaining.has(fl.item)) ordered.push(fl);
+  }
+  return ordered;
 }

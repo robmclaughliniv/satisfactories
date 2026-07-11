@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
 import { aggregate, localInputByItem } from '../../state/derive';
-import { buildFlows } from '../../state/flows';
+import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel } from '../bits';
@@ -525,7 +525,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 function RightPanel({ f }: { f: Factory }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { pickRecipe, addFlowLeg, openLocalInput, openRoute } = useActions();
+  const { pickRecipe, addFlowLeg, openLocalInput, openRoute, removeLocalInput, removeRoute, reorderFlows } = useActions();
 
   const agg = aggregate(f);
   const pk = st.picker;
@@ -609,8 +609,38 @@ function RightPanel({ f }: { f: Factory }) {
       .map((i) => ({ item: i, out: agg.per[i].out }))
       .sort((a, b) => b.out - a.out);
     const flows = buildFlows(world, f, true);
-    const imports = flows.filter((fl) => fl.dir === 'import');
-    const exports = flows.filter((fl) => fl.dir === 'export');
+    const imports = applyFlowOrder(
+      flows.filter((fl) => fl.dir === 'import'),
+      f.importOrder,
+    );
+    const exportFlows = applyFlowOrder(
+      flows.filter((fl) => fl.dir === 'export'),
+      f.exportOrder,
+    );
+    const addTransportBtn = (fl: (typeof flows)[number], accent: string) => (
+      <button
+        onClick={() => addFlowLeg(fl.item, fl.dir, f.id)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: 'transparent',
+          border: '1px dashed #2A2F39',
+          color: '#8A909A',
+          borderRadius: 6,
+          padding: '5px 8px',
+          fontSize: 10.5,
+          cursor: 'pointer',
+          marginTop: 1,
+        }}
+      >
+        <span style={{ color: accent, fontWeight: 600 }}>＋</span> Add transport
+      </button>
+    );
+    const deleteLeg = (leg: { localInputId?: string; routeId?: string }) => {
+      if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
+      else if (leg.routeId) removeRoute(leg.routeId);
+    };
     content = (
       <>
         <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 14, marginBottom: 14 }}>Factory balance</div>
@@ -629,35 +659,21 @@ function RightPanel({ f }: { f: Factory }) {
           Imports <span style={{ color: '#5E646E' }}>{imports.length}</span>
           <span style={{ fontSize: 9 }}>↓ in</span>
         </SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 18 }}>
-          {localInputs.map((li) => (
-            <div
-              key={li.id}
-              onClick={() => openLocalInput(f.id, li.item, li.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 9,
-                background: '#101318',
-                border: '1px solid #1C2027',
-                borderRadius: 7,
-                padding: '6px 8px',
-                cursor: 'pointer',
-              }}
-            >
-              <ItemSquare item={li.item} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{li.item}</div>
-                <div style={{ fontSize: 9.5, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                  <TransportBadge t={li.t || 'Belt'} pad="1px 4px" />
-                  Local node
-                </div>
-              </div>
-              <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#F5A95B' }}>{fmt(li.rate)}/m</span>
-              <span style={{ fontSize: 9.5, color: '#5E646E' }}>Edit</span>
-            </div>
-          ))}
-          {localInputs.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>No local inputs — belt in ore from nearby nodes.</div>}
+        <div style={{ borderLeft: '2px solid #F5A95B33', paddingLeft: 10, marginBottom: 18 }}>
+          <FlowList
+            flows={imports}
+            expandedFlow={st.expandedFlow}
+            keyPrefix="d_"
+            onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+            emptyText="No imports yet."
+            onLegClick={(leg) => {
+              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+              else if (leg.routeId) openRoute(leg.routeId);
+            }}
+            onLegDelete={deleteLeg}
+            onReorder={(orderedItems) => reorderFlows(f.id, 'import', orderedItems)}
+            addLeg={(fl) => addTransportBtn(fl, '#F5A95B')}
+          />
           <button
             onClick={() => openLocalInput(f.id)}
             style={{
@@ -679,40 +695,25 @@ function RightPanel({ f }: { f: Factory }) {
         </div>
 
         <SectionLabel color="#5BCB86" mb={8}>
-          Exports <span style={{ color: '#5E646E' }}>{exports.length}</span>
+          Exports <span style={{ color: '#5E646E' }}>{exportFlows.length}</span>
           <span style={{ fontSize: 9 }}>↑ out</span>
         </SectionLabel>
-        <FlowList
-          flows={flows}
-          expandedFlow={st.expandedFlow}
-          keyPrefix="d_"
-          onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
-          emptyText="No routes connected. Draw one from the map."
-          onLegClick={(leg) => {
-            if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-            else if (leg.routeId) openRoute(leg.routeId);
-          }}
-          addLeg={(fl) => (
-            <button
-              onClick={() => addFlowLeg(fl.item, fl.dir, f.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'transparent',
-                border: '1px dashed #2A2F39',
-                color: '#8A909A',
-                borderRadius: 6,
-                padding: '5px 8px',
-                fontSize: 10.5,
-                cursor: 'pointer',
-                marginTop: 1,
-              }}
-            >
-              <span style={{ color: '#F5A95B', fontWeight: 600 }}>＋</span> Add transport
-            </button>
-          )}
-        />
+        <div style={{ borderLeft: '2px solid #5BCB8633', paddingLeft: 10 }}>
+          <FlowList
+            flows={exportFlows}
+            expandedFlow={st.expandedFlow}
+            keyPrefix="d_"
+            onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+            emptyText="No exports yet."
+            onLegClick={(leg) => {
+              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+              else if (leg.routeId) openRoute(leg.routeId);
+            }}
+            onLegDelete={deleteLeg}
+            onReorder={(orderedItems) => reorderFlows(f.id, 'export', orderedItems)}
+            addLeg={(fl) => addTransportBtn(fl, '#5BCB86')}
+          />
+        </div>
       </>
     );
   }

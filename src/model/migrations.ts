@@ -19,6 +19,10 @@ export function migratePersisted(raw: unknown): PersistedStateV2 | null {
     obj = migrateV2ToV3(obj);
   }
 
+  if (obj.schemaVersion === 3) {
+    obj = migrateV3ToV4(obj);
+  }
+
   if (obj.schemaVersion !== SCHEMA_VERSION) return null;
 
   const parsed = PersistedStateSchema.safeParse(obj);
@@ -59,6 +63,29 @@ function migrateV2ToV3(obj: Record<string, unknown>): Record<string, unknown> {
               return {
                 ...factory,
                 localInputs: Array.isArray(factory.localInputs) ? factory.localInputs : [],
+              };
+            })
+          : world.factories;
+        return { ...world, factories };
+      })
+    : obj.worlds;
+  return { ...obj, schemaVersion: 3, worlds };
+}
+
+/** v3 → v4: add importOrder[] / exportOrder[] to each factory. */
+function migrateV3ToV4(obj: Record<string, unknown>): Record<string, unknown> {
+  const worlds = Array.isArray(obj.worlds)
+    ? obj.worlds.map((w) => {
+        if (w === null || typeof w !== 'object') return w;
+        const world = w as Record<string, unknown>;
+        const factories = Array.isArray(world.factories)
+          ? world.factories.map((f) => {
+              if (f === null || typeof f !== 'object') return f;
+              const factory = f as Record<string, unknown>;
+              return {
+                ...factory,
+                importOrder: Array.isArray(factory.importOrder) ? factory.importOrder : [],
+                exportOrder: Array.isArray(factory.exportOrder) ? factory.exportOrder : [],
               };
             })
           : world.factories;

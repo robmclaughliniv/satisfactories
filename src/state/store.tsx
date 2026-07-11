@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { defaultTransportForItem } from '../data/gameData';
 import { SAMPLE_WORLD } from '../data/templates';
 import { migratePersisted } from '../model/migrations';
 import { SCHEMA_VERSION, type PersistedStateV2 } from '../model/schema';
@@ -290,6 +291,8 @@ export function useActions() {
         y: 45 + (Math.random() * 10 - 5),
         sections: [],
         localInputs: [],
+        importOrder: [],
+        exportOrder: [],
         baseline: JSON.stringify([]),
       });
     });
@@ -307,7 +310,7 @@ export function useActions() {
     }
     const facs = world.factories;
     if (facs.length < 2) return;
-    up({ routeModal: { from: facs[0].id, to: facs[1].id, item: 'Iron Rod', rate: 60, t: 'Belt' } });
+    up({ routeModal: { from: facs[0].id, to: facs[1].id, item: 'Iron Rod', rate: 60, t: defaultTransportForItem('Iron Rod') } });
   };
 
   const addFlowLeg = (item: string, dir: 'export' | 'import', factoryId: string) => {
@@ -315,10 +318,11 @@ export function useActions() {
     const facs = world.factories;
     const other = facs.find((x) => x.id !== factoryId);
     const partner = other ? other.id : factoryId;
+    const t = defaultTransportForItem(item);
     const modal: RouteModalState =
       dir === 'export'
-        ? { from: factoryId, to: partner, item, rate: 60, t: 'Belt' }
-        : { from: partner, to: factoryId, item, rate: 60, t: 'Belt' };
+        ? { from: factoryId, to: partner, item, rate: 60, t }
+        : { from: partner, to: factoryId, item, rate: 60, t };
     up({ routeModal: modal });
   };
 
@@ -334,7 +338,7 @@ export function useActions() {
           r.to = m.to;
           r.item = m.item;
           r.rate = rate;
-          r.t = (m.t || 'Belt') as Transport;
+          r.t = (m.t || defaultTransportForItem(m.item)) as Transport;
         }
       } else {
         w.routes.push({
@@ -343,7 +347,7 @@ export function useActions() {
           to: m.to,
           item: m.item,
           rate,
-          t: (m.t || 'Belt') as Transport,
+          t: (m.t || defaultTransportForItem(m.item)) as Transport,
         });
       }
     });
@@ -371,7 +375,7 @@ export function useActions() {
         factoryId,
         item: item || 'Iron Ore',
         rate: rate ?? 60,
-        t: 'Belt',
+        t: defaultTransportForItem(item || 'Iron Ore'),
         editingId,
       },
     });
@@ -390,14 +394,14 @@ export function useActions() {
         if (li) {
           li.item = m.item;
           li.rate = rate;
-          li.t = (m.t || 'Belt') as Transport;
+          li.t = (m.t || defaultTransportForItem(m.item)) as Transport;
         }
       } else {
         f.localInputs.push({
           id: 'li_' + Date.now(),
           item: m.item,
           rate,
-          t: (m.t || 'Belt') as Transport,
+          t: (m.t || defaultTransportForItem(m.item)) as Transport,
         });
       }
     });
@@ -410,6 +414,15 @@ export function useActions() {
       if (f) f.localInputs = (f.localInputs || []).filter((x) => x.id !== inputId);
     });
     up({ localInputModal: null });
+  };
+
+  const reorderFlows = (factoryId: string, dir: 'import' | 'export', orderedItems: string[]) => {
+    mutateWorld((w) => {
+      const f = w.factories.find((x) => x.id === factoryId);
+      if (!f) return;
+      if (dir === 'import') f.importOrder = orderedItems;
+      else f.exportOrder = orderedItems;
+    });
   };
 
   const toggleFav = (name: string) => {
@@ -487,6 +500,7 @@ export function useActions() {
     openLocalInput,
     saveLocalInput,
     removeLocalInput,
+    reorderFlows,
     toggleFav,
     createWorld,
     loadSampleWorld,

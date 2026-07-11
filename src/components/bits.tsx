@@ -1,9 +1,13 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { fmt, initials, itemColor, transportColor } from '../data/gameData';
 import type { Flow, FlowLeg } from '../state/flows';
 
 export const SG = "'Space Grotesk'";
 export const MONO = "'IBM Plex Mono'";
+
+const TRASH_ICON =
+  '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>';
 
 /** Colored square tile with item initials. */
 export function ItemSquare({
@@ -68,6 +72,77 @@ export function TransportBadge({ t, pad = '1px 5px' }: { t: string; pad?: string
   );
 }
 
+function FlowLegRow({
+  leg,
+  onLegClick,
+  onLegDelete,
+}: {
+  leg: FlowLeg;
+  onLegClick?: (leg: FlowLeg) => void;
+  onLegDelete?: (leg: FlowLeg) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const editable = !!(leg.routeId || leg.localInputId);
+  const deletable = editable && !!onLegDelete;
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={editable && onLegClick ? () => onLegClick(leg) : undefined}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: editable && onLegClick ? 'pointer' : undefined,
+        borderRadius: 5,
+        padding: '2px 4px',
+        margin: '-2px -4px',
+        background: hovered && editable ? '#12151B' : undefined,
+      }}
+    >
+      {onLegDelete ? (
+        deletable ? (
+          <button
+            type="button"
+            title="Delete source"
+            aria-label="Delete source"
+            onClick={(e) => {
+              e.stopPropagation();
+              onLegDelete(leg);
+            }}
+            style={{
+              width: 16,
+              height: 16,
+              flex: '0 0 auto',
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              color: '#E5604D',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: hovered ? 1 : 0,
+              pointerEvents: hovered ? 'auto' : 'none',
+            }}
+            dangerouslySetInnerHTML={svgIcon(TRASH_ICON, 13)}
+          />
+        ) : (
+          <span style={{ width: 16, flex: '0 0 auto' }} />
+        )
+      ) : null}
+      <TransportBadge t={leg.transport} />
+      <span style={{ width: 7, height: 7, borderRadius: 2, background: leg.color, flex: '0 0 auto' }}></span>
+      <span style={{ flex: 1, fontSize: 11, color: '#AEB4BE', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {leg.partner}
+      </span>
+      <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}</span>
+      {editable && onLegClick && <span style={{ fontSize: 9.5, color: '#5E646E' }}>Edit</span>}
+    </div>
+  );
+}
+
 /**
  * Expandable exports & imports list (used in the map sidebar and factory
  * detail balance panel).
@@ -80,6 +155,8 @@ export function FlowList({
   emptyText,
   addLeg,
   onLegClick,
+  onLegDelete,
+  onReorder,
 }: {
   flows: Flow[];
   expandedFlow: Record<string, boolean>;
@@ -88,27 +165,122 @@ export function FlowList({
   emptyText: string;
   addLeg?: (flow: Flow) => ReactNode;
   onLegClick?: (leg: FlowLeg) => void;
+  onLegDelete?: (leg: FlowLeg) => void;
+  onReorder?: (orderedItems: string[]) => void;
 }) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const didDragRef = useRef(false);
+  const reorderable = !!onReorder;
+
+  const finishReorder = (from: number, to: number) => {
+    if (!onReorder || from === to || from < 0 || to < 0 || from >= flows.length || to >= flows.length) return;
+    const next = flows.map((fl) => fl.item);
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onReorder(next);
+  };
+
+  const clearDrag = () => {
+    dragIndexRef.current = null;
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {flows.map((fl) => {
+      {flows.map((fl, index) => {
         const exp = !!expandedFlow[keyPrefix + fl.key];
+        const isDragging = dragIndex === index;
+        const isOver = overIndex === index && dragIndex !== null && dragIndex !== index;
         return (
-          <div key={fl.key} style={{ border: '1px solid #20242D', borderRadius: 8, overflow: 'hidden' }}>
+          <div
+            key={fl.key}
+            onDragOver={(e) => {
+              if (!reorderable) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (dragIndexRef.current !== null && overIndex !== index) setOverIndex(index);
+            }}
+            onDrop={(e) => {
+              if (!reorderable) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const from = dragIndexRef.current ?? parseInt(e.dataTransfer.getData('text/plain'), 10);
+              finishReorder(from, index);
+              clearDrag();
+            }}
+            style={{
+              border: `1px solid ${isOver ? '#F5882E66' : '#20242D'}`,
+              borderRadius: 8,
+              overflow: 'hidden',
+              opacity: isDragging ? 0.55 : 1,
+              boxShadow: isOver ? 'inset 0 2px 0 #F5882E' : undefined,
+            }}
+          >
             <div
-              onClick={() => onToggle(keyPrefix + fl.key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 9px', cursor: 'pointer', background: '#0F1116' }}
+              draggable={reorderable}
+              onDragStart={(e) => {
+                if (!reorderable) return;
+                didDragRef.current = true;
+                dragIndexRef.current = index;
+                setDragIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(index));
+                // Transparent drag image can fail in some browsers; keep default ghost.
+              }}
+              onDragEnd={() => {
+                // Click fires after dragend — swallow the expand toggle.
+                requestAnimationFrame(() => {
+                  didDragRef.current = false;
+                });
+                clearDrag();
+              }}
+              onClick={() => {
+                if (didDragRef.current) {
+                  didDragRef.current = false;
+                  return;
+                }
+                onToggle(keyPrefix + fl.key);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 9,
+                padding: '7px 9px',
+                cursor: reorderable ? 'grab' : 'pointer',
+                background: '#0F1116',
+                userSelect: 'none',
+              }}
             >
-              <span style={{ width: 11, textAlign: 'center', color: '#5E646E', fontSize: 9 }}>{exp ? '▾' : '▸'}</span>
+              {reorderable && (
+                <span
+                  title="Drag to reorder"
+                  style={{
+                    width: 10,
+                    color: '#5E646E',
+                    fontSize: 11,
+                    letterSpacing: -1,
+                    flex: '0 0 auto',
+                    lineHeight: 1,
+                    pointerEvents: 'none',
+                  }}
+                  aria-hidden
+                >
+                  ⠿
+                </span>
+              )}
+              <span style={{ width: 11, textAlign: 'center', color: '#5E646E', fontSize: 9, pointerEvents: 'none' }}>{exp ? '▾' : '▸'}</span>
               <ItemSquare item={fl.item} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
                 <div style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fl.item}</div>
                 <div style={{ fontSize: 9.5, color: '#6B7280' }}>
                   {fl.legs.length}
                   {fl.legs.length === 1 ? ' source' : ' sources'}
                 </div>
               </div>
-              <span style={{ fontFamily: MONO, fontSize: 11.5, color: fl.dir === 'export' ? '#5BCB86' : '#F5A95B' }}>
+              <span style={{ fontFamily: MONO, fontSize: 11.5, color: fl.dir === 'export' ? '#5BCB86' : '#F5A95B', pointerEvents: 'none' }}>
                 {(fl.dir === 'export' ? '↑ ' : '↓ ') + fmt(fl.total) + '/m'}
               </span>
             </div>
@@ -123,31 +295,9 @@ export function FlowList({
                   gap: 6,
                 }}
               >
-                {fl.legs.map((leg, i) => {
-                  const editable = !!(leg.routeId || leg.localInputId);
-                  return (
-                    <div
-                      key={i}
-                      onClick={editable && onLegClick ? () => onLegClick(leg) : undefined}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        cursor: editable && onLegClick ? 'pointer' : undefined,
-                        borderRadius: 5,
-                        padding: editable && onLegClick ? '2px 4px' : undefined,
-                        margin: editable && onLegClick ? '-2px -4px' : undefined,
-                      }}
-                    >
-                      <TransportBadge t={leg.transport} />
-                      <span style={{ width: 7, height: 7, borderRadius: 2, background: leg.color, flex: '0 0 auto' }}></span>
-                      <span style={{ flex: 1, fontSize: 11, color: '#AEB4BE', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {leg.partner}
-                      </span>
-                      <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}</span>
-                    </div>
-                  );
-                })}
+                {fl.legs.map((leg, i) => (
+                  <FlowLegRow key={i} leg={leg} onLegClick={onLegClick} onLegDelete={onLegDelete} />
+                ))}
                 {addLeg?.(fl)}
               </div>
             )}

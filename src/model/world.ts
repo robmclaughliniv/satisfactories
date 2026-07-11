@@ -28,6 +28,9 @@ export function instantiateTemplate(template: WorldTemplate): World {
   const now = new Date().toISOString();
   const factories: Factory[] = template.factories.map((f) => ({
     ...JSON.parse(JSON.stringify(f)),
+    localInputs: f.localInputs ?? [],
+    importOrder: f.importOrder ?? [],
+    exportOrder: f.exportOrder ?? [],
     baseline: JSON.stringify(f.sections),
   }));
   return {

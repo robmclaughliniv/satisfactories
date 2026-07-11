@@ -15,6 +15,21 @@ export const TYPES = ['Mega-factory', 'Mid-sized Factory', 'Mini-factory', 'Tran
 
 export const TRANSPORTS: Transport[] = ['Belt', 'Train', 'Truck', 'Drone', 'Pipe'];
 
+const SOLID_FUELS = new Set(['Biomass', 'Compacted Coal', 'Petroleum Coke', 'Solid Biofuel']);
+
+/** True for piped fluids/gases (excludes packaged variants, which are solid). */
+export function isFluidItem(item: string): boolean {
+  if (item.startsWith('Packaged ')) return false;
+  const cat = ITEMS[item]?.cat;
+  if (cat === 'Raw Fluid' || cat === 'Fluid' || cat === 'Gas') return true;
+  if (cat === 'Fuel' && !SOLID_FUELS.has(item)) return true;
+  return false;
+}
+
+export function defaultTransportForItem(item: string): Transport {
+  return isFluidItem(item) ? 'Pipe' : 'Belt';
+}
+
 export function fmt(n: number): string {
   const r = Math.round(n * 1000) / 1000;
   return Number.isInteger(r) ? String(r) : String(parseFloat(r.toFixed(3)));
