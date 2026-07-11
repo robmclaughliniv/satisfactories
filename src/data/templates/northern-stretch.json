@@ -8,7 +8,10 @@
       "status": "operational",
       "tier": "Mega-factory",
       "tagline": "Backbone iron supply feeding the northern assembly grid.",
-      "tags": ["Iron", "Smelting"],
+      "tags": [
+        "Iron",
+        "Smelting"
+      ],
       "cover": "",
       "x": 27,
       "y": 31,
@@ -17,16 +20,32 @@
           "id": "s_smelt",
           "name": "Smelting",
           "rows": [
-            { "id": "s_smelt_r0", "recipeId": "iron_ingot", "count": 16 }
+            {
+              "id": "s_smelt_r0",
+              "recipeId": "iron_ingot",
+              "count": 16
+            }
           ]
         },
         {
           "id": "s_basic",
           "name": "Plate & Rod Line",
           "rows": [
-            { "id": "s_basic_r0", "recipeId": "iron_plate", "count": 8 },
-            { "id": "s_basic_r1", "recipeId": "iron_rod", "count": 9 },
-            { "id": "s_basic_r2", "recipeId": "screw", "count": 4 }
+            {
+              "id": "s_basic_r0",
+              "recipeId": "iron_plate",
+              "count": 8
+            },
+            {
+              "id": "s_basic_r1",
+              "recipeId": "iron_rod",
+              "count": 9
+            },
+            {
+              "id": "s_basic_r2",
+              "recipeId": "screws",
+              "count": 4
+            }
           ]
         }
       ]
@@ -38,7 +57,10 @@
       "status": "operational",
       "tier": "Transport Depot",
       "tagline": "Copper smelting and wiring hub for the western shoreline.",
-      "tags": ["Copper", "Wiring"],
+      "tags": [
+        "Copper",
+        "Wiring"
+      ],
       "cover": "",
       "x": 19,
       "y": 56,
@@ -47,15 +69,27 @@
           "id": "p_smelt",
           "name": "Copper Smelting",
           "rows": [
-            { "id": "p_smelt_r0", "recipeId": "copper_ingot", "count": 10 }
+            {
+              "id": "p_smelt_r0",
+              "recipeId": "copper_ingot",
+              "count": 10
+            }
           ]
         },
         {
           "id": "p_wire",
           "name": "Wire & Cable",
           "rows": [
-            { "id": "p_wire_r0", "recipeId": "wire", "count": 8 },
-            { "id": "p_wire_r1", "recipeId": "cable", "count": 4 }
+            {
+              "id": "p_wire_r0",
+              "recipeId": "wire",
+              "count": 8
+            },
+            {
+              "id": "p_wire_r1",
+              "recipeId": "cable",
+              "count": 4
+            }
           ]
         }
       ]
@@ -67,7 +101,10 @@
       "status": "operational",
       "tier": "Mid-sized Factory",
       "tagline": "Heavy steel production — ingots, beams and pipes.",
-      "tags": ["Steel", "Heavy"],
+      "tags": [
+        "Steel",
+        "Heavy"
+      ],
       "cover": "",
       "x": 49,
       "y": 51,
@@ -76,15 +113,27 @@
           "id": "v_found",
           "name": "Steel Foundry",
           "rows": [
-            { "id": "v_found_r0", "recipeId": "steel_ingot", "count": 12 }
+            {
+              "id": "v_found_r0",
+              "recipeId": "steel_ingot",
+              "count": 12
+            }
           ]
         },
         {
           "id": "v_stock",
           "name": "Steel Stock",
           "rows": [
-            { "id": "v_stock_r0", "recipeId": "steel_beam", "count": 6 },
-            { "id": "v_stock_r1", "recipeId": "steel_pipe", "count": 6 }
+            {
+              "id": "v_stock_r0",
+              "recipeId": "steel_beam",
+              "count": 6
+            },
+            {
+              "id": "v_stock_r1",
+              "recipeId": "steel_pipe",
+              "count": 6
+            }
           ]
         }
       ]
@@ -96,7 +145,10 @@
       "status": "operational",
       "tier": "Mini-factory",
       "tagline": "Caterium refining and quickwire for the electronics tree.",
-      "tags": ["Caterium", "Electronics"],
+      "tags": [
+        "Caterium",
+        "Electronics"
+      ],
       "cover": "",
       "x": 71,
       "y": 23,
@@ -105,14 +157,22 @@
           "id": "a_ref",
           "name": "Refining",
           "rows": [
-            { "id": "a_ref_r0", "recipeId": "caterium_ingot", "count": 8 }
+            {
+              "id": "a_ref_r0",
+              "recipeId": "caterium_ingot",
+              "count": 8
+            }
           ]
         },
         {
           "id": "a_qw",
           "name": "Quickwire Line",
           "rows": [
-            { "id": "a_qw_r0", "recipeId": "quickwire", "count": 6 }
+            {
+              "id": "a_qw_r0",
+              "recipeId": "quickwire",
+              "count": 6
+            }
           ]
         }
       ]
@@ -124,7 +184,10 @@
       "status": "construction",
       "tier": "Mega-factory",
       "tagline": "Frame megafactory — the heart of the heavy build pipeline.",
-      "tags": ["Frames", "Assembly"],
+      "tags": [
+        "Frames",
+        "Assembly"
+      ],
       "cover": "",
       "x": 67,
       "y": 47,
@@ -133,21 +196,33 @@
           "id": "at_rip",
           "name": "Reinforced Plates",
           "rows": [
-            { "id": "at_rip_r0", "recipeId": "reinforced_iron_plate", "count": 6 }
+            {
+              "id": "at_rip_r0",
+              "recipeId": "reinforced_iron_plate",
+              "count": 6
+            }
           ]
         },
         {
           "id": "at_mf",
           "name": "Modular Frames",
           "rows": [
-            { "id": "at_mf_r0", "recipeId": "modular_frame", "count": 6 }
+            {
+              "id": "at_mf_r0",
+              "recipeId": "modular_frame",
+              "count": 6
+            }
           ]
         },
         {
           "id": "at_hmf",
           "name": "Heavy Frame Line",
           "rows": [
-            { "id": "at_hmf_r0", "recipeId": "heavy_modular_frame", "count": 4 }
+            {
+              "id": "at_hmf_r0",
+              "recipeId": "heavy_modular_frame",
+              "count": 4
+            }
           ]
         }
       ]
@@ -159,7 +234,10 @@
       "status": "planned",
       "tier": "Mid-sized Factory",
       "tagline": "Concrete and encased beams staged for the southern expansion.",
-      "tags": ["Concrete", "Beams"],
+      "tags": [
+        "Concrete",
+        "Beams"
+      ],
       "cover": "",
       "x": 47,
       "y": 70,
@@ -168,27 +246,91 @@
           "id": "m_conc",
           "name": "Concrete",
           "rows": [
-            { "id": "m_conc_r0", "recipeId": "concrete", "count": 8 }
+            {
+              "id": "m_conc_r0",
+              "recipeId": "concrete",
+              "count": 8
+            }
           ]
         },
         {
           "id": "m_beam",
           "name": "Encased Beams",
           "rows": [
-            { "id": "m_beam_r0", "recipeId": "encased_industrial_beam", "count": 6 }
+            {
+              "id": "m_beam_r0",
+              "recipeId": "encased_industrial_beam",
+              "count": 6
+            }
           ]
         }
       ]
     }
   ],
   "routes": [
-    { "id": "rt1", "from": "cygnus", "to": "atlas", "item": "Iron Rod", "rate": 75, "t": "Train" },
-    { "id": "rt1b", "from": "cygnus", "to": "atlas", "item": "Iron Rod", "rate": 60, "t": "Belt" },
-    { "id": "rt2", "from": "cygnus", "to": "atlas", "item": "Screw", "rate": 160, "t": "Train" },
-    { "id": "rt3", "from": "vulcan", "to": "atlas", "item": "Steel Pipe", "rate": 120, "t": "Pipe" },
-    { "id": "rt4", "from": "vulcan", "to": "meridian", "item": "Steel Beam", "rate": 90, "t": "Truck" },
-    { "id": "rt5", "from": "meridian", "to": "atlas", "item": "Encased Industrial Beam", "rate": 30, "t": "Belt" },
-    { "id": "rt5b", "from": "vulcan", "to": "atlas", "item": "Encased Industrial Beam", "rate": 18, "t": "Drone" },
-    { "id": "rt6", "from": "aurum", "to": "polaris", "item": "Quickwire", "rate": 120, "t": "Drone" }
+    {
+      "id": "rt1",
+      "from": "cygnus",
+      "to": "atlas",
+      "item": "Iron Rod",
+      "rate": 75,
+      "t": "Train"
+    },
+    {
+      "id": "rt1b",
+      "from": "cygnus",
+      "to": "atlas",
+      "item": "Iron Rod",
+      "rate": 60,
+      "t": "Belt"
+    },
+    {
+      "id": "rt2",
+      "from": "cygnus",
+      "to": "atlas",
+      "item": "Screws",
+      "rate": 160,
+      "t": "Train"
+    },
+    {
+      "id": "rt3",
+      "from": "vulcan",
+      "to": "atlas",
+      "item": "Steel Pipe",
+      "rate": 120,
+      "t": "Pipe"
+    },
+    {
+      "id": "rt4",
+      "from": "vulcan",
+      "to": "meridian",
+      "item": "Steel Beam",
+      "rate": 90,
+      "t": "Truck"
+    },
+    {
+      "id": "rt5",
+      "from": "meridian",
+      "to": "atlas",
+      "item": "Encased Industrial Beam",
+      "rate": 30,
+      "t": "Belt"
+    },
+    {
+      "id": "rt5b",
+      "from": "vulcan",
+      "to": "atlas",
+      "item": "Encased Industrial Beam",
+      "rate": 18,
+      "t": "Drone"
+    },
+    {
+      "id": "rt6",
+      "from": "aurum",
+      "to": "polaris",
+      "item": "Quickwire",
+      "rate": 120,
+      "t": "Drone"
+    }
   ]
 }
