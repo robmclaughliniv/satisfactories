@@ -17,12 +17,13 @@ const labelStyle = { fontSize: 11, color: '#8A909A', display: 'block', marginBot
 
 export function RouteModal() {
   const { st, up, world } = useStore();
-  const { saveRoute } = useActions();
+  const { saveRoute, removeRoute } = useActions();
   const m = st.routeModal;
   if (!m || !world) return null;
 
   const upd = (patch: Partial<typeof m>) => up({ routeModal: { ...m, ...patch } });
   const close = () => up({ routeModal: null });
+  const editing = !!m.editingId;
 
   return (
     <div
@@ -35,7 +36,7 @@ export function RouteModal() {
         style={{ width: 460, background: '#101218', border: '1px solid #262B34', borderRadius: 16, boxShadow: '0 30px 80px rgba(0,0,0,.6)' }}
       >
         <div style={{ padding: '18px 22px', borderBottom: '1px solid #1C2027', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 16, flex: 1 }}>Draw a route</div>
+          <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 16, flex: 1 }}>{editing ? 'Edit route' : 'Draw a route'}</div>
           <span onClick={close} style={{ color: '#6B7280', cursor: 'pointer', fontSize: 20 }}>
             ×
           </span>
@@ -97,6 +98,14 @@ export function RouteModal() {
           </div>
         </div>
         <div style={{ padding: '16px 22px', borderTop: '1px solid #1C2027', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          {editing && (
+            <button
+              onClick={() => removeRoute(m.editingId!)}
+              style={{ background: 'transparent', border: '1px solid #3A2020', color: '#E5604D', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontSize: 13, marginRight: 'auto' }}
+            >
+              Delete
+            </button>
+          )}
           <button onClick={close} style={{ background: 'transparent', border: '1px solid #2A2F39', color: '#C2C8D2', borderRadius: 8, padding: '9px 16px', cursor: 'pointer', fontSize: 13 }}>
             Cancel
           </button>
@@ -104,7 +113,7 @@ export function RouteModal() {
             onClick={saveRoute}
             style={{ background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 8, padding: '9px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
           >
-            Draw route
+            {editing ? 'Save' : 'Draw route'}
           </button>
         </div>
       </div>

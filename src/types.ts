@@ -37,6 +37,8 @@ export type MapFocus =
   | { type: 'route'; key: string }
   | null;
 
+export type MapLock = { type: 'factory'; id: string } | null;
+
 export interface PickerState {
   mode: 'add' | 'edit';
   factoryId: string;
@@ -61,6 +63,7 @@ export interface RouteModalState {
   item: string;
   rate: number | string;
   t: Transport;
+  editingId?: string;
 }
 
 export interface LocalInputModalState {

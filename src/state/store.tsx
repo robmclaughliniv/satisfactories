@@ -8,6 +8,7 @@ import type {
   Factory,
   LocalInputModalState,
   MapFocus,
+  MapLock,
   PickerState,
   RouteModalState,
   Screen,
@@ -25,6 +26,7 @@ export interface AppState {
   hoverPin: string | null;
   hoverRoute: string | null;
   mapFocus: MapFocus;
+  mapLock: MapLock;
   expandedFlow: Record<string, boolean>;
   expanded: Record<string, boolean>;
   picker: PickerState | null;
@@ -80,6 +82,7 @@ function initialState(): AppState {
     hoverPin: null,
     hoverRoute: null,
     mapFocus: null,
+    mapLock: null,
     expandedFlow: {},
     expanded: {},
     picker: null,
@@ -143,7 +146,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const go = useCallback(
-    (screen: Screen) => up({ screen, worldMenuOpen: false, drillItem: null }),
+    (screen: Screen) =>
+      up({
+        screen,
+        worldMenuOpen: false,
+        drillItem: null,
+        ...(screen !== 'map' ? { mapLock: null } : {}),
+      }),
     [up],
   );
 
@@ -287,8 +296,15 @@ export function useActions() {
     up({ factoryModal: null, screen: 'factory', selFactory: id });
   };
 
-  const openRoute = () => {
+  const openRoute = (editingId?: string) => {
     if (!world) return;
+    if (editingId) {
+      const r = world.routes.find((x) => x.id === editingId);
+      if (r) {
+        up({ routeModal: { from: r.from, to: r.to, item: r.item, rate: r.rate, t: r.t, editingId } });
+        return;
+      }
+    }
     const facs = world.factories;
     if (facs.length < 2) return;
     up({ routeModal: { from: facs[0].id, to: facs[1].id, item: 'Iron Rod', rate: 60, t: 'Belt' } });
@@ -309,15 +325,34 @@ export function useActions() {
   const saveRoute = () => {
     const m = st.routeModal;
     if (!m || !m.from || !m.to || m.from === m.to) return;
+    const rate = Math.max(0, parseFloat(String(m.rate)) || 0);
     mutateWorld((w) => {
-      w.routes.push({
-        id: 'rt_' + Date.now(),
-        from: m.from,
-        to: m.to,
-        item: m.item,
-        rate: Math.max(0, parseFloat(String(m.rate)) || 0),
-        t: (m.t || 'Belt') as Transport,
-      });
+      if (m.editingId) {
+        const r = w.routes.find((x) => x.id === m.editingId);
+        if (r) {
+          r.from = m.from;
+          r.to = m.to;
+          r.item = m.item;
+          r.rate = rate;
+          r.t = (m.t || 'Belt') as Transport;
+        }
+      } else {
+        w.routes.push({
+          id: 'rt_' + Date.now(),
+          from: m.from,
+          to: m.to,
+          item: m.item,
+          rate,
+          t: (m.t || 'Belt') as Transport,
+        });
+      }
+    });
+    up({ routeModal: null });
+  };
+
+  const removeRoute = (routeId: string) => {
+    mutateWorld((w) => {
+      w.routes = w.routes.filter((x) => x.id !== routeId);
     });
     up({ routeModal: null });
   };
@@ -388,7 +423,7 @@ export function useActions() {
       const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
       const w = createEmptyWorld('New Save ' + (worlds.length + 1));
       worlds.push(w);
-      return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null };
+      return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null, mapLock: null };
     });
   };
 
@@ -397,7 +432,7 @@ export function useActions() {
       const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
       const w = instantiateTemplate(SAMPLE_WORLD);
       worlds.push(w);
-      return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null };
+      return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null, mapLock: null };
     });
   };
 
@@ -420,6 +455,7 @@ export function useActions() {
       worldId: s.worldId === id ? null : s.worldId,
       selFactory: s.worldId === id ? null : s.selFactory,
       screen: s.worldId === id ? ('worlds' as Screen) : s.screen,
+      mapLock: s.worldId === id ? null : s.mapLock,
     }));
   };
 
@@ -447,6 +483,7 @@ export function useActions() {
     openRoute,
     addFlowLeg,
     saveRoute,
+    removeRoute,
     openLocalInput,
     saveLocalInput,
     removeLocalInput,

@@ -250,24 +250,69 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
                         <span style={{ fontFamily: MONO, fontSize: 10.5, color: stt.color }}>{stt.value}</span>
                       </div>
                     ))}
-                    {deficit && (
-                      <button
-                        onClick={() => openLocalInput(f.id, rb.item, undefined, -rb.net)}
-                        style={{
-                          marginTop: 6,
-                          background: 'transparent',
-                          border: '1px dashed #3A2020',
-                          color: '#E5604D',
-                          borderRadius: 6,
-                          padding: '5px 8px',
-                          fontSize: 10,
-                          cursor: 'pointer',
-                          width: '100%',
-                        }}
-                      >
-                        ＋ Add local input
-                      </button>
-                    )}
+                    {deficit && (() => {
+                      const existingLocal = (f.localInputs || []).find((li) => li.item === rb.item);
+                      if (existingLocal) {
+                        return (
+                          <button
+                            onClick={() => openLocalInput(f.id, rb.item, existingLocal.id)}
+                            style={{
+                              marginTop: 6,
+                              background: 'transparent',
+                              border: '1px dashed #2A3040',
+                              color: '#8B9DC3',
+                              borderRadius: 6,
+                              padding: '5px 8px',
+                              fontSize: 10,
+                              cursor: 'pointer',
+                              width: '100%',
+                            }}
+                          >
+                            Edit local input
+                          </button>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={() => openLocalInput(f.id, rb.item, undefined, -rb.net)}
+                          style={{
+                            marginTop: 6,
+                            background: 'transparent',
+                            border: '1px dashed #3A2020',
+                            color: '#E5604D',
+                            borderRadius: 6,
+                            padding: '5px 8px',
+                            fontSize: 10,
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                        >
+                          ＋ Add local input
+                        </button>
+                      );
+                    })()}
+                    {!deficit && rb.local > 0.001 && (() => {
+                      const existingLocal = (f.localInputs || []).find((li) => li.item === rb.item);
+                      if (!existingLocal) return null;
+                      return (
+                        <button
+                          onClick={() => openLocalInput(f.id, rb.item, existingLocal.id)}
+                          style={{
+                            marginTop: 6,
+                            background: 'transparent',
+                            border: '1px dashed #2A3040',
+                            color: '#8B9DC3',
+                            borderRadius: 6,
+                            padding: '5px 8px',
+                            fontSize: 10,
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                        >
+                          Edit local input
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -480,7 +525,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 function RightPanel({ f }: { f: Factory }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { pickRecipe, addFlowLeg, openLocalInput } = useActions();
+  const { pickRecipe, addFlowLeg, openLocalInput, openRoute } = useActions();
 
   const agg = aggregate(f);
   const pk = st.picker;
@@ -584,18 +629,35 @@ function RightPanel({ f }: { f: Factory }) {
           Imports <span style={{ color: '#5E646E' }}>{imports.length}</span>
           <span style={{ fontSize: 9 }}>↓ in</span>
         </SectionLabel>
-        <div style={{ borderLeft: '2px solid #F5A95B33', paddingLeft: 10, marginBottom: 18 }}>
-          <FlowList
-            flows={imports}
-            expandedFlow={st.expandedFlow}
-            keyPrefix="d_"
-            onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
-            emptyText="No imports yet."
-            onLegClick={(leg) => {
-              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-              else if (leg.routeId) openRoute(leg.routeId);
-            }}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 18 }}>
+          {localInputs.map((li) => (
+            <div
+              key={li.id}
+              onClick={() => openLocalInput(f.id, li.item, li.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 9,
+                background: '#101318',
+                border: '1px solid #1C2027',
+                borderRadius: 7,
+                padding: '6px 8px',
+                cursor: 'pointer',
+              }}
+            >
+              <ItemSquare item={li.item} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{li.item}</div>
+                <div style={{ fontSize: 9.5, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                  <TransportBadge t={li.t || 'Belt'} pad="1px 4px" />
+                  Local node
+                </div>
+              </div>
+              <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#F5A95B' }}>{fmt(li.rate)}/m</span>
+              <span style={{ fontSize: 9.5, color: '#5E646E' }}>Edit</span>
+            </div>
+          ))}
+          {localInputs.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>No local inputs — belt in ore from nearby nodes.</div>}
           <button
             onClick={() => openLocalInput(f.id)}
             style={{
@@ -620,39 +682,37 @@ function RightPanel({ f }: { f: Factory }) {
           Exports <span style={{ color: '#5E646E' }}>{exports.length}</span>
           <span style={{ fontSize: 9 }}>↑ out</span>
         </SectionLabel>
-        <div style={{ borderLeft: '2px solid #5BCB8633', paddingLeft: 10 }}>
-          <FlowList
-            flows={exports}
-            expandedFlow={st.expandedFlow}
-            keyPrefix="d_"
-            onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
-            emptyText="No exports yet."
-            onLegClick={(leg) => {
-              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-              else if (leg.routeId) openRoute(leg.routeId);
-            }}
-            addLeg={(fl) => (
-              <button
-                onClick={() => addFlowLeg(fl.item, fl.dir, f.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: 'transparent',
-                  border: '1px dashed #2A2F39',
-                  color: '#8A909A',
-                  borderRadius: 6,
-                  padding: '5px 8px',
-                  fontSize: 10.5,
-                  cursor: 'pointer',
-                  marginTop: 1,
-                }}
-              >
-                <span style={{ color: '#5BCB86', fontWeight: 600 }}>＋</span> Add transport
-              </button>
-            )}
-          />
-        </div>
+        <FlowList
+          flows={flows}
+          expandedFlow={st.expandedFlow}
+          keyPrefix="d_"
+          onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+          emptyText="No routes connected. Draw one from the map."
+          onLegClick={(leg) => {
+            if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+            else if (leg.routeId) openRoute(leg.routeId);
+          }}
+          addLeg={(fl) => (
+            <button
+              onClick={() => addFlowLeg(fl.item, fl.dir, f.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'transparent',
+                border: '1px dashed #2A2F39',
+                color: '#8A909A',
+                borderRadius: 6,
+                padding: '5px 8px',
+                fontSize: 10.5,
+                cursor: 'pointer',
+                marginTop: 1,
+              }}
+            >
+              <span style={{ color: '#F5A95B', fontWeight: 600 }}>＋</span> Add transport
+            </button>
+          )}
+        />
       </>
     );
   }

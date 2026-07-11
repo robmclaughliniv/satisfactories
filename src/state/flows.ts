@@ -7,6 +7,8 @@ export interface FlowLeg {
   transport: string;
   rate: number;
   marked?: boolean;
+  routeId?: string;
+  localInputId?: string;
 }
 
 export interface Flow {
@@ -40,13 +42,13 @@ export function buildFlows(world: World, f: Factory, includeMarked: boolean): Fl
     const key = dir + '|' + r.item;
     if (!flowMap[key]) flowMap[key] = { key, dir, item: r.item, total: 0, legs: [] };
     flowMap[key].total += r.rate;
-    flowMap[key].legs.push({ partner: partner.name, color: partner.color, transport: r.t || 'Belt', rate: r.rate });
+    flowMap[key].legs.push({ partner: partner.name, color: partner.color, transport: r.t || 'Belt', rate: r.rate, routeId: r.id });
   });
   (f.localInputs || []).forEach((li) => {
     const key = 'import|' + li.item;
     if (!flowMap[key]) flowMap[key] = { key, dir: 'import', item: li.item, total: 0, legs: [] };
     flowMap[key].total += li.rate;
-    flowMap[key].legs.push({ partner: 'Local node', color: '#6B7280', transport: li.t || 'Belt', rate: li.rate });
+    flowMap[key].legs.push({ partner: 'Local node', color: '#6B7280', transport: li.t || 'Belt', rate: li.rate, localInputId: li.id });
   });
   if (includeMarked) {
     (f.sections || []).forEach((sec) =>
