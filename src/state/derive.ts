@@ -50,6 +50,41 @@ export function aggregate(factory: Factory): Aggregate {
   return { per, power, machines, outputs, inputs };
 }
 
+/** Produced + imported + local supply for an item at a factory. */
+export function itemSupply(world: World, factory: Factory, item: string): number {
+  const made = aggregate(factory).per[item]?.out || 0;
+  const local = localInputByItem(factory)[item] || 0;
+  let imported = 0;
+  world.routes.forEach((r) => {
+    if (r.to === factory.id && r.item === item) imported += r.rate;
+  });
+  return made + local + imported;
+}
+
+/** Outbound route (+ optional marked-for-export) total for an item. */
+export function itemExported(world: World, factory: Factory, item: string, includeMarked = true): number {
+  let exported = 0;
+  world.routes.forEach((r) => {
+    if (r.from === factory.id && r.item === item) exported += r.rate;
+  });
+  if (includeMarked) {
+    (factory.sections || []).forEach((sec) =>
+      sec.rows.forEach((row) => {
+        if (!row.export) return;
+        const rec = recipeById(row.recipeId);
+        if (!rec?.outputs.length) return;
+        const prim = rec.outputs[0];
+        if (prim.item === item) exported += prim.rate * row.count;
+      }),
+    );
+  }
+  return exported;
+}
+
+export function exportRemainder(world: World, factory: Factory, item: string, includeMarked = true): number {
+  return itemSupply(world, factory, item) - itemExported(world, factory, item, includeMarked);
+}
+
 export interface RollupEntry {
   produced: number;
   consumed: number;

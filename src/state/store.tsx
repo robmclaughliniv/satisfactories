@@ -2,8 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { defaultTransportForItem } from '../data/gameData';
 import { SAMPLE_WORLD } from '../data/templates';
 import { migratePersisted } from '../model/migrations';
+import { applyBaseline, captureBaseline, emptyBaseline, parseBaseline } from '../model/baseline';
 import { SCHEMA_VERSION, type PersistedStateV2 } from '../model/schema';
 import { createEmptyWorld, instantiateTemplate, touchWorld } from '../model/world';
+import { exportRemainder, itemExported, itemSupply } from './derive';
 import type {
   FactoryModalState,
   Factory,
@@ -258,14 +260,14 @@ export function useActions() {
   const resetFactory = (fid: string) => {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === fid);
-      if (f) f.sections = JSON.parse(f.baseline);
+      if (f) applyBaseline(f, w, parseBaseline(f.baseline));
     });
   };
 
   const commitFactory = (fid: string) => {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === fid);
-      if (f) f.baseline = JSON.stringify(f.sections);
+      if (f) f.baseline = captureBaseline(f, w.routes);
     });
   };
 
@@ -293,24 +295,43 @@ export function useActions() {
         localInputs: [],
         importOrder: [],
         exportOrder: [],
-        baseline: JSON.stringify([]),
+        baseline: emptyBaseline(),
       });
     });
     up({ factoryModal: null, screen: 'factory', selFactory: id });
   };
 
-  const openRoute = (editingId?: string) => {
+  const openRoute = (editingId?: string, opts?: { readOnly?: boolean }) => {
     if (!world) return;
     if (editingId) {
       const r = world.routes.find((x) => x.id === editingId);
       if (r) {
-        up({ routeModal: { from: r.from, to: r.to, item: r.item, rate: r.rate, t: r.t, editingId } });
+        up({
+          routeModal: {
+            from: r.from,
+            to: r.to,
+            item: r.item,
+            rate: r.rate,
+            t: r.t,
+            editingId,
+            readOnly: !!opts?.readOnly,
+          },
+        });
         return;
       }
     }
     const facs = world.factories;
     if (facs.length < 2) return;
-    up({ routeModal: { from: facs[0].id, to: facs[1].id, item: 'Iron Rod', rate: 60, t: defaultTransportForItem('Iron Rod') } });
+    up({
+      routeModal: {
+        from: facs[0].id,
+        to: facs[1].id,
+        item: 'Iron Rod',
+        rate: 60,
+        t: defaultTransportForItem('Iron Rod'),
+        readOnly: false,
+      },
+    });
   };
 
   const addFlowLeg = (item: string, dir: 'export' | 'import', factoryId: string) => {
@@ -319,18 +340,39 @@ export function useActions() {
     const other = facs.find((x) => x.id !== factoryId);
     const partner = other ? other.id : factoryId;
     const t = defaultTransportForItem(item);
+    let rate = 60;
+    if (dir === 'export') {
+      const fromFac = facs.find((x) => x.id === factoryId);
+      if (fromFac) {
+        const left = exportRemainder(world, fromFac, item, true);
+        rate = Math.max(0, Math.min(60, left));
+      }
+    }
     const modal: RouteModalState =
       dir === 'export'
-        ? { from: factoryId, to: partner, item, rate: 60, t }
-        : { from: partner, to: factoryId, item, rate: 60, t };
+        ? { from: factoryId, to: partner, item, rate, t, readOnly: false }
+        : { from: partner, to: factoryId, item, rate, t, readOnly: false };
     up({ routeModal: modal });
   };
 
   const saveRoute = () => {
     const m = st.routeModal;
-    if (!m || !m.from || !m.to || m.from === m.to) return;
-    const rate = Math.max(0, parseFloat(String(m.rate)) || 0);
+    if (!m || m.readOnly || !m.from || !m.to || m.from === m.to) return;
+    let rate = Math.max(0, parseFloat(String(m.rate)) || 0);
     mutateWorld((w) => {
+      const fromFac = w.factories.find((x) => x.id === m.from);
+      if (fromFac) {
+        const supply = itemSupply(w, fromFac, m.item);
+        let otherExports = itemExported(w, fromFac, m.item, true);
+        if (m.editingId) {
+          const existing = w.routes.find((x) => x.id === m.editingId);
+          if (existing && existing.from === m.from && existing.item === m.item) {
+            otherExports -= existing.rate;
+          }
+        }
+        const maxRate = Math.max(0, supply - otherExports);
+        rate = Math.min(rate, maxRate);
+      }
       if (m.editingId) {
         const r = w.routes.find((x) => x.id === m.editingId);
         if (r) {

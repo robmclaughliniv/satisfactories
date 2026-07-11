@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
-import { aggregate, localInputByItem } from '../../state/derive';
+import { aggregate, exportRemainder, itemExported, itemSupply, localInputByItem } from '../../state/derive';
+import { isFactoryDirty } from '../../model/baseline';
 import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
@@ -130,7 +131,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
   const world = useWorld();
   const { setRowCount, toggleRowExport, removeRow, addSection, openRecipePicker, resetFactory, commitFactory, openLocalInput } = useActions();
 
-  const dirty = JSON.stringify(f.sections) !== f.baseline;
+  const dirty = isFactoryDirty(f, world.routes);
 
   const localByItem = localInputByItem(f);
 
@@ -637,9 +638,11 @@ function RightPanel({ f }: { f: Factory }) {
         <span style={{ color: accent, fontWeight: 600 }}>＋</span> Add transport
       </button>
     );
-    const deleteLeg = (leg: { localInputId?: string; routeId?: string }) => {
+    const deleteImportLeg = (leg: { localInputId?: string; routeId?: string }) => {
       if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
-      else if (leg.routeId) removeRoute(leg.routeId);
+    };
+    const deleteExportLeg = (leg: { localInputId?: string; routeId?: string }) => {
+      if (leg.routeId) removeRoute(leg.routeId);
     };
     content = (
       <>
@@ -668,9 +671,11 @@ function RightPanel({ f }: { f: Factory }) {
             emptyText="No imports yet."
             onLegClick={(leg) => {
               if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-              else if (leg.routeId) openRoute(leg.routeId);
+              else if (leg.routeId) openRoute(leg.routeId, { readOnly: true });
             }}
-            onLegDelete={deleteLeg}
+            onLegDelete={deleteImportLeg}
+            canDeleteLeg={(leg) => !!leg.localInputId}
+            legActionLabel={(leg) => (leg.localInputId ? 'Edit' : 'View')}
             onReorder={(orderedItems) => reorderFlows(f.id, 'import', orderedItems)}
             addLeg={(fl) => addTransportBtn(fl, '#F5A95B')}
           />
@@ -706,10 +711,22 @@ function RightPanel({ f }: { f: Factory }) {
             onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
             emptyText="No exports yet."
             onLegClick={(leg) => {
-              if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-              else if (leg.routeId) openRoute(leg.routeId);
+              if (leg.routeId) openRoute(leg.routeId);
             }}
-            onLegDelete={deleteLeg}
+            onLegDelete={deleteExportLeg}
+            canDeleteLeg={(leg) => !!leg.routeId}
+            legActionLabel={() => 'Edit'}
+            flowHint={(fl) => {
+              const supply = itemSupply(world, f, fl.item);
+              const exported = itemExported(world, f, fl.item, true);
+              const left = exportRemainder(world, f, fl.item, true);
+              return (
+                <>
+                  {fmt(exported)}/{fmt(supply)} exported
+                  <span style={{ color: left < -0.001 ? '#E5604D' : '#8A909A' }}> · {fmt(Math.max(0, left))} left</span>
+                </>
+              );
+            }}
             onReorder={(orderedItems) => reorderFlows(f.id, 'export', orderedItems)}
             addLeg={(fl) => addTransportBtn(fl, '#5BCB86')}
           />

@@ -1,4 +1,5 @@
 import type { Factory, World, WorldTemplate } from './schema';
+import { captureBaseline } from './baseline';
 
 let idCounter = 0;
 
@@ -22,22 +23,27 @@ export function createEmptyWorld(name: string): World {
 
 /**
  * Clone a bundled template into a real World: fresh world id, timestamps,
- * and each factory's baseline computed from its sections.
+ * and each factory's baseline computed from its committed draft state.
  */
 export function instantiateTemplate(template: WorldTemplate): World {
   const now = new Date().toISOString();
-  const factories: Factory[] = template.factories.map((f) => ({
-    ...JSON.parse(JSON.stringify(f)),
-    localInputs: f.localInputs ?? [],
-    importOrder: f.importOrder ?? [],
-    exportOrder: f.exportOrder ?? [],
-    baseline: JSON.stringify(f.sections),
-  }));
+  const routes = JSON.parse(JSON.stringify(template.routes));
+  const factories: Factory[] = template.factories.map((f) => {
+    const factory: Factory = {
+      ...JSON.parse(JSON.stringify(f)),
+      localInputs: f.localInputs ?? [],
+      importOrder: f.importOrder ?? [],
+      exportOrder: f.exportOrder ?? [],
+      baseline: '',
+    };
+    factory.baseline = captureBaseline(factory, routes);
+    return factory;
+  });
   return {
     id: freshId('w'),
     name: template.name,
     factories,
-    routes: JSON.parse(JSON.stringify(template.routes)),
+    routes,
     createdAt: now,
     updatedAt: now,
   };

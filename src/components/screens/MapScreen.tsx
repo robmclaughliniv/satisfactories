@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fmt, initials, statusMeta } from '../../data/gameData';
-import { aggregate, rollupWorld } from '../../state/derive';
+import { aggregate, exportRemainder, itemExported, itemSupply, rollupWorld } from '../../state/derive';
 import { buildFlows, applyFlowOrder } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory } from '../../types';
@@ -713,12 +713,13 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
               emptyText="No imports yet."
               onLegClick={(leg) => {
                 if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-                else if (leg.routeId) openRoute(leg.routeId);
+                else if (leg.routeId) openRoute(leg.routeId, { readOnly: true });
               }}
               onLegDelete={(leg) => {
                 if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
-                else if (leg.routeId) removeRoute(leg.routeId);
               }}
+              canDeleteLeg={(leg) => !!leg.localInputId}
+              legActionLabel={(leg) => (leg.localInputId ? 'Edit' : 'View')}
               onReorder={(orderedItems) => reorderFlows(f.id, 'import', orderedItems)}
             />
           </div>
@@ -733,12 +734,22 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
               onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
               emptyText="No exports yet."
               onLegClick={(leg) => {
-                if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
-                else if (leg.routeId) openRoute(leg.routeId);
+                if (leg.routeId) openRoute(leg.routeId);
               }}
               onLegDelete={(leg) => {
-                if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
-                else if (leg.routeId) removeRoute(leg.routeId);
+                if (leg.routeId) removeRoute(leg.routeId);
+              }}
+              canDeleteLeg={(leg) => !!leg.routeId}
+              flowHint={(fl) => {
+                const supply = itemSupply(world, f, fl.item);
+                const exported = itemExported(world, f, fl.item, true);
+                const left = exportRemainder(world, f, fl.item, true);
+                return (
+                  <>
+                    {fmt(exported)}/{fmt(supply)} exported
+                    <span style={{ color: left < -0.001 ? '#E5604D' : '#8A909A' }}> · {fmt(Math.max(0, left))} left</span>
+                  </>
+                );
               }}
               onReorder={(orderedItems) => reorderFlows(f.id, 'export', orderedItems)}
             />

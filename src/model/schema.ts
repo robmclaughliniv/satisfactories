@@ -47,7 +47,7 @@ export const FactorySchema = z.object({
   /** User-defined order of import/export resource rows (by item name). */
   importOrder: z.array(z.string()).default([]),
   exportOrder: z.array(z.string()).default([]),
-  /** JSON snapshot of sections at last commit — used for the dirty indicator. */
+  /** JSON snapshot of factory draft state at last commit — sections, local inputs, flow order, outbound routes. */
   baseline: z.string(),
 });
 
@@ -69,7 +69,7 @@ export const WorldSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({

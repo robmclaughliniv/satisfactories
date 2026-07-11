@@ -64,6 +64,8 @@ export interface RouteModalState {
   rate: number | string;
   t: Transport;
   editingId?: string;
+  /** When true, fields are locked — used for viewing an incoming route from the destination. */
+  readOnly?: boolean;
 }
 
 export interface LocalInputModalState {

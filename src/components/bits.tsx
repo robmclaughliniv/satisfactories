@@ -76,29 +76,33 @@ function FlowLegRow({
   leg,
   onLegClick,
   onLegDelete,
+  canDeleteLeg,
+  actionLabel = 'Edit',
 }: {
   leg: FlowLeg;
   onLegClick?: (leg: FlowLeg) => void;
   onLegDelete?: (leg: FlowLeg) => void;
+  canDeleteLeg?: (leg: FlowLeg) => boolean;
+  actionLabel?: string;
 }) {
   const [hovered, setHovered] = useState(false);
-  const editable = !!(leg.routeId || leg.localInputId);
-  const deletable = editable && !!onLegDelete;
+  const clickable = !!(leg.routeId || leg.localInputId) && !!onLegClick;
+  const deletable = clickable && !!onLegDelete && (canDeleteLeg ? canDeleteLeg(leg) : true);
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={editable && onLegClick ? () => onLegClick(leg) : undefined}
+      onClick={clickable ? () => onLegClick!(leg) : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        cursor: editable && onLegClick ? 'pointer' : undefined,
+        cursor: clickable ? 'pointer' : undefined,
         borderRadius: 5,
         padding: '2px 4px',
         margin: '-2px -4px',
-        background: hovered && editable ? '#12151B' : undefined,
+        background: hovered && clickable ? '#12151B' : undefined,
       }}
     >
       {onLegDelete ? (
@@ -138,7 +142,7 @@ function FlowLegRow({
         {leg.partner}
       </span>
       <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}</span>
-      {editable && onLegClick && <span style={{ fontSize: 9.5, color: '#5E646E' }}>Edit</span>}
+      {clickable && <span style={{ fontSize: 9.5, color: '#5E646E' }}>{actionLabel}</span>}
     </div>
   );
 }
@@ -156,6 +160,9 @@ export function FlowList({
   addLeg,
   onLegClick,
   onLegDelete,
+  canDeleteLeg,
+  legActionLabel,
+  flowHint,
   onReorder,
 }: {
   flows: Flow[];
@@ -166,6 +173,9 @@ export function FlowList({
   addLeg?: (flow: Flow) => ReactNode;
   onLegClick?: (leg: FlowLeg) => void;
   onLegDelete?: (leg: FlowLeg) => void;
+  canDeleteLeg?: (leg: FlowLeg) => boolean;
+  legActionLabel?: (leg: FlowLeg) => string;
+  flowHint?: (flow: Flow) => ReactNode;
   onReorder?: (orderedItems: string[]) => void;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -276,8 +286,14 @@ export function FlowList({
               <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }}>
                 <div style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fl.item}</div>
                 <div style={{ fontSize: 9.5, color: '#6B7280' }}>
-                  {fl.legs.length}
-                  {fl.legs.length === 1 ? ' source' : ' sources'}
+                  {flowHint ? (
+                    flowHint(fl)
+                  ) : (
+                    <>
+                      {fl.legs.length}
+                      {fl.legs.length === 1 ? ' source' : ' sources'}
+                    </>
+                  )}
                 </div>
               </div>
               <span style={{ fontFamily: MONO, fontSize: 11.5, color: fl.dir === 'export' ? '#5BCB86' : '#F5A95B', pointerEvents: 'none' }}>
@@ -289,14 +305,21 @@ export function FlowList({
                 style={{
                   borderTop: '1px solid #1A1E25',
                   background: '#0B0C0F',
-                  padding: '7px 9px 7px 31px',
+                  padding: '7px 9px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 6,
                 }}
               >
                 {fl.legs.map((leg, i) => (
-                  <FlowLegRow key={i} leg={leg} onLegClick={onLegClick} onLegDelete={onLegDelete} />
+                  <FlowLegRow
+                    key={i}
+                    leg={leg}
+                    onLegClick={onLegClick}
+                    onLegDelete={onLegDelete}
+                    canDeleteLeg={canDeleteLeg}
+                    actionLabel={legActionLabel?.(leg) ?? 'Edit'}
+                  />
                 ))}
                 {addLeg?.(fl)}
               </div>
