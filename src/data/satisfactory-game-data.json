@@ -145,7 +145,7 @@
       "color": "#7F8C8D",
       "cat": "Standard Parts"
     },
-    "Crude Oil": {
+    "Oil": {
       "color": "#2E86C1",
       "cat": "Raw Fluid"
     },
@@ -2010,7 +2010,7 @@
       "power": 30,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 60
         }
       ],
@@ -2928,7 +2928,7 @@
       "power": 10,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 30
         },
         {
@@ -3062,7 +3062,7 @@
       "power": 30,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 30
         }
       ],
@@ -3552,7 +3552,7 @@
       "power": 30,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 30
         }
       ],
@@ -4376,7 +4376,7 @@
       ],
       "outputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 60
         },
         {
@@ -5775,7 +5775,7 @@
       "power": 30,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 30
         }
       ],
@@ -6171,7 +6171,7 @@
       "power": 500,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 200
         }
       ],
@@ -6328,7 +6328,7 @@
       "power": 30,
       "inputs": [
         {
-          "item": "Crude Oil",
+          "item": "Oil",
           "rate": 60
         }
       ],
