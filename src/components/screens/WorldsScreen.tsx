@@ -126,7 +126,7 @@ export function WorldsScreen() {
                 key={w.id}
                 onClick={() => {
                   if (isEditing || isConfirming) return;
-                  up({ worldId: w.id, screen: 'map', selFactory: null });
+                  up({ worldId: w.id, screen: 'map', selFactory: null, mapLock: null });
                 }}
                 style={{
                   display: 'flex',

@@ -587,6 +587,8 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
       .map((i) => ({ item: i, out: agg.per[i].out }))
       .sort((a, b) => b.out - a.out);
     const flows = buildFlows(world, f, false);
+    const imports = flows.filter((fl) => fl.dir === 'import');
+    const exports = flows.filter((fl) => fl.dir === 'export');
     body = (
       <>
         <div style={{ height: 3, background: f.color }}></div>
@@ -619,17 +621,38 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
             ))}
             {produced.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>Nothing produced yet — add a recipe.</div>}
           </div>
-          <SectionLabel>
-            Exports &amp; imports
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#5BCB86', fontSize: 9 }}>↑ out</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#F5A95B', fontSize: 9 }}>↓ in</span>
+          <SectionLabel color="#F5A95B" mb={8}>
+            Imports <span style={{ color: '#5E646E' }}>{imports.length}</span>
+            <span style={{ fontSize: 9 }}>↓ in</span>
           </SectionLabel>
-          <FlowList
-            flows={flows}
-            expandedFlow={st.expandedFlow}
-            onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
-            emptyText="No routes connected. Draw one from the map."
-          />
+          <div style={{ borderLeft: '2px solid #F5A95B33', paddingLeft: 10, marginBottom: 18 }}>
+            <FlowList
+              flows={imports}
+              expandedFlow={st.expandedFlow}
+              onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+              emptyText="No imports yet."
+              onLegClick={(leg) => {
+                if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+                else if (leg.routeId) openRoute(leg.routeId);
+              }}
+            />
+          </div>
+          <SectionLabel color="#5BCB86" mb={8}>
+            Exports <span style={{ color: '#5E646E' }}>{exports.length}</span>
+            <span style={{ fontSize: 9 }}>↑ out</span>
+          </SectionLabel>
+          <div style={{ borderLeft: '2px solid #5BCB8633', paddingLeft: 10 }}>
+            <FlowList
+              flows={exports}
+              expandedFlow={st.expandedFlow}
+              onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
+              emptyText="No exports yet."
+              onLegClick={(leg) => {
+                if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
+                else if (leg.routeId) openRoute(leg.routeId);
+              }}
+            />
+          </div>
         </div>
         <div style={{ padding: '12px 14px', borderTop: '1px solid #161A21' }}>
           <button
