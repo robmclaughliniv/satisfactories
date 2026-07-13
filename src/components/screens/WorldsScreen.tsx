@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { initials } from '../../data/gameData';
 import { SAMPLE_WORLD } from '../../data/templates';
+import { getLastBackupAt } from '../../model/backup';
 import { useActions, useStore } from '../../state/store';
 import type { World } from '../../types';
 import { SG } from '../bits';
@@ -29,10 +30,43 @@ const ghostBtn = {
 
 export function WorldsScreen() {
   const { st, up } = useStore();
-  const { createWorld, loadSampleWorld, renameWorld, deleteWorld } = useActions();
+  const { createWorld, loadSampleWorld, renameWorld, deleteWorld, saveBackup, loadBackup } = useActions();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [lastBackupAt, setLastBackupAt] = useState(() => getLastBackupAt());
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 60000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const handleSaveBackup = async () => {
+    try {
+      const savedAt = await saveBackup();
+      if (savedAt) setLastBackupAt(savedAt);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      alert(err instanceof Error ? err.message : 'Could not save backup.');
+    }
+  };
+
+  const handleLoadBackup = async () => {
+    if (
+      !window.confirm(
+        'Load backup? This will replace all worlds and favorites currently stored in this browser.',
+      )
+    ) {
+      return;
+    }
+    try {
+      await loadBackup();
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      alert(err instanceof Error ? err.message : 'Could not load backup.');
+    }
+  };
 
   const startRename = (w: World) => {
     setEditingId(w.id);
@@ -53,16 +87,31 @@ export function WorldsScreen() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
           <div style={{ flex: 1 }}>
             <h1 style={{ fontFamily: SG, fontWeight: 700, fontSize: 22, margin: 0 }}>Worlds</h1>
-            <div style={{ fontSize: 12.5, color: '#7B828D', marginTop: 3 }}>Each world is a Satisfactory save.</div>
+            <div style={{ fontSize: 12.5, color: '#7B828D', marginTop: 3 }}>
+              Each world is a Satisfactory save.
+              {lastBackupAt ? (
+                <> · Last backup {timeAgo(lastBackupAt)}</>
+              ) : (
+                <> · No file backup saved yet</>
+              )}
+            </div>
           </div>
-          {!empty && (
-            <button
-              onClick={createWorld}
-              style={{ background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 9, padding: '10px 16px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              ＋ New world
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto' }}>
+            <button onClick={handleSaveBackup} style={ghostBtn}>
+              Save backup
             </button>
-          )}
+            <button onClick={handleLoadBackup} style={ghostBtn}>
+              Load backup
+            </button>
+            {!empty && (
+              <button
+                onClick={createWorld}
+                style={{ background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 9, padding: '10px 16px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                ＋ New world
+              </button>
+            )}
+          </div>
         </div>
 
         {empty && (
@@ -99,7 +148,7 @@ export function WorldsScreen() {
             <div style={{ fontSize: 12.5, color: '#7B828D', maxWidth: 380, margin: '0 auto 22px' }}>
               Create a fresh world to start planning from scratch, or load the sample world to explore with data already in place.
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={createWorld}
                 style={{ background: '#F5882E', color: '#120A03', border: 'none', borderRadius: 9, padding: '11px 18px', fontWeight: 600, cursor: 'pointer' }}
@@ -111,6 +160,12 @@ export function WorldsScreen() {
                 style={{ background: '#15171D', color: '#E7E9ED', border: '1px solid #262B34', borderRadius: 9, padding: '11px 18px', fontWeight: 600, cursor: 'pointer' }}
               >
                 Load sample world
+              </button>
+              <button onClick={handleSaveBackup} style={ghostBtn}>
+                Save backup
+              </button>
+              <button onClick={handleLoadBackup} style={ghostBtn}>
+                Load backup
               </button>
             </div>
           </div>

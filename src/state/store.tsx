@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { defaultTransportForItem } from '../data/gameData';
 import { SAMPLE_WORLD } from '../data/templates';
+import { buildBackupEnvelope, getLastBackupAt, loadBackupFromFile, recordLastBackupAt, saveBackupToFile } from '../model/backup';
 import { migratePersisted } from '../model/migrations';
 import { applyBaseline, captureBaseline, emptyBaseline, parseBaseline } from '../model/baseline';
 import { SCHEMA_VERSION, type PersistedStateV2 } from '../model/schema';
@@ -67,10 +68,9 @@ function readAndMigrate(key: string): PersistedStateV2 | null {
   }
 }
 
-function loadInitial(): Pick<AppState, 'worlds' | 'worldId' | 'favItems' | 'favFactories'> {
-  const persisted = readAndMigrate(STORAGE_KEY) ?? readAndMigrate(LEGACY_STORAGE_KEY);
-  if (!persisted) return EMPTY;
-  // Normalize a stale active-world pointer.
+function normalizePersisted(
+  persisted: PersistedStateV2,
+): Pick<AppState, 'worlds' | 'worldId' | 'favItems' | 'favFactories'> {
   const worldId = persisted.worlds.some((w) => w.id === persisted.worldId)
     ? persisted.worldId
     : persisted.worlds[0]?.id ?? null;
@@ -80,6 +80,12 @@ function loadInitial(): Pick<AppState, 'worlds' | 'worldId' | 'favItems' | 'favF
     favItems: persisted.favItems,
     favFactories: persisted.favFactories,
   };
+}
+
+function loadInitial(): Pick<AppState, 'worlds' | 'worldId' | 'favItems' | 'favFactories'> {
+  const persisted = readAndMigrate(STORAGE_KEY) ?? readAndMigrate(LEGACY_STORAGE_KEY);
+  if (!persisted) return EMPTY;
+  return normalizePersisted(persisted);
 }
 
 function initialState(): AppState {
@@ -543,6 +549,46 @@ export function useActions() {
     });
   };
 
+  const saveBackup = async (): Promise<string | null> => {
+    const envelope = buildBackupEnvelope({
+      worlds: st.worlds,
+      worldId: st.worldId,
+      favItems: st.favItems,
+      favFactories: st.favFactories,
+    });
+    const saved = await saveBackupToFile(envelope);
+    return saved ? recordLastBackupAt() : getLastBackupAt();
+  };
+
+  const loadBackup = async () => {
+    const persisted = await loadBackupFromFile();
+    const normalized = normalizePersisted(persisted);
+    up({
+      ...normalized,
+      screen: normalized.worldId ? ('map' as Screen) : ('worlds' as Screen),
+      selFactory: null,
+      worldMenuOpen: false,
+      statusFilter: 'all',
+      tagFilter: 'all',
+      hoverPin: null,
+      hoverRoute: null,
+      mapFocus: null,
+      mapLock: null,
+      expandedFlow: {},
+      expanded: {},
+      picker: null,
+      pickerSearch: '',
+      rollupFocus: null,
+      factoriesFocus: null,
+      drillItem: null,
+      refSel: null,
+      refSearch: '',
+      factoryModal: null,
+      routeModal: null,
+      localInputModal: null,
+    });
+  };
+
   return {
     setRowCount,
     toggleRowExport,
@@ -569,6 +615,8 @@ export function useActions() {
     renameWorld,
     deleteWorld,
     movePin,
+    saveBackup,
+    loadBackup,
     openFactory,
   };
 }

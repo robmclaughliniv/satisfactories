@@ -20,7 +20,7 @@ Live at [satisfactories.robmclaughl.in](https://satisfactories.robmclaughl.in).
 - **Reference** — a wiki of items, recipes, and machines.
 - **Worlds** — multiple saves, each with its own map.
 
-Data persists to `localStorage`. A demo world is seeded on first run.
+Data persists to `localStorage`. A demo world is seeded on first run. From the **Worlds** screen you can also save or load a full JSON backup to your computer.
 
 ## Development
 
