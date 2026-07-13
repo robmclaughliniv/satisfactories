@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { SG, svgIcon } from './bits';
+import { svgIcon } from './bits';
 import { useStore } from '../state/store';
 import type { Screen } from '../types';
 
@@ -53,28 +53,32 @@ export function NavRail() {
         zIndex: 30,
       }}
     >
-      <div
+      <button
+        type="button"
         data-m-logo=""
         onClick={() => go(world ? 'map' : 'worlds')}
+        aria-label="Satisfactories home"
         style={{
           width: 34,
           height: 34,
           borderRadius: 9,
-          background: 'linear-gradient(150deg,#F5882E,#E5651F)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: SG,
-          fontWeight: 700,
-          fontSize: 17,
-          color: '#120A03',
+          border: 'none',
+          padding: 0,
           marginBottom: 10,
           cursor: 'pointer',
+          background: 'transparent',
+          overflow: 'hidden',
           boxShadow: '0 2px 10px rgba(245,136,46,.35)',
         }}
       >
-        S
-      </div>
+        <img
+          src="/logo-master.png"
+          alt="Satisfactories"
+          width={34}
+          height={34}
+          style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      </button>
       {NAV_ITEMS.map((item) => {
         const disabled = item.needsWorld && !world;
         return (

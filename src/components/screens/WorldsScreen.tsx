@@ -125,25 +125,21 @@ export function WorldsScreen() {
               marginBottom: 22,
             }}
           >
-            <div
+            <img
+              src="/logo-master.png"
+              alt="Satisfactories"
+              width={56}
+              height={56}
               style={{
                 width: 56,
                 height: 56,
                 borderRadius: 14,
                 margin: '0 auto 16px',
-                background: 'linear-gradient(150deg,#F5882E,#E5651F)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: SG,
-                fontWeight: 700,
-                fontSize: 26,
-                color: '#120A03',
+                display: 'block',
+                objectFit: 'cover',
                 boxShadow: '0 2px 14px rgba(245,136,46,.35)',
               }}
-            >
-              S
-            </div>
+            />
             <div style={{ fontFamily: SG, fontWeight: 700, fontSize: 19, marginBottom: 6 }}>No worlds yet</div>
             <div style={{ fontSize: 12.5, color: '#7B828D', maxWidth: 380, margin: '0 auto 22px' }}>
               Create a fresh world to start planning from scratch, or load the sample world to explore with data already in place.

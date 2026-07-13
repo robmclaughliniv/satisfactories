@@ -416,7 +416,9 @@ export function MapScreen() {
   mapLockRef.current = st.mapLock;
   const pinOpenTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const dragRef = useRef<{ id: string; moved: boolean; startX: number; startY: number; x: number; y: number; el: HTMLDivElement } | null>(null);
+  const dragPosRafRef = useRef<number | null>(null);
   const [draggingPinId, setDraggingPinId] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const lockedPinId = st.mapLock?.type === 'factory' ? st.mapLock.id : null;
 
@@ -488,6 +490,13 @@ export function MapScreen() {
         drag.y = y;
         drag.el.style.left = `${x}%`;
         drag.el.style.top = `${y}%`;
+        if (dragPosRafRef.current === null) {
+          dragPosRafRef.current = requestAnimationFrame(() => {
+            dragPosRafRef.current = null;
+            const current = dragRef.current;
+            if (current) setDragPos({ id: current.id, x: current.x, y: current.y });
+          });
+        }
       };
 
       const finish = () => {
@@ -496,10 +505,15 @@ export function MapScreen() {
         window.removeEventListener('touchmove', move);
         window.removeEventListener('touchend', finish);
         window.removeEventListener('touchcancel', finish);
+        if (dragPosRafRef.current !== null) {
+          cancelAnimationFrame(dragPosRafRef.current);
+          dragPosRafRef.current = null;
+        }
         const d = dragRef.current;
         dragRef.current = null;
         blockInteractionRef.current = false;
         setDraggingPinId(null);
+        setDragPos(null);
         if (d) {
           if (d.moved) movePin(d.id, d.x, d.y);
           else if (mapLockRef.current?.type === 'factory' && mapLockRef.current.id === d.id) scheduleOpenPinDetail(d.id);
@@ -549,6 +563,13 @@ export function MapScreen() {
     facs.forEach((f) => (m[f.id] = f));
     return m;
   }, [facs]);
+
+  const facByIdForRoutes = useMemo(() => {
+    if (!dragPos) return facById;
+    const f = facById[dragPos.id];
+    if (!f) return facById;
+    return { ...facById, [dragPos.id]: { ...f, x: dragPos.x, y: dragPos.y } };
+  }, [facById, dragPos]);
 
   const { connMap, connections } = useMemo(() => {
     const visibleIds = visible.map((f) => f.id);
@@ -625,7 +646,7 @@ export function MapScreen() {
                 <MapViewport
                   visible={visible}
                   connections={connections}
-                  facById={facById}
+                  facById={facByIdForRoutes}
                   hoverPin={hoverPin}
                   hoverRoute={hoverRoute}
                   lockedPinId={lockedPinId}
