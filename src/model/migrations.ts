@@ -28,6 +28,10 @@ export function migratePersisted(raw: unknown): PersistedStateV2 | null {
     obj = migrateV4ToV5(obj);
   }
 
+  if (obj.schemaVersion === 5) {
+    obj = migrateV5ToV6(obj);
+  }
+
   if (obj.schemaVersion !== SCHEMA_VERSION) return null;
 
   const parsed = PersistedStateSchema.safeParse(obj);
@@ -120,5 +124,14 @@ function migrateV4ToV5(obj: Record<string, unknown>): Record<string, unknown> {
         return { ...world, factories };
       })
     : obj.worlds;
-  return { ...obj, schemaVersion: SCHEMA_VERSION, worlds };
+  return { ...obj, schemaVersion: 5, worlds };
+}
+
+/** v5 → v6: add favFactories[]. */
+function migrateV5ToV6(obj: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...obj,
+    schemaVersion: SCHEMA_VERSION,
+    favFactories: Array.isArray(obj.favFactories) ? obj.favFactories : [],
+  };
 }

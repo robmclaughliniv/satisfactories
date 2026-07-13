@@ -15,7 +15,7 @@ export type {
   PersistedStateV2,
 } from './model/schema';
 
-export type Screen = 'map' | 'factory' | 'rollup' | 'reference' | 'worlds';
+export type Screen = 'map' | 'factory' | 'factories' | 'rollup' | 'reference' | 'worlds';
 
 export interface RecipeIO {
   item: string;

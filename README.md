@@ -15,7 +15,7 @@ Live at [satisfactories.robmclaughl.in](https://satisfactories.robmclaughl.in).
   (including ALT recipes), set machine counts, and get derived rates, power,
   and a per-item resource balance (made + imported − required − exported).
   Working-state changes can be committed or reset.
-- **World Rollup** — net production across all factories, with favorites and
+- **Resources** — net production across all factories, with favorites and
   per-item producer/consumer drill-downs.
 - **Reference** — a wiki of items, recipes, and machines.
 - **Worlds** — multiple saves, each with its own map.

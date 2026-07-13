@@ -35,7 +35,7 @@ export function RollupScreen() {
         main: (
       <div data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', padding: '22px 26px 60px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 6 }}>
-          <h1 style={{ fontFamily: SG, fontWeight: 700, fontSize: 22, margin: 0 }}>World Rollup</h1>
+          <h1 style={{ fontFamily: SG, fontWeight: 700, fontSize: 22, margin: 0 }}>Resources</h1>
           <span style={{ fontSize: 12.5, color: '#6B7280', paddingBottom: 3 }}>Net production across {world.factories.length} factories</span>
         </div>
         <div style={{ fontSize: 12.5, color: '#7B828D', marginBottom: 22 }}>What do you have spare, and where is the missing supply coming from?</div>

@@ -3,6 +3,7 @@ import { NavRail } from './components/NavRail';
 import { FactoryModal } from './components/modals/FactoryModal';
 import { LocalInputModal } from './components/modals/LocalInputModal';
 import { RouteModal } from './components/modals/RouteModal';
+import { FactoriesScreen } from './components/screens/FactoriesScreen';
 import { FactoryScreen } from './components/screens/FactoryScreen';
 import { MapScreen } from './components/screens/MapScreen';
 import { ReferenceScreen } from './components/screens/ReferenceScreen';
@@ -12,7 +13,7 @@ import { StoreProvider, useStore } from './state/store';
 
 function Shell() {
   // Effective screen from the store: world-bound screens (map, factory,
-  // rollup) fall back to 'worlds' when no world is active.
+  // factories, rollup) fall back to 'worlds' when no world is active.
   const { screen } = useStore();
   return (
     <div
@@ -33,6 +34,7 @@ function Shell() {
         <main style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
           {screen === 'map' && <MapScreen />}
           {screen === 'factory' && <FactoryScreen />}
+          {screen === 'factories' && <FactoriesScreen />}
           {screen === 'rollup' && <RollupScreen />}
           {screen === 'reference' && <ReferenceScreen />}
           {screen === 'worlds' && <WorldsScreen />}

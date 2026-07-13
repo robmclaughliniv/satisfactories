@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fmt, initials, statusMeta } from '../../data/gameData';
-import { aggregate, exportRemainder, itemExported, itemSupply, rollupWorld } from '../../state/derive';
+import { aggregate, exportRemainder, itemExported, itemSupply, localInputByItem, rollupWorld } from '../../state/derive';
 import { buildFlows, applyFlowOrder } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
-import type { Factory } from '../../types';
+import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
 import { SplitLayout } from '../SplitLayout';
 import { useMapCamera } from './useMapCamera';
@@ -648,6 +648,100 @@ export function MapScreen() {
   );
 }
 
+function itemFactoryNets(world: World, item: string, mode: 'surplus' | 'deficit') {
+  const rows: { id: string; name: string; color: string; net: number }[] = [];
+  world.factories.forEach((f) => {
+    const a = aggregate(f);
+    const local = localInputByItem(f)[item] || 0;
+    const net = (a.per[item]?.out || 0) + local - (a.per[item]?.in || 0);
+    if (Math.abs(net) > 0.001) rows.push({ id: f.id, name: f.name, color: f.color, net });
+  });
+  // Prefer the section's polarity first, then magnitude — so deficits lead a deficit
+  // expand and surpluses lead a surplus expand, while offsetting factories still appear
+  // and the listed nets always sum to the world total.
+  rows.sort((a, b) => {
+    const aMatch = mode === 'surplus' ? a.net > 0 : a.net < 0;
+    const bMatch = mode === 'surplus' ? b.net > 0 : b.net < 0;
+    if (aMatch !== bMatch) return aMatch ? -1 : 1;
+    return mode === 'surplus' ? b.net - a.net : a.net - b.net;
+  });
+  return rows;
+}
+
+function NetItemRow({
+  item,
+  net,
+  mode,
+  expanded,
+  factories,
+  onToggle,
+  onFactoryClick,
+}: {
+  item: string;
+  net: number;
+  mode: 'surplus' | 'deficit';
+  expanded: boolean;
+  factories: { id: string; name: string; color: string; net: number }[];
+  onToggle: () => void;
+  onFactoryClick: (id: string) => void;
+}) {
+  const surplus = mode === 'surplus';
+  return (
+    <div
+      style={{
+        border: `1px solid ${surplus ? '#1B2A1E' : '#2A1B1B'}`,
+        borderRadius: 7,
+        overflow: 'hidden',
+        background: surplus ? '#101510' : '#150F0F',
+      }}
+    >
+      <div
+        onClick={onToggle}
+        style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 8px', cursor: 'pointer' }}
+      >
+        <span style={{ width: 11, textAlign: 'center', color: '#5E646E', fontSize: 9 }}>{expanded ? '▾' : '▸'}</span>
+        <ItemSquare item={item} />
+        <span style={{ flex: 1, fontSize: 12, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item}</span>
+        <span style={{ fontFamily: MONO, fontSize: 11.5, color: surplus ? '#5BCB86' : '#E5604D' }}>
+          {surplus ? '+' : ''}
+          {fmt(net)}/m
+        </span>
+      </div>
+      {expanded && (
+        <div
+          style={{
+            borderTop: `1px solid ${surplus ? '#1B2A1E' : '#2A1B1B'}`,
+            background: '#0B0C0F',
+            padding: '7px 8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
+          {factories.map((f) => {
+            const positive = f.net > 0.001;
+            return (
+              <div
+                key={f.id}
+                onClick={() => onFactoryClick(f.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 7px', borderRadius: 6, background: '#0F1116', border: '1px solid #1A1E25', cursor: 'pointer' }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: f.color, flex: '0 0 auto' }}></span>
+                <span style={{ flex: 1, fontSize: 11.5, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</span>
+                <span style={{ fontFamily: MONO, fontSize: 11, color: positive ? '#5BCB86' : '#E5604D' }}>
+                  {positive ? '+' : ''}
+                  {fmt(f.net)}/m
+                </span>
+              </div>
+            );
+          })}
+          {factories.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>No factories</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facById: Record<string, Factory> }) {
   const { st, up, openFactory } = useStore();
   const { openLocalInput, openRoute, removeLocalInput, removeRoute, reorderFlows } = useActions();
@@ -655,6 +749,7 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
   const facs = world.factories;
   const mfoc = st.mapLock ?? st.mapFocus;
   const lockedFactoryId = st.mapLock?.type === 'factory' ? st.mapLock.id : null;
+  const [expandedNet, setExpandedNet] = useState<string | null>(null);
 
   let body: React.ReactNode;
 
@@ -840,7 +935,8 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
     const items = Object.keys(per).map((item) => ({ item, net: per[item].produced - per[item].consumed }));
     const surplus = items.filter((x) => x.net > 0.001).sort((a, b) => b.net - a.net).slice(0, 6);
     const deficit = items.filter((x) => x.net < -0.001).sort((a, b) => a.net - b.net).slice(0, 6);
-    const drill = (item: string) => up({ screen: 'rollup', drillItem: item });
+    const toggleNet = (key: string) => setExpandedNet((cur) => (cur === key ? null : key));
+    const focusFactory = (id: string) => up({ mapLock: { type: 'factory', id }, mapFocus: { type: 'factory', id } });
     body = (
       <>
         <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #161A21' }}>
@@ -862,24 +958,40 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 14px' }}>
           <SectionLabel color="#5BCB86" mb={8}>Top surplus</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 16 }}>
-            {surplus.map((x) => (
-              <div key={x.item} onClick={() => drill(x.item)} style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#101510', border: '1px solid #1B2A1E', borderRadius: 7, padding: '6px 8px', cursor: 'pointer' }}>
-                <ItemSquare item={x.item} />
-                <span style={{ flex: 1, fontSize: 12 }}>{x.item}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#5BCB86' }}>+{fmt(x.net)}/m</span>
-              </div>
-            ))}
+            {surplus.map((x) => {
+              const key = `surplus:${x.item}`;
+              return (
+                <NetItemRow
+                  key={key}
+                  item={x.item}
+                  net={x.net}
+                  mode="surplus"
+                  expanded={expandedNet === key}
+                  factories={expandedNet === key ? itemFactoryNets(world, x.item, 'surplus') : []}
+                  onToggle={() => toggleNet(key)}
+                  onFactoryClick={focusFactory}
+                />
+              );
+            })}
             {surplus.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>None yet</div>}
           </div>
           <SectionLabel color="#E5604D" mb={8}>Top deficit</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {deficit.map((x) => (
-              <div key={x.item} onClick={() => drill(x.item)} style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#150F0F', border: '1px solid #2A1B1B', borderRadius: 7, padding: '6px 8px', cursor: 'pointer' }}>
-                <ItemSquare item={x.item} />
-                <span style={{ flex: 1, fontSize: 12 }}>{x.item}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#E5604D' }}>{fmt(x.net)}/m</span>
-              </div>
-            ))}
+            {deficit.map((x) => {
+              const key = `deficit:${x.item}`;
+              return (
+                <NetItemRow
+                  key={key}
+                  item={x.item}
+                  net={x.net}
+                  mode="deficit"
+                  expanded={expandedNet === key}
+                  factories={expandedNet === key ? itemFactoryNets(world, x.item, 'deficit') : []}
+                  onToggle={() => toggleNet(key)}
+                  onFactoryClick={focusFactory}
+                />
+              );
+            })}
             {deficit.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>All balanced</div>}
           </div>
         </div>

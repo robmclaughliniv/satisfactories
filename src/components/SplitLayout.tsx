@@ -1,6 +1,8 @@
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
   type CSSProperties,
@@ -14,6 +16,8 @@ export type SideConfig = {
   minWidth?: number;
   maxWidth?: number;
   collapsible?: boolean;
+  /** Initial open state when nothing is persisted. Defaults to true. */
+  defaultOpen?: boolean;
 };
 
 type SplitLayoutProps = {
@@ -162,7 +166,15 @@ function CollapseTab({ side, onExpand }: { side: 'left' | 'right'; onExpand: () 
   );
 }
 
-export function SplitLayout({ id, left, right, panes, screen, stackOnMobile, style }: SplitLayoutProps) {
+export type SplitLayoutHandle = {
+  expandLeft: () => void;
+  expandRight: () => void;
+};
+
+export const SplitLayout = forwardRef<SplitLayoutHandle, SplitLayoutProps>(function SplitLayout(
+  { id, left, right, panes, screen, stackOnMobile, style },
+  ref,
+) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mobile = useIsMobile();
   const persisted = useRef(readPersistedLayout(id));
@@ -177,8 +189,15 @@ export function SplitLayout({ id, left, right, panes, screen, stackOnMobile, sty
     if (p != null && right) return clamp(p, sideMin(right), sideMax(right));
     return right?.defaultWidth ?? 0;
   });
-  const [leftOpen, setLeftOpen] = useState(() => persisted.current?.leftOpen ?? true);
-  const [rightOpen, setRightOpen] = useState(() => persisted.current?.rightOpen ?? true);
+  const [leftOpen, setLeftOpen] = useState(() => {
+    // defaultOpen: false means always start collapsed (ignore prior open sessions).
+    if (left?.defaultOpen === false) return false;
+    return persisted.current?.leftOpen ?? left?.defaultOpen ?? true;
+  });
+  const [rightOpen, setRightOpen] = useState(() => {
+    if (right?.defaultOpen === false) return false;
+    return persisted.current?.rightOpen ?? right?.defaultOpen ?? true;
+  });
 
   const persist = useCallback(
     (patch: Partial<{ leftWidth: number; rightWidth: number; leftOpen: boolean; rightOpen: boolean }>) => {
@@ -316,6 +335,8 @@ export function SplitLayout({ id, left, right, panes, screen, stackOnMobile, sty
     persist({ rightOpen: true });
   }, [persist]);
 
+  useImperativeHandle(ref, () => ({ expandLeft, expandRight }), [expandLeft, expandRight]);
+
   const showLeft = mobile || leftOpen;
   const showRight = mobile || rightOpen;
   const leftCollapsible = !mobile && (left?.collapsible ?? true);
@@ -394,4 +415,4 @@ export function SplitLayout({ id, left, right, panes, screen, stackOnMobile, sty
       )}
     </div>
   );
-}
+});

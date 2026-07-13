@@ -4,7 +4,8 @@ import { SG } from './bits';
 
 const screenTitle: Record<string, string> = {
   map: 'Map',
-  rollup: 'World Rollup',
+  factories: 'Factories',
+  rollup: 'Resources',
   reference: 'Reference',
   worlds: 'Worlds',
   factory: 'Map',
@@ -20,6 +21,7 @@ export function Header() {
     <header
       data-m-header=""
       style={{
+        position: 'relative',
         height: 52,
         flex: '0 0 52px',
         borderBottom: '1px solid #1E222B',
@@ -28,7 +30,7 @@ export function Header() {
         alignItems: 'center',
         padding: '0 18px',
         gap: 14,
-        zIndex: 20,
+        zIndex: 40,
       }}
     >
       <button

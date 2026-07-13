@@ -69,7 +69,7 @@ export const WorldSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 5 as const;
+export const SCHEMA_VERSION = 6 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({
@@ -77,6 +77,7 @@ export const PersistedStateSchema = z.object({
   worlds: z.array(WorldSchema),
   worldId: z.string().nullable(),
   favItems: z.array(z.string()),
+  favFactories: z.array(z.string()).default([]),
 });
 
 export type Status = z.infer<typeof StatusSchema>;

@@ -35,7 +35,9 @@ export interface AppState {
   picker: PickerState | null;
   pickerSearch: string;
   rollupFocus: string | null;
+  factoriesFocus: string | null;
   favItems: string[];
+  favFactories: string[];
   drillItem: string | null;
   refSel: string | null;
   refSearch: string;
@@ -48,10 +50,11 @@ export interface AppState {
 const STORAGE_KEY = 'satisfactories:v2';
 const LEGACY_STORAGE_KEY = 'satisfactories:v1';
 
-const EMPTY: Pick<AppState, 'worlds' | 'worldId' | 'favItems'> = {
+const EMPTY: Pick<AppState, 'worlds' | 'worldId' | 'favItems' | 'favFactories'> = {
   worlds: [],
   worldId: null,
   favItems: [],
+  favFactories: [],
 };
 
 function readAndMigrate(key: string): PersistedStateV2 | null {
@@ -64,14 +67,19 @@ function readAndMigrate(key: string): PersistedStateV2 | null {
   }
 }
 
-function loadInitial(): Pick<AppState, 'worlds' | 'worldId' | 'favItems'> {
+function loadInitial(): Pick<AppState, 'worlds' | 'worldId' | 'favItems' | 'favFactories'> {
   const persisted = readAndMigrate(STORAGE_KEY) ?? readAndMigrate(LEGACY_STORAGE_KEY);
   if (!persisted) return EMPTY;
   // Normalize a stale active-world pointer.
   const worldId = persisted.worlds.some((w) => w.id === persisted.worldId)
     ? persisted.worldId
     : persisted.worlds[0]?.id ?? null;
-  return { worlds: persisted.worlds, worldId, favItems: persisted.favItems };
+  return {
+    worlds: persisted.worlds,
+    worldId,
+    favItems: persisted.favItems,
+    favFactories: persisted.favFactories,
+  };
 }
 
 function initialState(): AppState {
@@ -91,6 +99,7 @@ function initialState(): AppState {
     picker: null,
     pickerSearch: '',
     rollupFocus: null,
+    factoriesFocus: null,
     drillItem: null,
     refSel: null,
     refSearch: '',
@@ -115,7 +124,7 @@ interface StoreValue {
   mutateWorld: (fn: (w: World) => void) => void;
 }
 
-const WORLD_SCREENS: Screen[] = ['map', 'factory', 'rollup'];
+const WORLD_SCREENS: Screen[] = ['map', 'factory', 'factories', 'rollup'];
 
 const StoreCtx = createContext<StoreValue | null>(null);
 
@@ -133,12 +142,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         worlds: st.worlds,
         worldId: st.worldId,
         favItems: st.favItems,
+        favFactories: st.favFactories,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
     } catch {
       // storage full / unavailable — persistence is best-effort
     }
-  }, [st.worlds, st.worldId, st.favItems]);
+  }, [st.worlds, st.worldId, st.favItems, st.favFactories]);
 
   const world = st.worlds.find((w) => w.id === st.worldId) ?? null;
   const screen: Screen = !world && WORLD_SCREENS.includes(st.screen) ? 'worlds' : st.screen;
@@ -154,6 +164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         screen,
         worldMenuOpen: false,
         drillItem: null,
+        factoriesFocus: null,
         ...(screen !== 'map' ? { mapLock: null } : {}),
       }),
     [up],
@@ -473,6 +484,14 @@ export function useActions() {
     }));
   };
 
+  const toggleFavFactory = (id: string) => {
+    up((s) => ({
+      favFactories: s.favFactories.includes(id)
+        ? s.favFactories.filter((x) => x !== id)
+        : s.favFactories.concat([id]),
+    }));
+  };
+
   const createWorld = () => {
     up((s) => {
       const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
@@ -544,6 +563,7 @@ export function useActions() {
     removeLocalInput,
     reorderFlows,
     toggleFav,
+    toggleFavFactory,
     createWorld,
     loadSampleWorld,
     renameWorld,
