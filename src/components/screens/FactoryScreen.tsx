@@ -2,9 +2,11 @@ import type { CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
 import { aggregate, exportRemainder, itemExported, itemSupply, localInputByItem } from '../../state/derive';
 import { isFactoryDirty } from '../../model/baseline';
+import { vehicleHops } from '../../model/logistics';
 import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
+import { ExportStationTree, ImportStationTree } from '../ExportStationTree';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel } from '../bits';
 import { SplitLayout } from '../SplitLayout';
 
@@ -56,6 +58,16 @@ function IdentityPanel({
     if (r.to === f.id) {
       const o = facById[r.from];
       if (o) linked.push({ name: o.name, color: o.color, dir: '← in', item: r.item, id: o.id });
+    }
+  });
+  vehicleHops(world).forEach((hop) => {
+    if (hop.fromFactoryId === f.id) {
+      const o = facById[hop.toFactoryId];
+      if (o) linked.push({ name: o.name, color: o.color, dir: '→ out', item: hop.item, id: o.id });
+    }
+    if (hop.toFactoryId === f.id) {
+      const o = facById[hop.fromFactoryId];
+      if (o) linked.push({ name: o.name, color: o.color, dir: '← in', item: hop.item, id: o.id });
     }
   });
   const coverStyle: CSSProperties = {
@@ -139,7 +151,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
   const world = useWorld();
   const { setRowCount, toggleRowExport, removeRow, addSection, openRecipePicker, resetFactory, commitFactory, openLocalInput } = useActions();
 
-  const dirty = isFactoryDirty(f, world.routes);
+  const dirty = isFactoryDirty(f, world.routes, world.stations ?? []);
 
   const localByItem = localInputByItem(f);
 
@@ -532,9 +544,19 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 // ===================== right panel: picker or balance =====================
 
 function RightPanel({ f }: { f: Factory }) {
-  const { st, up } = useStore();
+  const { st, up, openFactory } = useStore();
   const world = useWorld();
-  const { pickRecipe, addFlowLeg, openLocalInput, openRoute, removeLocalInput, removeRoute, reorderFlows } = useActions();
+  const {
+    pickRecipe,
+    openLocalInput,
+    openRoute,
+    removeLocalInput,
+    removeRoute,
+    reorderFlows,
+    openAddExportResource,
+    openStationCreate,
+    openStationEdit,
+  } = useActions();
 
   const agg = aggregate(f);
   const pk = st.picker;
@@ -626,9 +648,13 @@ function RightPanel({ f }: { f: Factory }) {
       flows.filter((fl) => fl.dir === 'export'),
       f.exportOrder,
     );
+    const exportFlowsForUi = exportFlows.map((fl) => ({
+      ...fl,
+      legs: fl.legs.filter((leg) => !!leg.routeId || leg.marked),
+    }));
     const addTransportBtn = (fl: (typeof flows)[number], accent: string) => (
       <button
-        onClick={() => addFlowLeg(fl.item, fl.dir, f.id)}
+        onClick={() => openRoute(undefined)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -643,7 +669,7 @@ function RightPanel({ f }: { f: Factory }) {
           marginTop: 1,
         }}
       >
-        <span style={{ color: accent, fontWeight: 600 }}>＋</span> Add transport
+        <span style={{ color: accent, fontWeight: 600 }}>＋</span> Add belt/pipe route
       </button>
     );
     const deleteImportLeg = (leg: { localInputId?: string; routeId?: string }) => {
@@ -680,12 +706,24 @@ function RightPanel({ f }: { f: Factory }) {
             onLegClick={(leg) => {
               if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
               else if (leg.routeId) openRoute(leg.routeId, { readOnly: true });
+              else if (leg.stationId && leg.vehicleId) {
+                const srcStation = world.stations?.find((s) => s.id === leg.stationId);
+                if (srcStation) openFactory(srcStation.homeFactoryId);
+              }
             }}
             onLegDelete={deleteImportLeg}
             canDeleteLeg={(leg) => !!leg.localInputId}
             legActionLabel={(leg) => (leg.localInputId ? 'Edit' : 'View')}
             onReorder={(orderedItems) => reorderFlows(f.id, 'import', orderedItems)}
-            addLeg={(fl) => addTransportBtn(fl, '#F5A95B')}
+            addLeg={(fl) => (
+              <ImportStationTree
+                world={world}
+                factory={f}
+                resourceId={fl.item}
+                onAddStation={() => openStationCreate(f.id, fl.item, 'import')}
+                onEditStation={(id) => openStationEdit(f.id, id)}
+              />
+            )}
           />
           <button
             onClick={() => openLocalInput(f.id)}
@@ -713,7 +751,7 @@ function RightPanel({ f }: { f: Factory }) {
         </SectionLabel>
         <div style={{ borderLeft: '2px solid #5BCB8633', paddingLeft: 10 }}>
           <FlowList
-            flows={exportFlows}
+            flows={exportFlowsForUi}
             expandedFlow={st.expandedFlow}
             keyPrefix="d_"
             onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
@@ -736,8 +774,37 @@ function RightPanel({ f }: { f: Factory }) {
               );
             }}
             onReorder={(orderedItems) => reorderFlows(f.id, 'export', orderedItems)}
-            addLeg={(fl) => addTransportBtn(fl, '#5BCB86')}
+            addLeg={(fl) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <ExportStationTree
+                  world={world}
+                  factory={f}
+                  resourceId={fl.item}
+                  onAddStation={() => openStationCreate(f.id, fl.item, 'export')}
+                  onEditStation={(id) => openStationEdit(f.id, id)}
+                />
+                {addTransportBtn(fl, '#5BCB86')}
+              </div>
+            )}
           />
+          <button
+            onClick={() => openAddExportResource(f.id)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'transparent',
+              border: '1px dashed #2A2F39',
+              color: '#8A909A',
+              borderRadius: 6,
+              padding: '5px 8px',
+              fontSize: 10.5,
+              cursor: 'pointer',
+              marginTop: 8,
+            }}
+          >
+            <span style={{ color: '#5BCB86', fontWeight: 600 }}>＋</span> Add Resource
+          </button>
         </div>
       </>
     );

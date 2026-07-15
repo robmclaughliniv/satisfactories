@@ -134,7 +134,7 @@ export function Header() {
             fontSize: 12.5,
           }}
         >
-          ⛓ Add route
+          ⛓ Add belt/pipe route
         </button>
       )}
       {screen === 'reference' && <div style={{ fontSize: 12, color: '#6B7280' }}>{RECIPES.length} recipes</div>}

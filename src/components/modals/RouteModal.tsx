@@ -20,6 +20,8 @@ const disabledSelectStyle = {
   cursor: 'not-allowed',
 } as const;
 
+const BELT_PIPE_TRANSPORTS = ['Belt', 'Pipe'] as const;
+
 const labelStyle = { fontSize: 11, color: '#8A909A', display: 'block', marginBottom: 6 } as const;
 
 export function RouteModal() {
@@ -35,7 +37,10 @@ export function RouteModal() {
   const close = () => up({ routeModal: null });
   const editing = !!m.editingId;
   const readOnly = !!m.readOnly;
-  const setItem = (item: string) => upd({ item, t: defaultTransportForItem(item) });
+  const setItem = (item: string) => {
+    const t = defaultTransportForItem(item);
+    upd({ item, t: t === 'Pipe' ? 'Pipe' : 'Belt' });
+  };
 
   const fromFac = world.factories.find((f) => f.id === m.from);
   const toFac = world.factories.find((f) => f.id === m.to);
@@ -67,7 +72,7 @@ export function RouteModal() {
       >
         <div style={{ padding: '18px 22px', borderBottom: '1px solid #1C2027', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 16, flex: 1 }}>
-            {readOnly ? 'Incoming route' : editing ? 'Edit route' : 'Draw a route'}
+            {readOnly ? 'Incoming route' : editing ? 'Edit route' : 'Draw belt/pipe route'}
           </div>
           <span onClick={close} style={{ color: '#6B7280', cursor: 'pointer', fontSize: 20 }}>
             ×
@@ -192,7 +197,7 @@ export function RouteModal() {
                 onChange={(e) => upd({ t: e.target.value as Transport })}
                 style={readOnly ? disabledSelectStyle : selectStyle}
               >
-                {TRANSPORTS.map((tp) => (
+                {TRANSPORTS.filter((tp) => readOnly || BELT_PIPE_TRANSPORTS.includes(tp as (typeof BELT_PIPE_TRANSPORTS)[number])).map((tp) => (
                   <option key={tp} value={tp}>
                     {tp}
                   </option>

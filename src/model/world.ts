@@ -1,5 +1,6 @@
 import type { Factory, World, WorldTemplate } from './schema';
 import { captureBaseline } from './baseline';
+import { normalizeWorldLogistics } from './migrations';
 
 let idCounter = 0;
 
@@ -16,6 +17,7 @@ export function createEmptyWorld(name: string): World {
     name,
     factories: [],
     routes: [],
+    stations: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -28,25 +30,32 @@ export function createEmptyWorld(name: string): World {
 export function instantiateTemplate(template: WorldTemplate): World {
   const now = new Date().toISOString();
   const routes = JSON.parse(JSON.stringify(template.routes));
+  const stations = JSON.parse(JSON.stringify(template.stations ?? []));
   const factories: Factory[] = template.factories.map((f) => {
     const factory: Factory = {
       ...JSON.parse(JSON.stringify(f)),
       localInputs: f.localInputs ?? [],
       importOrder: f.importOrder ?? [],
       exportOrder: f.exportOrder ?? [],
+      stationSeq: f.stationSeq ?? 0,
       baseline: '',
     };
-    factory.baseline = captureBaseline(factory, routes);
     return factory;
   });
-  return {
+  const world: World = {
     id: freshId('w'),
     name: template.name,
     factories,
     routes,
+    stations,
     createdAt: now,
     updatedAt: now,
   };
+  normalizeWorldLogistics(world);
+  world.factories.forEach((factory) => {
+    factory.baseline = captureBaseline(factory, world.routes, world.stations ?? []);
+  });
+  return world;
 }
 
 /** Bump a world's updatedAt in place. */

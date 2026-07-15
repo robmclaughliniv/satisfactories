@@ -6,8 +6,9 @@ import { migratePersisted } from '../model/migrations';
 import { applyBaseline, captureBaseline, emptyBaseline, parseBaseline } from '../model/baseline';
 import { SCHEMA_VERSION, type PersistedStateV2 } from '../model/schema';
 import { createEmptyWorld, instantiateTemplate, touchWorld } from '../model/world';
-import { exportRemainder, itemExported, itemSupply } from './derive';
+import { exportRemainder, exportableItems, itemExported, itemSupply } from './derive';
 import type {
+  AddExportResourceModalState,
   FactoryModalState,
   Factory,
   LocalInputModalState,
@@ -16,9 +17,23 @@ import type {
   PickerState,
   RouteModalState,
   Screen,
+  Station,
+  StationEditModalState,
+  StationRole,
+  StationType,
   Transport,
   World,
 } from '../types';
+import {
+  createStation,
+  createVehicle,
+  reconcileLogistics,
+  removeStation as removeStationFromWorld,
+  recomputeVehicleRates,
+  stationById,
+  suggestStationName,
+} from '../model/logistics';
+import { freshId } from '../model/world';
 
 export interface AppState {
   screen: Screen;
@@ -45,6 +60,8 @@ export interface AppState {
   factoryModal: FactoryModalState | null;
   routeModal: RouteModalState | null;
   localInputModal: LocalInputModalState | null;
+  addExportResourceModal: AddExportResourceModalState | null;
+  stationEditModal: StationEditModalState | null;
   worlds: World[];
 }
 
@@ -112,6 +129,8 @@ function initialState(): AppState {
     factoryModal: null,
     routeModal: null,
     localInputModal: null,
+    addExportResourceModal: null,
+    stationEditModal: null,
     ...persisted,
   };
 }
@@ -284,7 +303,7 @@ export function useActions() {
   const commitFactory = (fid: string) => {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === fid);
-      if (f) f.baseline = captureBaseline(f, w.routes);
+      if (f) f.baseline = captureBaseline(f, w.routes, w.stations ?? []);
     });
   };
 
@@ -312,6 +331,7 @@ export function useActions() {
         localInputs: [],
         importOrder: [],
         exportOrder: [],
+        stationSeq: 0,
         baseline: emptyBaseline(),
       });
     });
@@ -345,10 +365,244 @@ export function useActions() {
         to: facs[1].id,
         item: 'Iron Rod',
         rate: 60,
-        t: defaultTransportForItem('Iron Rod'),
+        t: 'Belt',
         readOnly: false,
       },
     });
+  };
+
+  const openAddExportResource = (factoryId: string) => {
+    if (!world) return;
+    const factory = world.factories.find((f) => f.id === factoryId);
+    if (!factory) return;
+    const options = exportableItems(world, factory).filter((o) => !(factory.exportOrder ?? []).includes(o.item));
+    if (!options.length) return;
+    up({
+      addExportResourceModal: {
+        factoryId,
+        item: options[0].item,
+      },
+    });
+  };
+
+  const saveAddExportResource = () => {
+    const m = st.addExportResourceModal;
+    if (!m || !world) return;
+    mutateWorld((w) => {
+      const factory = w.factories.find((f) => f.id === m.factoryId);
+      if (!factory) return;
+      if (!factory.exportOrder.includes(m.item)) {
+        factory.exportOrder = [...(factory.exportOrder ?? []), m.item];
+      }
+    });
+    up({ addExportResourceModal: null });
+  };
+
+  const openStationCreate = (factoryId: string, resourceId: string, role: StationRole) => {
+    if (!world) return;
+    const factory = world.factories.find((f) => f.id === factoryId);
+    if (!factory) return;
+    const headroom = role === 'export' ? Math.max(0, exportRemainder(world, factory, resourceId, true)) : 0;
+    up({
+      stationEditModal: {
+        factoryId,
+        stationId: null,
+        resourceId,
+        role,
+        name: suggestStationName(factory, resourceId),
+        type: 'train',
+        totalRate: headroom || 60,
+        vehicles: [],
+      },
+    });
+  };
+
+  const openStationEdit = (factoryId: string, stationId: string) => {
+    if (!world) return;
+    const station = stationById(world, stationId);
+    if (!station || station.homeFactoryId !== factoryId) return;
+    up({
+      stationEditModal: {
+        factoryId,
+        stationId,
+        resourceId: station.resourceId,
+        role: station.role,
+        name: station.name,
+        type: station.type,
+        totalRate: station.totalRate,
+        vehicles: station.vehicles.map((v) => ({
+          id: v.id,
+          destinationStationId: v.destinationStationId,
+        })),
+      },
+    });
+  };
+
+  const updateStationModal = (patch: Partial<StationEditModalState>) => {
+    const m = st.stationEditModal;
+    if (!m) return;
+    up({ stationEditModal: { ...m, ...patch } });
+  };
+
+  const addStationVehicleDraft = () => {
+    const m = st.stationEditModal;
+    if (!m || m.role !== 'export') return;
+    up({
+      stationEditModal: {
+        ...m,
+        vehicles: [...m.vehicles, { id: freshId('vh'), destinationStationId: null }],
+      },
+    });
+  };
+
+  const removeStationVehicleDraft = (vehicleId: string) => {
+    const m = st.stationEditModal;
+    if (!m) return;
+    up({
+      stationEditModal: {
+        ...m,
+        vehicles: m.vehicles.filter((v) => v.id !== vehicleId),
+      },
+    });
+  };
+
+  const setStationVehicleDestinationDraft = (vehicleId: string, destinationStationId: string | null) => {
+    const m = st.stationEditModal;
+    if (!m) return;
+    up({
+      stationEditModal: {
+        ...m,
+        vehicles: m.vehicles.map((v) => (v.id === vehicleId ? { ...v, destinationStationId } : v)),
+      },
+    });
+  };
+
+  function isValidDestination(
+    w: World,
+    exportFactoryId: string,
+    resourceId: string,
+    type: StationType,
+    destStationId: string | null,
+  ): boolean {
+    if (!destStationId) return true;
+    const dest = stationById(w, destStationId);
+    return !!(
+      dest &&
+      dest.role === 'import' &&
+      dest.type === type &&
+      dest.resourceId === resourceId &&
+      dest.homeFactoryId !== exportFactoryId
+    );
+  }
+
+  const saveStation = () => {
+    const m = st.stationEditModal;
+    if (!m || !world) return;
+    const name = m.name.trim();
+    if (!name) return;
+    const factory = world.factories.find((f) => f.id === m.factoryId);
+    let maxRate = factory && m.role === 'export' ? Math.max(0, exportRemainder(world, factory, m.resourceId, true)) : Infinity;
+    if (!m.stationId && factory && m.role === 'export') {
+      /* create: headroom already excludes nothing new */
+    } else if (m.stationId && factory && m.role === 'export') {
+      const existing = stationById(world, m.stationId);
+      if (existing) maxRate += existing.totalRate;
+    }
+    const totalRate =
+      m.role === 'import' ? 0 : Math.min(Math.max(0, parseFloat(String(m.totalRate)) || 0), maxRate);
+
+    mutateWorld((w) => {
+      const factory = w.factories.find((f) => f.id === m.factoryId);
+      if (!factory) return;
+
+      const applyVehicles = (station: Station) => {
+        if (station.role !== 'export') return;
+        const nextVehicles = m.vehicles.map((draft) => {
+          const existing = station.vehicles.find((v) => v.id === draft.id);
+          const vehicle = existing ?? createVehicle(station.type, null);
+          if (!existing) vehicle.id = draft.id;
+          vehicle.destinationStationId = isValidDestination(
+            w,
+            station.homeFactoryId,
+            station.resourceId,
+            station.type,
+            draft.destinationStationId,
+          )
+            ? draft.destinationStationId
+            : null;
+          if (draft.destinationStationId && vehicle.destinationStationId) {
+            const dest = stationById(w, vehicle.destinationStationId);
+            const destFac = dest ? w.factories.find((f) => f.id === dest.homeFactoryId) : undefined;
+            if (destFac && !destFac.importOrder.includes(station.resourceId)) {
+              destFac.importOrder = [...(destFac.importOrder ?? []), station.resourceId];
+            }
+          }
+          return vehicle;
+        });
+        station.vehicles = nextVehicles;
+        recomputeVehicleRates(station);
+      };
+
+      if (m.stationId) {
+        const station = stationById(w, m.stationId);
+        if (!station) return;
+        station.name = name;
+        if (station.role === 'export' && station.vehicles.length === 0 && m.vehicles.length === 0) {
+          station.type = m.type;
+        }
+        station.totalRate = station.role === 'import' ? 0 : totalRate;
+        applyVehicles(station);
+      } else {
+        const vehicles =
+          m.role === 'export'
+            ? m.vehicles.map((draft) => {
+                const vehicle = createVehicle(m.type, null);
+                vehicle.id = draft.id;
+                vehicle.destinationStationId = isValidDestination(
+                  w,
+                  m.factoryId,
+                  m.resourceId,
+                  m.type,
+                  draft.destinationStationId,
+                )
+                  ? draft.destinationStationId
+                  : null;
+                if (vehicle.destinationStationId) {
+                  const dest = stationById(w, vehicle.destinationStationId);
+                  const destFac = dest ? w.factories.find((f) => f.id === dest.homeFactoryId) : undefined;
+                  if (destFac && !destFac.importOrder.includes(m.resourceId)) {
+                    destFac.importOrder = [...(destFac.importOrder ?? []), m.resourceId];
+                  }
+                }
+                return vehicle;
+              })
+            : [];
+        const station = createStation(w, factory, {
+          name,
+          resourceId: m.resourceId,
+          type: m.type,
+          role: m.role,
+          totalRate: m.role === 'import' ? 0 : totalRate,
+          vehicles,
+        });
+        recomputeVehicleRates(station);
+        if (m.role === 'export' && !factory.exportOrder.includes(m.resourceId)) {
+          factory.exportOrder = [...(factory.exportOrder ?? []), m.resourceId];
+        }
+        if (m.role === 'import' && !factory.importOrder.includes(m.resourceId)) {
+          factory.importOrder = [...(factory.importOrder ?? []), m.resourceId];
+        }
+      }
+      reconcileLogistics(w);
+    });
+    up({ stationEditModal: null });
+  };
+
+  const removeStation = (stationId: string) => {
+    mutateWorld((w) => {
+      removeStationFromWorld(w, stationId);
+    });
+    up({ stationEditModal: null });
   };
 
   const addFlowLeg = (item: string, dir: 'export' | 'import', factoryId: string) => {
@@ -390,6 +644,7 @@ export function useActions() {
         const maxRate = Math.max(0, supply - otherExports);
         rate = Math.min(rate, maxRate);
       }
+      const routeTransport = (m.t === 'Pipe' ? 'Pipe' : 'Belt') as Transport;
       if (m.editingId) {
         const r = w.routes.find((x) => x.id === m.editingId);
         if (r) {
@@ -397,7 +652,7 @@ export function useActions() {
           r.to = m.to;
           r.item = m.item;
           r.rate = rate;
-          r.t = (m.t || defaultTransportForItem(m.item)) as Transport;
+          r.t = routeTransport;
         }
       } else {
         w.routes.push({
@@ -406,7 +661,7 @@ export function useActions() {
           to: m.to,
           item: m.item,
           rate,
-          t: (m.t || defaultTransportForItem(m.item)) as Transport,
+          t: routeTransport,
         });
       }
     });
@@ -586,6 +841,8 @@ export function useActions() {
       factoryModal: null,
       routeModal: null,
       localInputModal: null,
+      addExportResourceModal: null,
+      stationEditModal: null,
     });
   };
 
@@ -604,6 +861,16 @@ export function useActions() {
     addFlowLeg,
     saveRoute,
     removeRoute,
+    openAddExportResource,
+    saveAddExportResource,
+    openStationCreate,
+    openStationEdit,
+    updateStationModal,
+    addStationVehicleDraft,
+    removeStationVehicleDraft,
+    setStationVehicleDestinationDraft,
+    saveStation,
+    removeStation,
     openLocalInput,
     saveLocalInput,
     removeLocalInput,

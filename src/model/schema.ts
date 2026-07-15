@@ -10,6 +10,27 @@ export const StatusSchema = z.enum(['planned', 'construction', 'operational', 'd
 
 export const TransportSchema = z.enum(['Belt', 'Train', 'Truck', 'Drone', 'Pipe', 'Unset']);
 
+export const StationTypeSchema = z.enum(['train', 'truck', 'drone']);
+export const StationRoleSchema = z.enum(['export', 'import']);
+
+export const VehicleSchema = z.object({
+  id: z.string(),
+  type: StationTypeSchema,
+  destinationStationId: z.string().nullable(),
+  perVehicleRate: z.number(),
+});
+
+export const StationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: StationTypeSchema,
+  homeFactoryId: z.string(),
+  resourceId: z.string(),
+  role: StationRoleSchema,
+  totalRate: z.number(),
+  vehicles: z.array(VehicleSchema),
+});
+
 export const RowSchema = z.object({
   id: z.string(),
   recipeId: z.string(),
@@ -47,7 +68,9 @@ export const FactorySchema = z.object({
   /** User-defined order of import/export resource rows (by item name). */
   importOrder: z.array(z.string()).default([]),
   exportOrder: z.array(z.string()).default([]),
-  /** JSON snapshot of factory draft state at last commit — sections, local inputs, flow order, outbound routes. */
+  /** Monotonic station naming counter — never reused after delete. */
+  stationSeq: z.number().default(0),
+  /** JSON snapshot of factory draft state at last commit — sections, local inputs, flow order, outbound routes, stations. */
   baseline: z.string(),
 });
 
@@ -65,11 +88,12 @@ export const WorldSchema = z.object({
   name: z.string(),
   factories: z.array(FactorySchema),
   routes: z.array(RouteSchema),
+  stations: z.array(StationSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 6 as const;
+export const SCHEMA_VERSION = 7 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({
@@ -82,6 +106,10 @@ export const PersistedStateSchema = z.object({
 
 export type Status = z.infer<typeof StatusSchema>;
 export type Transport = z.infer<typeof TransportSchema>;
+export type StationType = z.infer<typeof StationTypeSchema>;
+export type StationRole = z.infer<typeof StationRoleSchema>;
+export type Vehicle = z.infer<typeof VehicleSchema>;
+export type Station = z.infer<typeof StationSchema>;
 export type Row = z.infer<typeof RowSchema>;
 export type Section = z.infer<typeof SectionSchema>;
 export type LocalInput = z.infer<typeof LocalInputSchema>;
@@ -95,6 +123,7 @@ export const WorldTemplateSchema = z.object({
   name: z.string(),
   factories: z.array(FactorySchema.omit({ baseline: true })),
   routes: z.array(RouteSchema),
+  stations: z.array(StationSchema).default([]),
 });
 
 export type WorldTemplate = z.infer<typeof WorldTemplateSchema>;

@@ -359,6 +359,7 @@ export function FactoriesScreen() {
                 removeLocalInput={removeLocalInput}
                 removeRoute={removeRoute}
                 reorderFlows={reorderFlows}
+                openFactory={openFactory}
               />
             ) : (
               <div
@@ -412,6 +413,7 @@ function FactoryDetailSidebar({
   removeLocalInput,
   removeRoute,
   reorderFlows,
+  openFactory,
 }: {
   factory: Factory;
   favorited: boolean;
@@ -424,6 +426,7 @@ function FactoryDetailSidebar({
   removeLocalInput: ReturnType<typeof useActions>['removeLocalInput'];
   removeRoute: ReturnType<typeof useActions>['removeRoute'];
   reorderFlows: ReturnType<typeof useActions>['reorderFlows'];
+  openFactory: (id: string) => void;
 }) {
   const world = useWorld();
   const agg = aggregate(f);
@@ -519,6 +522,10 @@ function FactoryDetailSidebar({
             onLegClick={(leg) => {
               if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
               else if (leg.routeId) openRoute(leg.routeId, { readOnly: true });
+              else if (leg.stationId && leg.vehicleId) {
+                const srcStation = world.stations?.find((s) => s.id === leg.stationId);
+                if (srcStation) openFactory(srcStation.homeFactoryId);
+              }
             }}
             onLegDelete={(leg) => {
               if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);

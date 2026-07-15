@@ -86,7 +86,7 @@ function FlowLegRow({
   actionLabel?: string;
 }) {
   const [hovered, setHovered] = useState(false);
-  const clickable = !!(leg.routeId || leg.localInputId) && !!onLegClick;
+  const clickable = !!(leg.routeId || leg.localInputId || leg.stationId) && !!onLegClick;
   const deletable = clickable && !!onLegDelete && (canDeleteLeg ? canDeleteLeg(leg) : true);
 
   return (

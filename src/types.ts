@@ -1,10 +1,14 @@
-import type { Status, Transport } from './model/schema';
+import type { Status, Transport, StationType, StationRole } from './model/schema';
 
 // Persisted data shapes live in src/model/schema.ts (zod) — re-exported here
 // so the rest of the app keeps importing from types.ts.
 export type {
   Status,
   Transport,
+  StationType,
+  StationRole,
+  Vehicle,
+  Station,
   Row,
   Section,
   LocalInput,
@@ -74,4 +78,26 @@ export interface LocalInputModalState {
   rate: number | string;
   t: Transport;
   editingId?: string;
+}
+
+export interface AddExportResourceModalState {
+  factoryId: string;
+  item: string;
+}
+
+export interface StationVehicleDraft {
+  id: string;
+  destinationStationId: string | null;
+}
+
+export interface StationEditModalState {
+  factoryId: string;
+  /** null = create new station */
+  stationId: string | null;
+  resourceId: string;
+  role: StationRole;
+  name: string;
+  type: StationType;
+  totalRate: number | string;
+  vehicles: StationVehicleDraft[];
 }

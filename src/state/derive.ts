@@ -1,5 +1,6 @@
 import { recipeById } from '../data/gameData';
 import type { Factory, World } from '../types';
+import { exportStations, vehicleHops } from '../model/logistics';
 
 export interface Aggregate {
   per: Record<string, { in: number; out: number }>;
@@ -58,14 +59,29 @@ export function itemSupply(world: World, factory: Factory, item: string): number
   world.routes.forEach((r) => {
     if (r.to === factory.id && r.item === item) imported += r.rate;
   });
+  vehicleHops(world).forEach((hop) => {
+    if (hop.toFactoryId === factory.id && hop.item === item) imported += hop.rate;
+  });
   return made + local + imported;
 }
 
-/** Outbound route (+ optional marked-for-export) total for an item. */
+/** Outbound route, vehicle hop, and optional marked-for-export total for an item. */
 export function itemExported(world: World, factory: Factory, item: string, includeMarked = true): number {
   let exported = 0;
   world.routes.forEach((r) => {
     if (r.from === factory.id && r.item === item) exported += r.rate;
+  });
+  vehicleHops(world).forEach((hop) => {
+    if (hop.fromFactoryId === factory.id && hop.item === item) exported += hop.rate;
+  });
+  exportStations(world, factory.id, item).forEach((station) => {
+    if (station.vehicles.length === 0) {
+      exported += station.totalRate;
+      return;
+    }
+    station.vehicles.forEach((v) => {
+      if (!v.destinationStationId) exported += v.perVehicleRate;
+    });
   });
   if (includeMarked) {
     (factory.sections || []).forEach((sec) =>
@@ -111,4 +127,31 @@ export function rollupWorld(world: World): Record<string, RollupEntry> {
     });
   });
   return per;
+}
+
+/** Items in inventory (produced + imports) not already exported via stations/routes. */
+export function exportableItems(world: World, factory: Factory): { item: string; headroom: number }[] {
+  const supplyItems = new Set<string>();
+  Object.keys(aggregate(factory).per).forEach((item) => {
+    if (aggregate(factory).per[item].out > 0.001) supplyItems.add(item);
+  });
+  (factory.localInputs || []).forEach((li) => supplyItems.add(li.item));
+  world.routes.forEach((r) => {
+    if (r.to === factory.id) supplyItems.add(r.item);
+  });
+  vehicleHops(world).forEach((hop) => {
+    if (hop.toFactoryId === factory.id) supplyItems.add(hop.item);
+  });
+
+  const exportedItems = new Set<string>();
+  world.routes.forEach((r) => {
+    if (r.from === factory.id) exportedItems.add(r.item);
+  });
+  exportStations(world, factory.id).forEach((s) => exportedItems.add(s.resourceId));
+
+  return [...supplyItems]
+    .filter((item) => !exportedItems.has(item))
+    .map((item) => ({ item, headroom: Math.max(0, exportRemainder(world, factory, item, true)) }))
+    .filter((x) => x.headroom > 0.001)
+    .sort((a, b) => b.headroom - a.headroom);
 }

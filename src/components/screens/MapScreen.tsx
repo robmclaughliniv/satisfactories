@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProper
 import { fmt, initials, statusMeta } from '../../data/gameData';
 import { aggregate, exportRemainder, itemExported, itemSupply, localInputByItem, rollupWorld } from '../../state/derive';
 import { buildFlows, applyFlowOrder } from '../../state/flows';
+import { buildMapConnections, connectionCount } from '../../model/mapConnections';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
@@ -573,15 +574,14 @@ export function MapScreen() {
 
   const { connMap, connections } = useMemo(() => {
     const visibleIds = visible.map((f) => f.id);
-    const routesVis = world.routes.filter((r) => visibleIds.includes(r.from) && visibleIds.includes(r.to));
+    const allConnections = buildMapConnections(world);
+    const routesVis = allConnections.filter((c) => visibleIds.includes(c.a) && visibleIds.includes(c.b));
     const cm: Record<string, Conn> = {};
-    routesVis.forEach((r) => {
-      const key = [r.from, r.to].slice().sort().join('__');
-      if (!cm[key]) cm[key] = { key, a: r.from, b: r.to, items: [] };
-      cm[key].items.push({ item: r.item, rate: r.rate, t: r.t, from: r.from, to: r.to });
+    routesVis.forEach((c) => {
+      cm[c.key] = c;
     });
-    return { connMap: cm, connections: Object.values(cm) };
-  }, [world.routes, visible]);
+    return { connMap: cm, connections: routesVis };
+  }, [world, visible]);
 
   return (
     <div data-m-screen="" style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
@@ -837,6 +837,10 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
               onLegClick={(leg) => {
                 if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
                 else if (leg.routeId) openRoute(leg.routeId, { readOnly: true });
+                else if (leg.stationId && leg.vehicleId) {
+                  const srcStation = world.stations?.find((s) => s.id === leg.stationId);
+                  if (srcStation) openFactory(srcStation.homeFactoryId);
+                }
               }}
               onLegDelete={(leg) => {
                 if (leg.localInputId) removeLocalInput(f.id, leg.localInputId);
@@ -963,7 +967,7 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
         <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #161A21' }}>
           <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 15 }}>{world.name}</div>
           <div style={{ fontSize: 11, color: '#7B828D', marginTop: 2 }}>
-            {facs.length} factories · {world.routes.length} routes
+            {facs.length} factories · {connectionCount(world)} routes
           </div>
         </div>
         <div style={{ display: 'flex', borderBottom: '1px solid #161A21' }}>

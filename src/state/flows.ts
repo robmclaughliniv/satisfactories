@@ -1,5 +1,6 @@
 import { recipeById } from '../data/gameData';
 import type { Factory, World } from '../types';
+import { exportStations, transportFromStationType, vehicleHops } from '../model/logistics';
 
 export interface FlowLeg {
   partner: string;
@@ -9,6 +10,8 @@ export interface FlowLeg {
   marked?: boolean;
   routeId?: string;
   localInputId?: string;
+  stationId?: string;
+  vehicleId?: string;
 }
 
 export interface Flow {
@@ -20,14 +23,15 @@ export interface Flow {
 }
 
 /**
- * Group the world's routes touching a factory into per-item import/export
- * flows. When `includeMarked` is set, rows checked "for export" contribute a
- * synthetic "Marked for export" leg (used on the factory detail screen).
+ * Group the world's routes and vehicle hops touching a factory into per-item
+ * import/export flows. When `includeMarked` is set, rows checked "for export"
+ * contribute a synthetic "Marked for export" leg (used on the factory detail screen).
  */
 export function buildFlows(world: World, f: Factory, includeMarked: boolean): Flow[] {
   const facById: Record<string, Factory> = {};
   world.factories.forEach((x) => (facById[x.id] = x));
   const flowMap: Record<string, Flow> = {};
+
   world.routes.forEach((r) => {
     let dir: 'import' | 'export';
     let partner: Factory | undefined;
@@ -44,12 +48,40 @@ export function buildFlows(world: World, f: Factory, includeMarked: boolean): Fl
     flowMap[key].total += r.rate;
     flowMap[key].legs.push({ partner: partner.name, color: partner.color, transport: r.t || 'Belt', rate: r.rate, routeId: r.id });
   });
+
+  vehicleHops(world).forEach((hop) => {
+    let dir: 'import' | 'export';
+    let partner: Factory | undefined;
+    if (hop.toFactoryId === f.id) {
+      dir = 'import';
+      partner = facById[hop.fromFactoryId];
+    } else if (hop.fromFactoryId === f.id) {
+      dir = 'export';
+      partner = facById[hop.toFactoryId];
+    } else return;
+    if (!partner) return;
+    const key = dir + '|' + hop.item;
+    if (!flowMap[key]) flowMap[key] = { key, dir, item: hop.item, total: 0, legs: [] };
+    flowMap[key].total += hop.rate;
+    if (dir === 'import') {
+      flowMap[key].legs.push({
+        partner: partner.name,
+        color: partner.color,
+        transport: transportFromStationType(hop.type),
+        rate: hop.rate,
+        stationId: hop.stationId,
+        vehicleId: hop.vehicleId,
+      });
+    }
+  });
+
   (f.localInputs || []).forEach((li) => {
     const key = 'import|' + li.item;
     if (!flowMap[key]) flowMap[key] = { key, dir: 'import', item: li.item, total: 0, legs: [] };
     flowMap[key].total += li.rate;
     flowMap[key].legs.push({ partner: 'Local node', color: '#6B7280', transport: li.t || 'Belt', rate: li.rate, localInputId: li.id });
   });
+
   if (includeMarked) {
     (f.sections || []).forEach((sec) =>
       sec.rows.forEach((row) => {
@@ -65,6 +97,31 @@ export function buildFlows(world: World, f: Factory, includeMarked: boolean): Fl
       }),
     );
   }
+
+  exportStations(world, f.id).forEach((station) => {
+    const key = 'export|' + station.resourceId;
+    if (!flowMap[key]) flowMap[key] = { key, dir: 'export', item: station.resourceId, total: 0, legs: [] };
+
+    if (station.vehicles.length === 0) {
+      flowMap[key].total += station.totalRate;
+      return;
+    }
+
+    const undestined = station.vehicles.filter((v) => !v.destinationStationId);
+    if (undestined.length === 0) return;
+    flowMap[key].total += undestined.reduce((sum, v) => sum + v.perVehicleRate, 0);
+  });
+
+  (f.exportOrder ?? []).forEach((item) => {
+    const key = 'export|' + item;
+    if (!flowMap[key]) flowMap[key] = { key, dir: 'export', item, total: 0, legs: [] };
+  });
+
+  (f.importOrder ?? []).forEach((item) => {
+    const key = 'import|' + item;
+    if (!flowMap[key]) flowMap[key] = { key, dir: 'import', item, total: 0, legs: [] };
+  });
+
   return Object.keys(flowMap)
     .sort((a, b) => {
       const A = flowMap[a];

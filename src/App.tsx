@@ -1,8 +1,10 @@
 import { Header } from './components/Header';
 import { NavRail } from './components/NavRail';
+import { AddExportResourceModal } from './components/modals/AddExportResourceModal';
 import { FactoryModal } from './components/modals/FactoryModal';
 import { LocalInputModal } from './components/modals/LocalInputModal';
 import { RouteModal } from './components/modals/RouteModal';
+import { StationEditModal } from './components/modals/StationEditModal';
 import { FactoriesScreen } from './components/screens/FactoriesScreen';
 import { FactoryScreen } from './components/screens/FactoryScreen';
 import { MapScreen } from './components/screens/MapScreen';
@@ -43,6 +45,8 @@ function Shell() {
       <FactoryModal />
       <RouteModal />
       <LocalInputModal />
+      <AddExportResourceModal />
+      <StationEditModal />
       <DrillDrawer />
     </div>
   );
