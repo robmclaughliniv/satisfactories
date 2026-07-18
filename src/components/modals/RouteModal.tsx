@@ -45,7 +45,7 @@ export function RouteModal() {
   const fromFac = world.factories.find((f) => f.id === m.from);
   const toFac = world.factories.find((f) => f.id === m.to);
   const supply = fromFac ? itemSupply(world, fromFac, m.item) : 0;
-  let otherExports = fromFac ? itemExported(world, fromFac, m.item, true) : 0;
+  let otherExports = fromFac ? itemExported(world, fromFac, m.item) : 0;
   if (editing && fromFac) {
     const existing = world.routes.find((x) => x.id === m.editingId);
     if (existing && existing.from === m.from && existing.item === m.item) otherExports -= existing.rate;

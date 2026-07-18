@@ -51,10 +51,8 @@ export function aggregate(factory: Factory): Aggregate {
   return { per, power, machines, outputs, inputs };
 }
 
-/** Produced + imported + local supply for an item at a factory. */
-export function itemSupply(world: World, factory: Factory, item: string): number {
-  const made = aggregate(factory).per[item]?.out || 0;
-  const local = localInputByItem(factory)[item] || 0;
+/** Imported belt/pipe routes and vehicle hops for an item at a factory. */
+export function importedByItem(world: World, factory: Factory, item: string): number {
   let imported = 0;
   world.routes.forEach((r) => {
     if (r.to === factory.id && r.item === item) imported += r.rate;
@@ -62,11 +60,18 @@ export function itemSupply(world: World, factory: Factory, item: string): number
   vehicleHops(world).forEach((hop) => {
     if (hop.toFactoryId === factory.id && hop.item === item) imported += hop.rate;
   });
-  return made + local + imported;
+  return imported;
 }
 
-/** Outbound route, vehicle hop, and optional marked-for-export total for an item. */
-export function itemExported(world: World, factory: Factory, item: string, includeMarked = true): number {
+/** Produced + imported + local supply for an item at a factory. */
+export function itemSupply(world: World, factory: Factory, item: string): number {
+  const made = aggregate(factory).per[item]?.out || 0;
+  const local = localInputByItem(factory)[item] || 0;
+  return made + local + importedByItem(world, factory, item);
+}
+
+/** Outbound route, vehicle hop, and station export total for an item. */
+export function itemExported(world: World, factory: Factory, item: string): number {
   let exported = 0;
   world.routes.forEach((r) => {
     if (r.from === factory.id && r.item === item) exported += r.rate;
@@ -83,22 +88,11 @@ export function itemExported(world: World, factory: Factory, item: string, inclu
       if (!v.destinationStationId) exported += v.perVehicleRate;
     });
   });
-  if (includeMarked) {
-    (factory.sections || []).forEach((sec) =>
-      sec.rows.forEach((row) => {
-        if (!row.export) return;
-        const rec = recipeById(row.recipeId);
-        if (!rec?.outputs.length) return;
-        const prim = rec.outputs[0];
-        if (prim.item === item) exported += prim.rate * row.count;
-      }),
-    );
-  }
   return exported;
 }
 
-export function exportRemainder(world: World, factory: Factory, item: string, includeMarked = true): number {
-  return itemSupply(world, factory, item) - itemExported(world, factory, item, includeMarked);
+export function exportRemainder(world: World, factory: Factory, item: string): number {
+  return itemSupply(world, factory, item) - itemExported(world, factory, item);
 }
 
 export interface RollupEntry {
@@ -151,7 +145,7 @@ export function exportableItems(world: World, factory: Factory): { item: string;
 
   return [...supplyItems]
     .filter((item) => !exportedItems.has(item))
-    .map((item) => ({ item, headroom: Math.max(0, exportRemainder(world, factory, item, true)) }))
+    .map((item) => ({ item, headroom: Math.max(0, exportRemainder(world, factory, item)) }))
     .filter((x) => x.headroom > 0.001)
     .sort((a, b) => b.headroom - a.headroom);
 }

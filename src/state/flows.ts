@@ -1,4 +1,3 @@
-import { recipeById } from '../data/gameData';
 import type { Factory, World } from '../types';
 import { exportStations, transportFromStationType, vehicleHops } from '../model/logistics';
 
@@ -7,7 +6,6 @@ export interface FlowLeg {
   color: string;
   transport: string;
   rate: number;
-  marked?: boolean;
   routeId?: string;
   localInputId?: string;
   stationId?: string;
@@ -22,12 +20,8 @@ export interface Flow {
   legs: FlowLeg[];
 }
 
-/**
- * Group the world's routes and vehicle hops touching a factory into per-item
- * import/export flows. When `includeMarked` is set, rows checked "for export"
- * contribute a synthetic "Marked for export" leg (used on the factory detail screen).
- */
-export function buildFlows(world: World, f: Factory, includeMarked: boolean): Flow[] {
+/** Group the world's routes and vehicle hops touching a factory into per-item import/export flows. */
+export function buildFlows(world: World, f: Factory): Flow[] {
   const facById: Record<string, Factory> = {};
   world.factories.forEach((x) => (facById[x.id] = x));
   const flowMap: Record<string, Flow> = {};
@@ -81,22 +75,6 @@ export function buildFlows(world: World, f: Factory, includeMarked: boolean): Fl
     flowMap[key].total += li.rate;
     flowMap[key].legs.push({ partner: 'Local node', color: '#6B7280', transport: li.t || 'Belt', rate: li.rate, localInputId: li.id });
   });
-
-  if (includeMarked) {
-    (f.sections || []).forEach((sec) =>
-      sec.rows.forEach((row) => {
-        if (!row.export) return;
-        const rec = recipeById(row.recipeId);
-        if (!rec || !rec.outputs.length) return;
-        const prim = rec.outputs[0];
-        const rate = prim.rate * row.count;
-        const key = 'export|' + prim.item;
-        if (!flowMap[key]) flowMap[key] = { key, dir: 'export', item: prim.item, total: 0, legs: [] };
-        flowMap[key].total += rate;
-        flowMap[key].legs.push({ partner: 'Marked for export', color: '#5BCB86', transport: 'Unset', rate, marked: true });
-      }),
-    );
-  }
 
   exportStations(world, f.id).forEach((station) => {
     const key = 'export|' + station.resourceId;

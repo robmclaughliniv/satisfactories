@@ -1,6 +1,7 @@
 import { Header } from './components/Header';
 import { NavRail } from './components/NavRail';
 import { AddExportResourceModal } from './components/modals/AddExportResourceModal';
+import { AddReceivingStationModal } from './components/modals/AddReceivingStationModal';
 import { FactoryModal } from './components/modals/FactoryModal';
 import { LocalInputModal } from './components/modals/LocalInputModal';
 import { RouteModal } from './components/modals/RouteModal';
@@ -46,6 +47,7 @@ function Shell() {
       <RouteModal />
       <LocalInputModal />
       <AddExportResourceModal />
+      <AddReceivingStationModal />
       <StationEditModal />
       <DrillDrawer />
     </div>

@@ -179,13 +179,11 @@ export function ImportStationTree({
   world,
   factory,
   resourceId,
-  onAddStation,
   onEditStation,
 }: {
   world: World;
   factory: Factory;
   resourceId: string;
-  onAddStation: () => void;
   onEditStation: (stationId: string) => void;
 }) {
   const stations = importStations(world, factory.id, resourceId);
@@ -225,24 +223,6 @@ export function ImportStationTree({
           </div>
         );
       })}
-      <button
-        type="button"
-        onClick={onAddStation}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          background: 'transparent',
-          border: '1px dashed #2A2F39',
-          color: '#8A909A',
-          borderRadius: 6,
-          padding: '5px 8px',
-          fontSize: 10.5,
-          cursor: 'pointer',
-        }}
-      >
-        <span style={{ color: '#F5A95B', fontWeight: 600 }}>＋</span> Add receiving station
-      </button>
     </div>
   );
 }

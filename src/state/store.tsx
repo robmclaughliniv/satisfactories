@@ -9,6 +9,7 @@ import { createEmptyWorld, instantiateTemplate, touchWorld } from '../model/worl
 import { exportRemainder, exportableItems, itemExported, itemSupply } from './derive';
 import type {
   AddExportResourceModalState,
+  AddReceivingStationModalState,
   FactoryModalState,
   Factory,
   LocalInputModalState,
@@ -16,6 +17,8 @@ import type {
   MapLock,
   PickerState,
   RouteModalState,
+  RowDestination,
+  RowSource,
   Screen,
   Station,
   StationEditModalState,
@@ -24,6 +27,7 @@ import type {
   Transport,
   World,
 } from '../types';
+import { normalizeDestinations, toggleRowDestination, toggleRowSource } from './lineFeeds';
 import {
   createStation,
   createVehicle,
@@ -61,6 +65,7 @@ export interface AppState {
   routeModal: RouteModalState | null;
   localInputModal: LocalInputModalState | null;
   addExportResourceModal: AddExportResourceModalState | null;
+  addReceivingStationModal: AddReceivingStationModalState | null;
   stationEditModal: StationEditModalState | null;
   worlds: World[];
 }
@@ -130,6 +135,7 @@ function initialState(): AppState {
     routeModal: null,
     localInputModal: null,
     addExportResourceModal: null,
+    addReceivingStationModal: null,
     stationEditModal: null,
     ...persisted,
   };
@@ -249,13 +255,6 @@ export function useActions() {
     });
   };
 
-  const toggleRowExport = (fid: string, sid: string, rid: string) => {
-    mutateWorld((w) => {
-      const r = w.factories.find((f) => f.id === fid)?.sections.find((s) => s.id === sid)?.rows.find((x) => x.id === rid);
-      if (r) r.export = !r.export;
-    });
-  };
-
   const removeRow = (fid: string, sid: string, rid: string) => {
     mutateWorld((w) => {
       const s = w.factories.find((f) => f.id === fid)?.sections.find((x) => x.id === sid);
@@ -267,6 +266,77 @@ export function useActions() {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === fid);
       if (f) f.sections.push({ id: 's_' + Date.now(), name: 'New Section', rows: [] });
+    });
+  };
+
+  const renameSection = (fid: string, sid: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    mutateWorld((w) => {
+      const s = w.factories.find((f) => f.id === fid)?.sections.find((x) => x.id === sid);
+      if (s) s.name = trimmed;
+    });
+  };
+
+  const setRowDestinations = (fid: string, sid: string, rid: string, destinations: RowDestination[]) => {
+    mutateWorld((w) => {
+      const row = w.factories
+        .find((f) => f.id === fid)
+        ?.sections.find((s) => s.id === sid)
+        ?.rows.find((x) => x.id === rid);
+      if (row) row.destinations = normalizeDestinations(destinations, sid);
+    });
+  };
+
+  const toggleDestination = (fid: string, sid: string, rid: string, target: RowDestination) => {
+    mutateWorld((w) => {
+      const row = w.factories
+        .find((f) => f.id === fid)
+        ?.sections.find((s) => s.id === sid)
+        ?.rows.find((x) => x.id === rid);
+      if (row) {
+        row.destinations = toggleRowDestination(row.destinations ?? [], sid, target);
+      }
+    });
+  };
+
+  const toggleSource = (fid: string, sid: string, rid: string, target: RowSource) => {
+    mutateWorld((w) => {
+      const row = w.factories
+        .find((f) => f.id === fid)
+        ?.sections.find((s) => s.id === sid)
+        ?.rows.find((x) => x.id === rid);
+      if (row) {
+        row.sources = toggleRowSource(row.sources ?? [], target);
+      }
+    });
+  };
+
+  const removeSection = (fid: string, sid: string) => {
+    const factory = world?.factories.find((f) => f.id === fid);
+    const section = factory?.sections.find((s) => s.id === sid);
+    if (!section) return;
+    if (section.rows.length > 0 && !window.confirm(`Delete production line "${section.name}" and its ${section.rows.length} recipe(s)?`)) {
+      return;
+    }
+
+    const rowIds = new Set(section.rows.map((r) => r.id));
+    mutateWorld((w) => {
+      const f = w.factories.find((x) => x.id === fid);
+      if (!f) return;
+      f.sections.forEach((sec) => {
+        sec.rows.forEach((row) => {
+          row.destinations = (row.destinations ?? []).filter(
+            (d) => d.kind !== 'section' || d.sectionId !== sid,
+          );
+        });
+      });
+      f.sections = f.sections.filter((s) => s.id !== sid);
+    });
+    up((s) => {
+      const expanded = { ...s.expanded };
+      rowIds.forEach((id) => delete expanded[id]);
+      return { expanded };
     });
   };
 
@@ -287,7 +357,7 @@ export function useActions() {
       const newId = 'r_' + Date.now();
       mutateWorld((w) => {
         const s = w.factories.find((f) => f.id === pk.factoryId)?.sections.find((x) => x.id === pk.sectionId);
-        if (s) s.rows.push({ id: newId, recipeId, count: 1 });
+        if (s) s.rows.push({ id: newId, recipeId, count: 1, destinations: [], sources: [] });
       });
       up({ picker: { mode: 'edit', factoryId: pk.factoryId, sectionId: pk.sectionId, rowId: newId }, pickerSearch: '' });
     }
@@ -398,11 +468,32 @@ export function useActions() {
     up({ addExportResourceModal: null });
   };
 
+  const openAddReceivingStation = (factoryId: string) => {
+    if (!world) return;
+    const factory = world.factories.find((f) => f.id === factoryId);
+    if (!factory) return;
+    const items = [...(factory.importOrder ?? [])];
+    if (!items.length) return;
+    up({
+      addReceivingStationModal: {
+        factoryId,
+        item: items[0]!,
+      },
+    });
+  };
+
+  const confirmAddReceivingStation = () => {
+    const m = st.addReceivingStationModal;
+    if (!m || !world) return;
+    up({ addReceivingStationModal: null });
+    openStationCreate(m.factoryId, m.item, 'import');
+  };
+
   const openStationCreate = (factoryId: string, resourceId: string, role: StationRole) => {
     if (!world) return;
     const factory = world.factories.find((f) => f.id === factoryId);
     if (!factory) return;
-    const headroom = role === 'export' ? Math.max(0, exportRemainder(world, factory, resourceId, true)) : 0;
+    const headroom = role === 'export' ? Math.max(0, exportRemainder(world, factory, resourceId)) : 0;
     up({
       stationEditModal: {
         factoryId,
@@ -501,7 +592,7 @@ export function useActions() {
     const name = m.name.trim();
     if (!name) return;
     const factory = world.factories.find((f) => f.id === m.factoryId);
-    let maxRate = factory && m.role === 'export' ? Math.max(0, exportRemainder(world, factory, m.resourceId, true)) : Infinity;
+    let maxRate = factory && m.role === 'export' ? Math.max(0, exportRemainder(world, factory, m.resourceId)) : Infinity;
     if (!m.stationId && factory && m.role === 'export') {
       /* create: headroom already excludes nothing new */
     } else if (m.stationId && factory && m.role === 'export') {
@@ -615,7 +706,7 @@ export function useActions() {
     if (dir === 'export') {
       const fromFac = facs.find((x) => x.id === factoryId);
       if (fromFac) {
-        const left = exportRemainder(world, fromFac, item, true);
+        const left = exportRemainder(world, fromFac, item);
         rate = Math.max(0, Math.min(60, left));
       }
     }
@@ -634,7 +725,7 @@ export function useActions() {
       const fromFac = w.factories.find((x) => x.id === m.from);
       if (fromFac) {
         const supply = itemSupply(w, fromFac, m.item);
-        let otherExports = itemExported(w, fromFac, m.item, true);
+        let otherExports = itemExported(w, fromFac, m.item);
         if (m.editingId) {
           const existing = w.routes.find((x) => x.id === m.editingId);
           if (existing && existing.from === m.from && existing.item === m.item) {
@@ -725,7 +816,13 @@ export function useActions() {
   const removeLocalInput = (factoryId: string, inputId: string) => {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === factoryId);
-      if (f) f.localInputs = (f.localInputs || []).filter((x) => x.id !== inputId);
+      if (!f) return;
+      f.localInputs = (f.localInputs || []).filter((x) => x.id !== inputId);
+      f.sections.forEach((sec) => {
+        sec.rows.forEach((row) => {
+          row.sources = (row.sources ?? []).filter((s) => s.kind !== 'local' || s.localInputId !== inputId);
+        });
+      });
     });
     up({ localInputModal: null });
   };
@@ -842,15 +939,20 @@ export function useActions() {
       routeModal: null,
       localInputModal: null,
       addExportResourceModal: null,
+      addReceivingStationModal: null,
       stationEditModal: null,
     });
   };
 
   return {
     setRowCount,
-    toggleRowExport,
     removeRow,
     addSection,
+    renameSection,
+    setRowDestinations,
+    toggleDestination,
+    toggleSource,
+    removeSection,
     openRecipePicker,
     pickRecipe,
     resetFactory,
@@ -863,6 +965,8 @@ export function useActions() {
     removeRoute,
     openAddExportResource,
     saveAddExportResource,
+    openAddReceivingStation,
+    confirmAddReceivingStation,
     openStationCreate,
     openStationEdit,
     updateStationModal,

@@ -435,7 +435,7 @@ function FactoryDetailSidebar({
     .filter((i) => agg.per[i].out > 0.001)
     .map((i) => ({ item: i, out: agg.per[i].out }))
     .sort((a, b) => b.out - a.out);
-  const flows = buildFlows(world, f, false);
+  const flows = buildFlows(world, f);
   const imports = applyFlowOrder(
     flows.filter((fl) => fl.dir === 'import'),
     f.importOrder,
@@ -554,8 +554,8 @@ function FactoryDetailSidebar({
             canDeleteLeg={(leg) => !!leg.routeId}
             flowHint={(fl) => {
               const supply = itemSupply(world, f, fl.item);
-              const exported = itemExported(world, f, fl.item, true);
-              const left = exportRemainder(world, f, fl.item, true);
+              const exported = itemExported(world, f, fl.item);
+              const left = exportRemainder(world, f, fl.item);
               return (
                 <>
                   {fmt(exported)}/{fmt(supply)} exported

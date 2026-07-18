@@ -10,6 +10,8 @@ export type {
   Vehicle,
   Station,
   Row,
+  RowDestination,
+  RowSource,
   Section,
   LocalInput,
   Factory,
@@ -81,6 +83,11 @@ export interface LocalInputModalState {
 }
 
 export interface AddExportResourceModalState {
+  factoryId: string;
+  item: string;
+}
+
+export interface AddReceivingStationModalState {
   factoryId: string;
   item: string;
 }

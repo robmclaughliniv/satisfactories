@@ -61,7 +61,7 @@ export function StationEditModal() {
       ? Math.max(0, parseFloat(String(m.totalRate)) || 0) / m.vehicles.length
       : 0;
 
-  const headroom = isExport ? Math.max(0, exportRemainder(world, factory, m.resourceId, true)) : 0;
+  const headroom = isExport ? Math.max(0, exportRemainder(world, factory, m.resourceId)) : 0;
   let maxRate = headroom;
   if (!isCreate && m.stationId) {
     const existing = world.stations?.find((s) => s.id === m.stationId);

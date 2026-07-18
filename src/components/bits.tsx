@@ -147,10 +147,64 @@ function FlowLegRow({
   );
 }
 
-/**
- * Expandable exports & imports list (used in the map sidebar and factory
- * detail balance panel).
- */
+/** Collapsible section header with chevron toggle. */
+export function AccordionSection({
+  title,
+  count,
+  hint,
+  icon,
+  expanded,
+  onToggle,
+  children,
+  mb = 20,
+}: {
+  title: string;
+  count?: ReactNode;
+  hint?: string;
+  icon?: ReactNode;
+  expanded: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+  mb?: number;
+}) {
+  return (
+    <div style={{ marginBottom: mb }}>
+      <div
+        onClick={onToggle}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: expanded ? 10 : 0,
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        <span style={{ width: 11, textAlign: 'center', color: '#5E646E', fontSize: 10, flex: '0 0 auto' }}>{expanded ? '▾' : '▸'}</span>
+        {icon}
+        <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 13, color: '#C2C8D2' }}>{title}</span>
+        {count !== undefined && <span style={{ fontSize: 11, color: '#5E646E' }}>{count}</span>}
+        {hint && <span style={{ marginLeft: 'auto', fontSize: 10.5, color: '#6B7280' }}>{hint}</span>}
+      </div>
+      {expanded && children}
+    </div>
+  );
+}
+
+export function FavStar({ favorited, onToggle }: { favorited: boolean; onToggle: () => void }) {
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      title={favorited ? 'Remove from favorites' : 'Add to favorites'}
+      style={{ color: favorited ? '#F5A95B' : '#5E646E', fontSize: 14, cursor: 'pointer', flex: '0 0 auto', lineHeight: 1 }}
+    >
+      {favorited ? '★' : '☆'}
+    </span>
+  );
+}
 export function FlowList({
   flows,
   expandedFlow,
@@ -164,6 +218,8 @@ export function FlowList({
   legActionLabel,
   flowHint,
   onReorder,
+  favoritedItems,
+  onToggleFav,
 }: {
   flows: Flow[];
   expandedFlow: Record<string, boolean>;
@@ -177,6 +233,8 @@ export function FlowList({
   legActionLabel?: (leg: FlowLeg) => string;
   flowHint?: (flow: Flow) => ReactNode;
   onReorder?: (orderedItems: string[]) => void;
+  favoritedItems?: string[];
+  onToggleFav?: (item: string) => void;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -299,6 +357,9 @@ export function FlowList({
               <span style={{ fontFamily: MONO, fontSize: 11.5, color: fl.dir === 'export' ? '#5BCB86' : '#F5A95B', pointerEvents: 'none' }}>
                 {(fl.dir === 'export' ? '↑ ' : '↓ ') + fmt(fl.total) + '/m'}
               </span>
+              {onToggleFav && (
+                <FavStar favorited={!!favoritedItems?.includes(fl.item)} onToggle={() => onToggleFav(fl.item)} />
+              )}
             </div>
             {exp && (
               <div
@@ -333,7 +394,19 @@ export function FlowList({
 }
 
 /** Small "Produced here" style row: tile, name, +rate. */
-export function ProducedRow({ name, rate, tone = 'green' }: { name: string; rate: string; tone?: 'green' | 'red' }) {
+export function ProducedRow({
+  name,
+  rate,
+  tone = 'green',
+  favorited,
+  onToggleFav,
+}: {
+  name: string;
+  rate: string;
+  tone?: 'green' | 'red';
+  favorited?: boolean;
+  onToggleFav?: () => void;
+}) {
   const green = tone === 'green';
   return (
     <div
@@ -350,6 +423,7 @@ export function ProducedRow({ name, rate, tone = 'green' }: { name: string; rate
       <ItemSquare item={name} />
       <span style={{ flex: 1, fontSize: 12, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
       <span style={{ fontFamily: MONO, fontSize: 11.5, color: green ? '#5BCB86' : '#E5604D' }}>{rate}</span>
+      {onToggleFav && <FavStar favorited={!!favorited} onToggle={onToggleFav} />}
     </div>
   );
 }

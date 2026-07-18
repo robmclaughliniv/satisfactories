@@ -31,11 +31,22 @@ export const StationSchema = z.object({
   vehicles: z.array(VehicleSchema),
 });
 
+export const RowDestinationSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('section'), sectionId: z.string() }),
+  z.object({ kind: z.literal('export') }),
+]);
+
+export const RowSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('local'), localInputId: z.string() }),
+  z.object({ kind: z.literal('import'), item: z.string() }),
+]);
+
 export const RowSchema = z.object({
   id: z.string(),
   recipeId: z.string(),
   count: z.number(),
-  export: z.boolean().optional(),
+  destinations: z.array(RowDestinationSchema).default([]),
+  sources: z.array(RowSourceSchema).default([]),
 });
 
 export const SectionSchema = z.object({
@@ -93,7 +104,7 @@ export const WorldSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 7 as const;
+export const SCHEMA_VERSION = 9 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({
@@ -110,6 +121,8 @@ export type StationType = z.infer<typeof StationTypeSchema>;
 export type StationRole = z.infer<typeof StationRoleSchema>;
 export type Vehicle = z.infer<typeof VehicleSchema>;
 export type Station = z.infer<typeof StationSchema>;
+export type RowDestination = z.infer<typeof RowDestinationSchema>;
+export type RowSource = z.infer<typeof RowSourceSchema>;
 export type Row = z.infer<typeof RowSchema>;
 export type Section = z.infer<typeof SectionSchema>;
 export type LocalInput = z.infer<typeof LocalInputSchema>;

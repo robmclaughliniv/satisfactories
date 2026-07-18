@@ -37,6 +37,14 @@ export function migratePersisted(raw: unknown): PersistedStateV2 | null {
     obj = migrateV6ToV7(obj);
   }
 
+  if (obj.schemaVersion === 7) {
+    obj = migrateV7ToV8(obj);
+  }
+
+  if (obj.schemaVersion === 8) {
+    obj = migrateV8ToV9(obj);
+  }
+
   if (obj.schemaVersion !== SCHEMA_VERSION) return null;
 
   const parsed = PersistedStateSchema.safeParse(obj);
@@ -256,6 +264,79 @@ function migrateV6ToV7(obj: Record<string, unknown>): Record<string, unknown> {
         } as World;
         migrateRoutesToStations(nextWorld);
         return nextWorld;
+      })
+    : obj.worlds;
+  return { ...obj, schemaVersion: 7, worlds };
+}
+
+/** v7 → v8: row destinations[]; drop legacy export flag. */
+function migrateV7ToV8(obj: Record<string, unknown>): Record<string, unknown> {
+  const worlds = Array.isArray(obj.worlds)
+    ? obj.worlds.map((w) => {
+        if (w === null || typeof w !== 'object') return w;
+        const world = w as Record<string, unknown>;
+        const factories = Array.isArray(world.factories)
+          ? world.factories.map((f) => {
+              if (f === null || typeof f !== 'object') return f;
+              const factory = f as Record<string, unknown>;
+              const sections = Array.isArray(factory.sections)
+                ? factory.sections.map((sec) => {
+                    if (sec === null || typeof sec !== 'object') return sec;
+                    const section = sec as Record<string, unknown>;
+                    const rows = Array.isArray(section.rows)
+                      ? section.rows.map((row) => {
+                          if (row === null || typeof row !== 'object') return row;
+                          const r = row as Record<string, unknown>;
+                          const { export: _legacyExport, ...rest } = r;
+                          return {
+                            ...rest,
+                            destinations: Array.isArray(r.destinations) ? r.destinations : [],
+                          };
+                        })
+                      : section.rows;
+                    return { ...section, rows };
+                  })
+                : factory.sections;
+              return { ...factory, sections };
+            })
+          : world.factories;
+        return { ...world, factories };
+      })
+    : obj.worlds;
+  return { ...obj, schemaVersion: 8, worlds };
+}
+
+/** v8 → v9: row sources[] for claimed local inputs and imports. */
+function migrateV8ToV9(obj: Record<string, unknown>): Record<string, unknown> {
+  const worlds = Array.isArray(obj.worlds)
+    ? obj.worlds.map((w) => {
+        if (w === null || typeof w !== 'object') return w;
+        const world = w as Record<string, unknown>;
+        const factories = Array.isArray(world.factories)
+          ? world.factories.map((f) => {
+              if (f === null || typeof f !== 'object') return f;
+              const factory = f as Record<string, unknown>;
+              const sections = Array.isArray(factory.sections)
+                ? factory.sections.map((sec) => {
+                    if (sec === null || typeof sec !== 'object') return sec;
+                    const section = sec as Record<string, unknown>;
+                    const rows = Array.isArray(section.rows)
+                      ? section.rows.map((row) => {
+                          if (row === null || typeof row !== 'object') return row;
+                          const r = row as Record<string, unknown>;
+                          return {
+                            ...r,
+                            sources: Array.isArray(r.sources) ? r.sources : [],
+                          };
+                        })
+                      : section.rows;
+                    return { ...section, rows };
+                  })
+                : factory.sections;
+              return { ...factory, sections };
+            })
+          : world.factories;
+        return { ...world, factories };
       })
     : obj.worlds;
   return { ...obj, schemaVersion: SCHEMA_VERSION, worlds };
