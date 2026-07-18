@@ -490,12 +490,10 @@ export function useActions() {
     if (!world) return;
     const factory = world.factories.find((f) => f.id === factoryId);
     if (!factory) return;
-    const items = [...(factory.importOrder ?? [])];
-    if (!items.length) return;
     up({
       addReceivingStationModal: {
         factoryId,
-        item: items[0]!,
+        item: (factory.importOrder ?? [])[0] || 'Iron Ore',
       },
     });
   };

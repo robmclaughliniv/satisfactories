@@ -1,3 +1,4 @@
+import { ITEMS } from '../../data/gameData';
 import { useActions, useStore } from '../../state/store';
 import { ItemSquare, SG } from '../bits';
 
@@ -24,7 +25,7 @@ export function AddReceivingStationModal() {
 
   const close = () => up({ addReceivingStationModal: null });
   const upd = (patch: Partial<typeof m>) => up({ addReceivingStationModal: { ...m, ...patch } });
-  const items = [...(factory.importOrder ?? [])];
+  const items = Object.keys(ITEMS);
 
   return (
     <div
@@ -72,15 +73,14 @@ export function AddReceivingStationModal() {
             </button>
             <button
               type="submit"
-              disabled={items.length === 0}
               style={{
-                background: items.length > 0 ? '#F5A95B' : '#181B21',
-                color: items.length > 0 ? '#120A03' : '#5E646E',
+                background: '#F5A95B',
+                color: '#120A03',
                 border: 'none',
                 borderRadius: 8,
                 padding: '9px 18px',
                 fontWeight: 600,
-                cursor: items.length > 0 ? 'pointer' : 'default',
+                cursor: 'pointer',
                 fontSize: 13,
               }}
             >
