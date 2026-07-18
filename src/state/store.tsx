@@ -33,6 +33,7 @@ import {
   createVehicle,
   reconcileLogistics,
   removeStation as removeStationFromWorld,
+  exportStations,
   recomputeVehicleRates,
   stationById,
   suggestStationName,
@@ -466,6 +467,23 @@ export function useActions() {
       }
     });
     up({ addExportResourceModal: null });
+  };
+
+  const removeExportResource = (factoryId: string, item: string) => {
+    if (!world) return;
+    const hasStations = exportStations(world, factoryId, item).length > 0;
+    const hasRoutes = world.routes.some((r) => r.from === factoryId && r.item === item);
+    if (hasStations || hasRoutes) {
+      if (!window.confirm(`Remove ${item} from exports and delete its stations and routes?`)) return;
+    }
+
+    mutateWorld((w) => {
+      const factory = w.factories.find((f) => f.id === factoryId);
+      if (!factory) return;
+      factory.exportOrder = (factory.exportOrder ?? []).filter((x) => x !== item);
+      exportStations(w, factoryId, item).forEach((station) => removeStationFromWorld(w, station.id));
+      w.routes = w.routes.filter((r) => !(r.from === factoryId && r.item === item));
+    });
   };
 
   const openAddReceivingStation = (factoryId: string) => {
@@ -965,6 +983,7 @@ export function useActions() {
     removeRoute,
     openAddExportResource,
     saveAddExportResource,
+    removeExportResource,
     openAddReceivingStation,
     confirmAddReceivingStation,
     openStationCreate,

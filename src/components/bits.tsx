@@ -220,6 +220,8 @@ export function FlowList({
   onReorder,
   favoritedItems,
   onToggleFav,
+  onFlowDelete,
+  canDeleteFlow,
 }: {
   flows: Flow[];
   expandedFlow: Record<string, boolean>;
@@ -235,9 +237,12 @@ export function FlowList({
   onReorder?: (orderedItems: string[]) => void;
   favoritedItems?: string[];
   onToggleFav?: (item: string) => void;
+  onFlowDelete?: (flow: Flow) => void;
+  canDeleteFlow?: (flow: Flow) => boolean;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [hoveredFlow, setHoveredFlow] = useState<string | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const didDragRef = useRef(false);
   const reorderable = !!onReorder;
@@ -262,9 +267,13 @@ export function FlowList({
         const exp = !!expandedFlow[keyPrefix + fl.key];
         const isDragging = dragIndex === index;
         const isOver = overIndex === index && dragIndex !== null && dragIndex !== index;
+        const deletableFlow = !!onFlowDelete && (canDeleteFlow ? canDeleteFlow(fl) : true);
+        const flowHovered = hoveredFlow === fl.key;
         return (
           <div
             key={fl.key}
+            onMouseEnter={() => setHoveredFlow(fl.key)}
+            onMouseLeave={() => setHoveredFlow(null)}
             onDragOver={(e) => {
               if (!reorderable) return;
               e.preventDefault();
@@ -282,7 +291,7 @@ export function FlowList({
             style={{
               border: `1px solid ${isOver ? '#F5882E66' : '#20242D'}`,
               borderRadius: 8,
-              overflow: 'hidden',
+              overflow: 'visible',
               opacity: isDragging ? 0.55 : 1,
               boxShadow: isOver ? 'inset 0 2px 0 #F5882E' : undefined,
             }}
@@ -360,6 +369,39 @@ export function FlowList({
               {onToggleFav && (
                 <FavStar favorited={!!favoritedItems?.includes(fl.item)} onToggle={() => onToggleFav(fl.item)} />
               )}
+              {onFlowDelete &&
+                (deletableFlow ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title="Remove from export list"
+                    aria-label="Remove from export list"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFlowDelete(fl);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onFlowDelete(fl);
+                      }
+                    }}
+                    style={{
+                      width: 20,
+                      flex: '0 0 auto',
+                      textAlign: 'center',
+                      color: flowHovered ? '#E5604D' : '#5E646E',
+                      cursor: 'pointer',
+                      fontSize: 15,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </span>
+                ) : (
+                  <span style={{ width: 20, flex: '0 0 auto' }} />
+                ))}
             </div>
             {exp && (
               <div
@@ -370,6 +412,9 @@ export function FlowList({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 6,
+                  borderBottomLeftRadius: 8,
+                  borderBottomRightRadius: 8,
+                  overflow: 'hidden',
                 }}
               >
                 {fl.legs.map((leg, i) => (

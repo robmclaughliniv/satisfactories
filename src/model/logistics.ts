@@ -176,6 +176,18 @@ export function vehicleHops(world: World): VehicleHop[] {
   return hops;
 }
 
+/** Imported belt/pipe routes and vehicle hops for an item at a factory. */
+export function importedByItem(world: World, factory: Factory, item: string): number {
+  let imported = 0;
+  world.routes.forEach((r) => {
+    if (r.to === factory.id && r.item === item) imported += r.rate;
+  });
+  vehicleHops(world).forEach((hop) => {
+    if (hop.toFactoryId === factory.id && hop.item === item) imported += hop.rate;
+  });
+  return imported;
+}
+
 /** Clear dangling destinations and recompute vehicle rates. Import stations are never auto-deleted. */
 export function reconcileLogistics(world: World): void {
   const stations = world.stations ?? [];

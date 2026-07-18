@@ -1,6 +1,7 @@
 import { recipeById } from '../data/gameData';
 import type { Factory, World } from '../types';
-import { exportStations, vehicleHops } from '../model/logistics';
+import { exportStations, importedByItem, vehicleHops } from '../model/logistics';
+import { computeFactoryLineFeeds } from './lineFeeds';
 
 export interface Aggregate {
   per: Record<string, { in: number; out: number }>;
@@ -51,21 +52,46 @@ export function aggregate(factory: Factory): Aggregate {
   return { per, power, machines, outputs, inputs };
 }
 
-/** Imported belt/pipe routes and vehicle hops for an item at a factory. */
-export function importedByItem(world: World, factory: Factory, item: string): number {
-  let imported = 0;
-  world.routes.forEach((r) => {
-    if (r.to === factory.id && r.item === item) imported += r.rate;
+/** Same as aggregate but inputs/outputs scaled by line-feed efficiency. Power/machines stay nameplate. */
+export function aggregateEffective(world: World, factory: Factory): Aggregate {
+  const feeds = computeFactoryLineFeeds(world, factory);
+  const per: Aggregate['per'] = {};
+  let power = 0;
+  let machines = 0;
+  (factory.sections || []).forEach((sec) =>
+    sec.rows.forEach((row) => {
+      const rec = recipeById(row.recipeId);
+      if (!rec) return;
+      const eff = feeds.byRowId[row.id]?.efficiency ?? 1;
+      machines += row.count;
+      power += rec.power * row.count;
+      rec.inputs.forEach((ip) => {
+        per[ip.item] = per[ip.item] || { in: 0, out: 0 };
+        per[ip.item].in += ip.rate * row.count * eff;
+      });
+      rec.outputs.forEach((op) => {
+        per[op.item] = per[op.item] || { in: 0, out: 0 };
+        per[op.item].out += op.rate * row.count * eff;
+      });
+    }),
+  );
+  const outputs: Aggregate['outputs'] = [];
+  const inputs: Aggregate['inputs'] = [];
+  Object.keys(per).forEach((item) => {
+    const net = per[item].out - per[item].in;
+    if (net > 0.001) outputs.push({ item, rate: net });
+    else if (net < -0.001) inputs.push({ item, rate: -net });
   });
-  vehicleHops(world).forEach((hop) => {
-    if (hop.toFactoryId === factory.id && hop.item === item) imported += hop.rate;
-  });
-  return imported;
+  outputs.sort((a, b) => b.rate - a.rate);
+  inputs.sort((a, b) => b.rate - a.rate);
+  return { per, power, machines, outputs, inputs };
 }
+
+export { importedByItem };
 
 /** Produced + imported + local supply for an item at a factory. */
 export function itemSupply(world: World, factory: Factory, item: string): number {
-  const made = aggregate(factory).per[item]?.out || 0;
+  const made = aggregateEffective(world, factory).per[item]?.out || 0;
   const local = localInputByItem(factory)[item] || 0;
   return made + local + importedByItem(world, factory, item);
 }
@@ -105,7 +131,7 @@ export interface RollupEntry {
 export function rollupWorld(world: World): Record<string, RollupEntry> {
   const per: Record<string, RollupEntry> = {};
   world.factories.forEach((f) => {
-    const a = aggregate(f);
+    const a = aggregateEffective(world, f);
     Object.keys(a.per).forEach((item) => {
       per[item] = per[item] || { produced: 0, consumed: 0, producers: [], consumers: [] };
       per[item].produced += a.per[item].out;
@@ -125,9 +151,10 @@ export function rollupWorld(world: World): Record<string, RollupEntry> {
 
 /** Items in inventory (produced + imports) not already exported via stations/routes. */
 export function exportableItems(world: World, factory: Factory): { item: string; headroom: number }[] {
+  const eff = aggregateEffective(world, factory);
   const supplyItems = new Set<string>();
-  Object.keys(aggregate(factory).per).forEach((item) => {
-    if (aggregate(factory).per[item].out > 0.001) supplyItems.add(item);
+  Object.keys(eff.per).forEach((item) => {
+    if (eff.per[item].out > 0.001) supplyItems.add(item);
   });
   (factory.localInputs || []).forEach((li) => supplyItems.add(li.item));
   world.routes.forEach((r) => {

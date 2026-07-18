@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { fmt, initials, statusMeta } from '../../data/gameData';
-import { aggregate, exportRemainder, itemExported, itemSupply } from '../../state/derive';
+import { aggregate, aggregateEffective, exportRemainder, itemExported, itemSupply } from '../../state/derive';
 import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory } from '../../types';
@@ -430,10 +430,11 @@ function FactoryDetailSidebar({
 }) {
   const world = useWorld();
   const agg = aggregate(f);
+  const effAgg = aggregateEffective(world, f);
   const sm = statusMeta(f.status);
-  const produced = Object.keys(agg.per)
-    .filter((i) => agg.per[i].out > 0.001)
-    .map((i) => ({ item: i, out: agg.per[i].out }))
+  const produced = Object.keys(effAgg.per)
+    .filter((i) => effAgg.per[i].out > 0.001)
+    .map((i) => ({ item: i, out: effAgg.per[i].out }))
     .sort((a, b) => b.out - a.out);
   const flows = buildFlows(world, f);
   const imports = applyFlowOrder(

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
-import { aggregate, exportRemainder, importedByItem, itemExported, itemSupply, localInputByItem } from '../../state/derive';
+import { aggregate, aggregateEffective, exportRemainder, importedByItem, itemExported, itemSupply, localInputByItem } from '../../state/derive';
 import {
   computeFactoryLineFeeds,
   effectiveOutputRate,
@@ -34,6 +34,7 @@ export function FactoryScreen() {
   if (!f) return null;
 
   const agg = aggregate(f);
+  const effAgg = useMemo(() => aggregateEffective(world, f), [world, f]);
   return (
     <SplitLayout
       id="factory"
@@ -43,8 +44,8 @@ export function FactoryScreen() {
       right={{ defaultWidth: 262, minWidth: 200, maxWidth: 420 }}
       panes={{
         left: <IdentityPanel f={f} agg={agg} openFactory={openFactory} world={world} />,
-        main: <ProductionPanel f={f} agg={agg} />,
-        right: <RightPanel f={f} />,
+        main: <ProductionPanel f={f} agg={agg} effAgg={effAgg} />,
+        right: <RightPanel f={f} effAgg={effAgg} />,
       }}
     />
   );
@@ -359,7 +360,7 @@ function RowSourcesPanel({
   );
 }
 
-function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggregate> }) {
+function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeof aggregate>; effAgg: ReturnType<typeof aggregateEffective> }) {
   const { st, up } = useStore();
   const world = useWorld();
   const { setRowCount, removeRow, addSection, renameSection, openRecipePicker, resetFactory, commitFactory, openLocalInput, toggleFav, toggleDestination, toggleSource, removeSection } = useActions();
@@ -376,8 +377,8 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
   const localByItem = localInputByItem(f);
 
   const balanceForItem = (item: string) => {
-    const made = agg.per[item]?.out || 0;
-    const need = agg.per[item]?.in || 0;
+    const made = effAgg.per[item]?.out || 0;
+    const need = effAgg.per[item]?.in || 0;
     const imp = importedByItem(world, f, item);
     const local = localByItem[item] || 0;
     const exp = itemExported(world, f, item);
@@ -385,7 +386,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
   };
 
   const resKeys: Record<string, 1> = {};
-  Object.keys(agg.per).forEach((k) => (resKeys[k] = 1));
+  Object.keys(effAgg.per).forEach((k) => (resKeys[k] = 1));
   Object.keys(localByItem).forEach((k) => (resKeys[k] = 1));
   buildFlows(world, f).forEach((fl) => (resKeys[fl.item] = 1));
   (f.exportOrder ?? []).forEach((item) => (resKeys[item] = 1));
@@ -881,7 +882,7 @@ function ProductionPanel({ f, agg }: { f: Factory; agg: ReturnType<typeof aggreg
 
 // ===================== right panel: picker or balance =====================
 
-function RightPanel({ f }: { f: Factory }) {
+function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggregateEffective> }) {
   const { st, up, openFactory } = useStore();
   const world = useWorld();
   const {
@@ -896,9 +897,9 @@ function RightPanel({ f }: { f: Factory }) {
     openStationCreate,
     openStationEdit,
     toggleFav,
+    removeExportResource,
   } = useActions();
 
-  const agg = aggregate(f);
   const pk = st.picker;
 
   let content: React.ReactNode;
@@ -975,9 +976,9 @@ function RightPanel({ f }: { f: Factory }) {
       </>
     );
   } else {
-    const produced = Object.keys(agg.per)
-      .filter((i) => agg.per[i].out > 0.001)
-      .map((i) => ({ item: i, out: agg.per[i].out }))
+    const produced = Object.keys(effAgg.per)
+      .filter((i) => effAgg.per[i].out > 0.001)
+      .map((i) => ({ item: i, out: effAgg.per[i].out }))
       .sort((a, b) => b.out - a.out);
     const flows = buildFlows(world, f);
     const imports = applyFlowOrder(
@@ -1137,6 +1138,7 @@ function RightPanel({ f }: { f: Factory }) {
               );
             }}
             onReorder={(orderedItems) => reorderFlows(f.id, 'export', orderedItems)}
+            onFlowDelete={(fl) => removeExportResource(f.id, fl.item)}
             addLeg={(fl) => (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <ExportStationTree

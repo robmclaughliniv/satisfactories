@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fmt, initials, statusMeta } from '../../data/gameData';
-import { aggregate, exportRemainder, itemExported, itemSupply, localInputByItem, rollupWorld } from '../../state/derive';
+import { aggregate, aggregateEffective, exportRemainder, itemExported, itemSupply, localInputByItem, rollupWorld } from '../../state/derive';
 import { buildFlows, applyFlowOrder } from '../../state/flows';
 import { buildMapConnections, connectionCount } from '../../model/mapConnections';
 import { useActions, useStore, useWorld } from '../../state/store';
@@ -778,10 +778,11 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
     const f = facById[mfoc.id];
     const isLocked = lockedFactoryId === f.id;
     const agg = aggregate(f);
+    const effAgg = aggregateEffective(world, f);
     const sm = statusMeta(f.status);
-    const produced = Object.keys(agg.per)
-      .filter((i) => agg.per[i].out > 0.001)
-      .map((i) => ({ item: i, out: agg.per[i].out }))
+    const produced = Object.keys(effAgg.per)
+      .filter((i) => effAgg.per[i].out > 0.001)
+      .map((i) => ({ item: i, out: effAgg.per[i].out }))
       .sort((a, b) => b.out - a.out);
     const flows = buildFlows(world, f);
     const imports = applyFlowOrder(
