@@ -115,6 +115,8 @@ const MapPin = memo(function MapPin({ factory: f, hovered, locked, dragging, onH
         height: 34,
         marginLeft: -17,
         marginTop: -17,
+        transform: 'scale(var(--map-pin-scale, 1))',
+        transformOrigin: 'center',
         cursor: 'pointer',
         zIndex: active || dragging ? 30 : 22,
         willChange: dragging ? 'left, top' : undefined,
@@ -250,7 +252,7 @@ function MapViewport({
   const viewEl = useRef<HTMLDivElement>(null);
   const mapEl = useRef<HTMLDivElement>(null);
 
-  const { camera, zoomed, gesturing, panning, onWheel, onMouseDown, onTouchStart, setZoom, resetCamera } = useMapCamera(
+  const { camera, zoomed, gesturing, panning, onWheel, onMouseDown, onTouchStart, setZoom, resetCamera, camRef } = useMapCamera(
     viewEl,
     mapEl,
     blockInteractionRef,
@@ -277,10 +279,9 @@ function MapViewport({
     position: 'absolute',
     left: '50%',
     top: '50%',
-    height: '100%',
-    width: 'auto',
-    maxWidth: '100%',
-    aspectRatio: '1',
+    // Match the square base size used by useMapCamera at every aspect ratio.
+    width: 'min(100cqw, 100cqh)',
+    height: 'min(100cqw, 100cqh)',
     transformOrigin: 'center',
     contain: 'layout style paint',
   };
@@ -301,6 +302,7 @@ function MapViewport({
           border: '1px solid #1C2027',
           cursor: panning ? 'grabbing' : zoomed ? 'grab' : 'default',
           touchAction: 'none',
+          containerType: 'size',
         }}
       >
         <div ref={mapEl} style={worldLayerStyle}>
@@ -360,7 +362,7 @@ function MapViewport({
           }}
         >
           <button
-            onClick={() => setZoom(camera.zoom + 0.45, undefined, undefined, true)}
+            onClick={() => setZoom(camRef.current.zoom + 0.45, undefined, undefined, true)}
             style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: '#C2C8D2', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             ＋
@@ -369,7 +371,7 @@ function MapViewport({
             {Math.round(camera.zoom * 100)}%
           </div>
           <button
-            onClick={() => setZoom(camera.zoom - 0.45, undefined, undefined, true)}
+            onClick={() => setZoom(camRef.current.zoom - 0.45, undefined, undefined, true)}
             style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: '#C2C8D2', fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             −
@@ -620,7 +622,7 @@ export function MapScreen() {
       <SplitLayout
         id="map"
         style={{ flex: 1, minHeight: 0 }}
-        right={{ defaultWidth: 316, minWidth: 200, maxWidth: 480 }}
+        right={{ defaultWidth: 316, minWidth: 200, maxWidth: 480, hideOnMobile: true }}
         panes={{
           main: (
             <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative', overflow: 'hidden', background: 'radial-gradient(circle at 50% 40%,#0F1318,#070809)' }}>
