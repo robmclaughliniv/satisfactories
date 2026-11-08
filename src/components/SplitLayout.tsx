@@ -16,6 +16,8 @@ export type SideConfig = {
   minWidth?: number;
   maxWidth?: number;
   collapsible?: boolean;
+  /** Remove the entire pane on mobile, including its layout space. */
+  hideOnMobile?: boolean;
   /** Initial open state when nothing is persisted. Defaults to true. */
   defaultOpen?: boolean;
 };
@@ -337,8 +339,8 @@ export const SplitLayout = forwardRef<SplitLayoutHandle, SplitLayoutProps>(funct
 
   useImperativeHandle(ref, () => ({ expandLeft, expandRight }), [expandLeft, expandRight]);
 
-  const showLeft = mobile || leftOpen;
-  const showRight = mobile || rightOpen;
+  const showLeft = mobile ? !left?.hideOnMobile : leftOpen;
+  const showRight = mobile ? !right?.hideOnMobile : rightOpen;
   const leftCollapsible = !mobile && (left?.collapsible ?? true);
   const rightCollapsible = !mobile && (right?.collapsible ?? true);
 

@@ -27,6 +27,8 @@ function pt(e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) {
 
 function applyTransform(el: HTMLElement, cam: MapCamera, transition: string) {
   el.style.transition = transition;
+  // Inverse scale shares the exact painted zoom, including animation frames.
+  el.style.setProperty('--map-pin-scale', String(1 / cam.zoom));
   el.style.transform = `translate(calc(-50% + ${cam.panX}px), calc(-50% + ${cam.panY}px)) scale(${cam.zoom})`;
 }
 
@@ -40,9 +42,9 @@ export function useMapCamera(
   const [panning, setPanning] = useState(false);
 
   const camRef = useRef(camera);
-  camRef.current = camera;
 
   const rafId = useRef(0);
+  const animationId = useRef(0);
   const wheelTimer = useRef<ReturnType<typeof setTimeout>>();
   const pinchRef = useRef<{ dist: number; zoom: number; midX: number; midY: number } | null>(null);
   const panCleanup = useRef<(() => void) | null>(null);
@@ -83,8 +85,14 @@ export function useMapCamera(
     [mapEl],
   );
 
+  const stopAnimation = useCallback(() => {
+    cancelAnimationFrame(animationId.current);
+    animationId.current = 0;
+  }, []);
+
   const schedulePaint = useCallback(
     (cam: MapCamera) => {
+      stopAnimation();
       camRef.current = cam;
       if (rafId.current) return;
       rafId.current = requestAnimationFrame(() => {
@@ -92,17 +100,47 @@ export function useMapCamera(
         paint(camRef.current, 'none');
       });
     },
-    [paint],
+    [paint, stopAnimation],
   );
 
   const commitCamera = useCallback(
-    (cam: MapCamera, transition = 'none') => {
+    (cam: MapCamera) => {
+      stopAnimation();
+      cancelAnimationFrame(rafId.current);
+      rafId.current = 0;
       camRef.current = cam;
-      paint(cam, transition);
+      paint(cam);
       setCamera(cam);
     },
-    [paint],
+    [paint, stopAnimation],
   );
+
+  const animateCamera = useCallback((target: MapCamera) => {
+    stopAnimation();
+    cancelAnimationFrame(rafId.current);
+    rafId.current = 0;
+    clearTimeout(wheelTimer.current);
+    const start = { ...camRef.current };
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / 140);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = {
+        zoom: start.zoom + (target.zoom - start.zoom) * eased,
+        panX: start.panX + (target.panX - start.panX) * eased,
+        panY: start.panY + (target.panY - start.panY) * eased,
+      };
+      camRef.current = current;
+      paint(current);
+      if (progress < 1) animationId.current = requestAnimationFrame(frame);
+      else {
+        commitCamera(target);
+        if (mapEl.current) mapEl.current.style.willChange = '';
+        setGesturing(false);
+      }
+    };
+    animationId.current = requestAnimationFrame(frame);
+  }, [commitCamera, mapEl, paint, stopAnimation]);
 
   const computeZoom = useCallback(
     (nz: number, fcx?: number, fcy?: number): MapCamera => {
@@ -128,11 +166,13 @@ export function useMapCamera(
   );
 
   const beginGesture = useCallback(() => {
+    stopAnimation();
+    clearTimeout(wheelTimer.current);
     if (!gesturing) setGesturing(true);
     if (mapEl.current) {
       mapEl.current.style.willChange = 'transform';
     }
-  }, [gesturing, mapEl]);
+  }, [gesturing, mapEl, stopAnimation]);
 
   const endGesture = useCallback(() => {
     if (mapEl.current) mapEl.current.style.willChange = '';
@@ -144,9 +184,8 @@ export function useMapCamera(
   const setZoom = useCallback(
     (nz: number, fcx?: number, fcy?: number, animated = false) => {
       const cam = computeZoom(nz, fcx, fcy);
-      camRef.current = cam;
       if (animated) {
-        commitCamera(cam, 'transform .14s ease');
+        animateCamera(cam);
       } else {
         schedulePaint(cam);
         clearTimeout(wheelTimer.current);
@@ -157,13 +196,13 @@ export function useMapCamera(
         }, WHEEL_DEBOUNCE_MS);
       }
     },
-    [computeZoom, commitCamera, schedulePaint, mapEl],
+    [computeZoom, commitCamera, schedulePaint, mapEl, animateCamera],
   );
 
   const resetCamera = useCallback(() => {
     const cam = { zoom: 1, panX: 0, panY: 0 };
-    commitCamera(cam, 'transform .14s ease');
-  }, [commitCamera]);
+    animateCamera(cam);
+  }, [animateCamera]);
 
   const onWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -265,12 +304,13 @@ export function useMapCamera(
   );
 
   useEffect(() => {
-    paint(camera, 'none');
-  }, [paint, camera]);
+    paint(camRef.current);
+  }, [paint]);
 
   useEffect(
     () => () => {
       if (rafId.current) cancelAnimationFrame(rafId.current);
+      cancelAnimationFrame(animationId.current);
       clearTimeout(wheelTimer.current);
       panCleanup.current?.();
     },
