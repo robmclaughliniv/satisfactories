@@ -1,12 +1,12 @@
-import { FactoryInputPool } from '../FactoryInputPool';
 import { ProductionLineConnections } from '../ProductionLineConnections';
+import { ResourceBalanceModal, efficiencyLabel } from '../modals/ResourceBalanceModal';
 import { LineEditor } from '../LineEditor';
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
 import { aggregate, aggregateEffective, exportRemainder, importedByItem, itemExported, itemSupply, localInputByItem } from '../../state/derive';
 import {
-  lineName, computeFactoryLineFeeds, effectiveOutputRate, rowEfficiency,
-  rowFeedStatus, sectionFeedStatus, sectionHasDeficit, sectionMaxDeficit,
+  lineName, computeFactoryLineFeeds, effectiveOutputRate, rowEfficiency, resourceProduction,
+  rowFeedStatus, sectionFeedStatus, lineResourceBalances,
 } from '../../state/lineFeeds';
 import { isFactoryDirty } from '../../model/baseline';
 import { buildMapConnections } from '../../model/mapConnections';
@@ -159,10 +159,13 @@ function chipStyle(color: string, bg: string, border: string): CSSProperties {
 function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeof aggregate>; effAgg: ReturnType<typeof aggregateEffective> }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { setRowCount, removeRow, addSection, renameSection, openRecipePicker, resetFactory, commitFactory, openLocalInput, toggleFav, removeSection } = useActions();
+  const { setRowCount, removeRow, addSection, renameSection, openRecipePicker, resetFactory, commitFactory, openLocalInput, toggleFactoryItemFavorite, removeSection } = useActions();
 
   const lineFeeds = useMemo(() => computeFactoryLineFeeds(world, f), [world, f]);
 
+  const production = useMemo(() => resourceProduction(f, lineFeeds), [f, lineFeeds]);
+  const flows = useMemo(() => buildFlows(world, f), [world, f]);
+  const [detailItem, setDetailItem] = useState<string | null>(null);
   const [acc, setAcc] = useState({ favorites: true, balance: true, lines: true });
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editSectionName, setEditSectionName] = useState('');
@@ -178,21 +181,21 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
     const imp = importedByItem(world, f, item);
     const local = localByItem[item] || 0;
     const exp = itemExported(world, f, item);
-    return { item, made, need, imp, local, exp, net: made + imp + local - need - exp };
+    const capacity = production.get(item)?.capacity ?? 0;
+    return { item, made, need, imp, local, exp, capacity, efficiency: capacity > 0 ? made / capacity : null, net: made + imp + local - need - exp };
   };
 
   const resKeys: Record<string, 1> = {};
   Object.keys(effAgg.per).forEach((k) => (resKeys[k] = 1));
   Object.keys(localByItem).forEach((k) => (resKeys[k] = 1));
-  buildFlows(world, f).forEach((fl) => (resKeys[fl.item] = 1));
+  flows.forEach((fl) => (resKeys[fl.item] = 1));
   (f.exportOrder ?? []).forEach((item) => (resKeys[item] = 1));
-  (f.importOrder ?? []).forEach((item) => (resKeys[item] = 1));
 
   const resBalance = Object.keys(resKeys)
     .map((item) => balanceForItem(item))
     .sort((a, b) => a.net - b.net);
 
-  const favorites = st.favItems.filter((item) => !!resKeys[item]).map((item) => balanceForItem(item));
+  const favorites = (f.favoriteItems ?? []).filter((item) => !!resKeys[item]).map((item) => balanceForItem(item));
 
   const startSectionEdit = (secId: string, name: string) => {
     setEditingSectionId(secId);
@@ -209,36 +212,29 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
     const deficit = rb.net < -0.001;
     const surplus = rb.net > 0.001;
     const nc = deficit ? '#E5604D' : surplus ? '#5BCB86' : '#9097A1';
-    const stats: { label: string; value: string; color: string }[] = [{ label: 'Made here', value: fmt(rb.made), color: '#7FBE98' }];
+    const stats: { label: string; value: string; color: string }[] = [];
     if (rb.imp > 0.001) stats.push({ label: 'Imported', value: '+' + fmt(rb.imp), color: '#F5A95B' });
     if (rb.local > 0.001) stats.push({ label: 'Local', value: '+' + fmt(rb.local), color: '#8B9DC3' });
     if (rb.need > 0.001) stats.push({ label: 'Required', value: '−' + fmt(rb.need), color: '#D98176' });
     if (rb.exp > 0.001) stats.push({ label: 'Exported', value: '−' + fmt(rb.exp), color: '#9097A1' });
-    const favorited = st.favItems.includes(rb.item);
+    stats.push({ label: 'Net balance', value: `${surplus ? '+' : ''}${fmt(rb.net)} /m`, color: nc });
+    const favorited = (f.favoriteItems ?? []).includes(rb.item);
     return (
       <div key={rb.item} style={{ background: '#0F1116', border: `1px solid ${deficit ? '#3A2020' : '#1C2027'}`, borderRadius: 10, padding: '11px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
-          <ItemSquare item={rb.item} size={26} radius={6} fontSize={9} />
-          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 500, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rb.item}</span>
-          {showStar && <FavStar favorited={favorited} onToggle={() => toggleFav(rb.item)} />}
+          <button type="button" className="resource-detail-trigger" aria-label={`View ${rb.item} balance details`} onClick={() => setDetailItem(rb.item)}>
+            <ItemSquare item={rb.item} size={26} radius={6} fontSize={9} />
+            <span>{rb.item}</span>
+            <span aria-hidden="true">›</span>
+          </button>
+          {showStar && <FavStar favorited={favorited} onToggle={() => toggleFactoryItemFavorite(f.id, rb.item)} />}
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 9 }}>
-          <span style={{ fontFamily: MONO, fontWeight: 600, fontSize: 18, color: nc }}>{(rb.net > 0 ? '+' : '') + fmt(rb.net)}</span>
-          <span style={{ fontSize: 9, color: '#5E646E' }}>/m</span>
-          <span
-            style={{
-              marginLeft: 'auto',
-              fontSize: 9,
-              fontWeight: 600,
-              padding: '1px 7px',
-              borderRadius: 5,
-              color: nc,
-              background: deficit ? '#1A0E0E' : surplus ? '#0E1A12' : '#15171D',
-              border: `1px solid ${nc}33`,
-            }}
-          >
-            {deficit ? 'Deficit' : surplus ? 'Surplus' : 'Balanced'}
+        <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '3px 8px', marginBottom: 9 }}>
+          <span aria-label={`${fmt(rb.made)} produced per minute`}>
+            <span style={{ fontFamily: MONO, fontWeight: 600, fontSize: 18, color: rb.made > 0 ? '#5BCB86' : '#9097A1' }}>{fmt(rb.made)}</span>
+            <span style={{ fontSize: 10, color: '#9AA5B1' }}> /m made</span>
           </span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: '#B4BFCC' }}>{efficiencyLabel(rb.efficiency)} efficiency</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderTop: '1px solid #1A1E25', paddingTop: 8 }}>
           {stats.map((stt) => (
@@ -317,6 +313,19 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
 
   return (
     <section data-m-panel="" data-m-pad="" style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', padding: '18px 20px 60px' }}>
+      {detailItem && (
+        <ResourceBalanceModal
+          balance={balanceForItem(detailItem)}
+          lines={production.get(detailItem)?.lines ?? []}
+          consumers={f.sections.flatMap(section => section.rows.flatMap(row =>
+            (lineFeeds.byRowId[row.id]?.inputs ?? [])
+              .filter(input => input.item === detailItem)
+              .map(input => ({ id: row.id, name: lineName(row), ...input })),
+          ))}
+          flows={flows.filter(flow => flow.item === detailItem)}
+          onClose={() => setDetailItem(null)}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 15 }}>Production</div>
@@ -360,7 +369,6 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
         </button>
       </div>
 
-      <FactoryInputPool factory={f} world={world} />
 
       <AccordionSection
         title="Favorites"
@@ -408,8 +416,6 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
             if (rec) secPower += rec.power * row.count;
           });
           const feedStatus = sectionFeedStatus(f, sec.id);
-          const hasDeficit = sectionHasDeficit(f, sec.id, lineFeeds);
-          const maxDeficit = sectionMaxDeficit(f, sec.id, lineFeeds);
           return (
             <div key={sec.id} style={{ marginBottom: 16, border: '1px solid #1C2027', borderRadius: 11, overflow: 'hidden', background: '#0F1116' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: '#13151B', borderBottom: '1px solid #1C2027' }}>
@@ -450,11 +456,6 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                 {feedStatus && (
                   <span style={chipStyle('#8A909A', '#15171D', '#262B34')} title="Production lines in this category">
                     {feedStatus}
-                  </span>
-                )}
-                {hasDeficit && (
-                  <span style={chipStyle('#E5604D', '#1A0E0E', '#3A2020')} title="Inputs not fully covered by assigned supply">
-                    Deficit −{fmt(maxDeficit)}/m
                   </span>
                 )}
                 <span style={{ fontSize: 11, color: '#6B7280', fontFamily: MONO }}>{fmt(secPower)} MW</span>
@@ -501,9 +502,9 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                 const picking = st.picker?.mode === 'edit' && st.picker.rowId === row.id;
                 const destLabel = rowFeedStatus(f, row);
                 const efficiency = rowEfficiency(lineFeeds, row.id);
-                const nameplateRate = prim.rate * row.count;
                 const effectiveRate = effectiveOutputRate(lineFeeds, row, prim.item);
                 const throttled = efficiency < 0.999;
+                const { inputs } = lineResourceBalances(lineFeeds, row);
                 return (
                   <div key={row.id} style={{ borderBottom: '1px solid #15181E' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px' }}>
@@ -541,6 +542,16 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                       >
                         <ItemSquare item={prim.item} size={24} radius={6} fontSize={9} />
                         <span style={{ fontWeight: 500, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lineName(row)}</span>
+                        <span className="line-balance-counts">
+                          {(['surplus', 'deficit'] as const).map(status => {
+                            const count = inputs.filter(input => input.status === status).length;
+                            if (!count) return null;
+                            const label = `${count} ${count === 1 ? 'input' : 'inputs'} in ${status}`;
+                            return <span key={status} className={`line-balance-${status}`} role="img" aria-label={label} title={label}>
+                              {count} {status === 'surplus' ? '▲' : '▼'}
+                            </span>;
+                          })}
+                        </span>
                         {rec.alt && (
                           <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.04em', color: '#C58BE0', border: '1px solid #4A3358', background: '#221A2B', borderRadius: 4, padding: '1px 5px' }}>
                             ALT
@@ -589,11 +600,9 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                       </div>
                       <span style={{ width: 72, textAlign: 'right', fontFamily: MONO, fontSize: 12, color: throttled ? '#9097A1' : '#5BCB86' }}>
                         +{fmt(effectiveRate)}/m
-                        {throttled && (
-                          <span style={{ display: 'block', fontSize: 9, color: '#5E646E' }}>
-                            {Math.round(efficiency * 100)}% of {fmt(nameplateRate)}
-                          </span>
-                        )}
+                        <span className="production-line-efficiency">
+                          {efficiencyLabel(row.count > 0 ? efficiency : null)} efficiency
+                        </span>
                       </span>
                       <span data-m-colhide="" style={{ width: 58, textAlign: 'right', fontFamily: MONO, fontSize: 11.5, color: '#F5A95B' }}>
                         {fmt(rec.power * row.count)} MW
@@ -682,7 +691,7 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
     openAddReceivingStation,
     openStationCreate,
     openStationEdit,
-    toggleFav,
+    toggleFactoryItemFavorite,
     removeExportResource,
   } = useActions();
 
@@ -814,8 +823,8 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
               key={x.item}
               name={x.item}
               rate={'+' + fmt(x.out) + '/m'}
-              favorited={st.favItems.includes(x.item)}
-              onToggleFav={() => toggleFav(x.item)}
+              favorited={(f.favoriteItems ?? []).includes(x.item)}
+              onToggleFav={() => toggleFactoryItemFavorite(f.id, x.item)}
             />
           ))}
           {produced.length === 0 && <div style={{ fontSize: 11, color: '#5E646E', fontStyle: 'italic' }}>Nothing produced yet — add a recipe.</div>}
@@ -832,8 +841,8 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
             keyPrefix="d_"
             onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
             emptyText="No imports yet."
-            favoritedItems={st.favItems}
-            onToggleFav={toggleFav}
+            favoritedItems={(f.favoriteItems ?? [])}
+            onToggleFav={(item) => toggleFactoryItemFavorite(f.id, item)}
             onLegClick={(leg) => {
               if (leg.localInputId) openLocalInput(f.id, undefined, leg.localInputId);
               else if (leg.routeId) openRoute(leg.routeId, { readOnly: true });
@@ -904,8 +913,8 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
             keyPrefix="d_"
             onToggle={(k) => up((s) => ({ expandedFlow: { ...s.expandedFlow, [k]: !s.expandedFlow[k] } }))}
             emptyText="No exports yet."
-            favoritedItems={st.favItems}
-            onToggleFav={toggleFav}
+            favoritedItems={(f.favoriteItems ?? [])}
+            onToggleFav={(item) => toggleFactoryItemFavorite(f.id, item)}
             onLegClick={(leg) => {
               if (leg.routeId) openRoute(leg.routeId);
             }}

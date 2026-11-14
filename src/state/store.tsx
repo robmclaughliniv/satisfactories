@@ -839,6 +839,18 @@ export function useActions() {
     }));
   };
 
+  const toggleFactoryItemFavorite = (factoryId: string, item: string) => {
+    mutateWorld((w) => {
+      const factory = w.factories.find((f) => f.id === factoryId);
+      if (!factory) return;
+
+      const favorites = factory.favoriteItems ?? [];
+      factory.favoriteItems = favorites.includes(item)
+        ? favorites.filter((favorite) => favorite !== item)
+        : [...favorites, item];
+    });
+  };
+
   const toggleFavFactory = (id: string) => {
     up((s) => ({
       favFactories: s.favFactories.includes(id)
@@ -975,6 +987,7 @@ export function useActions() {
     removeLocalInput,
     reorderFlows,
     toggleFav,
+    toggleFactoryItemFavorite,
     toggleFavFactory,
     createWorld,
     loadSampleWorld,

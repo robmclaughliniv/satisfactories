@@ -121,6 +121,21 @@ export function effectiveOutputRate(feeds: FactoryLineFeeds, row: Row, item: str
 export function outputRemaining(feeds: FactoryLineFeeds, row: Row, item: string, editingId?: string): number {
   return effectiveOutputRate(feeds,row,item) - (row.allocations ?? []).filter(a => a.item === item && a.id !== editingId).reduce((s,a) => s+a.rate,0);
 }
+export function lineResourceBalances(feeds: FactoryLineFeeds, row: Row) {
+  const feed = feeds.byRowId[row.id];
+  const status = (delta: number): 'deficit' | 'surplus' | 'balanced' => delta < -EPS ? 'deficit' : delta > EPS ? 'surplus' : 'balanced';
+  return {
+    inputs: (feed?.inputs ?? []).map(input => {
+      const delta = input.available - input.need;
+      return { ...input, delta, status: status(delta) };
+    }),
+    outputs: (feed?.effectiveOutputs ?? []).map(output => {
+      const delta = outputRemaining(feeds, row, output.item);
+      return { ...output, delta, status: status(delta) };
+    }),
+  };
+}
+
 export function sectionNeeds(section: Section): Record<string, number> {
   const needs: Record<string, number> = {};
   section.rows.forEach(r => recipeById(r.recipeId)?.inputs.forEach(i => {needs[i.item]=(needs[i.item] || 0)+i.rate*r.count;}));
@@ -149,3 +164,32 @@ export function rowDestinationShares(factory:Factory,row:Row,feeds:FactoryLineFe
 export function sectionFeedStatus(f:Factory,id:string) { return `${f.sections.find(s => s.id===id)?.rows.length || 0} lines`; }
 export function rowFeedStatus(_f:Factory,row:Row) { return row.allocations?.length ? `${row.allocations.length} allocations` : 'Unassigned'; }
 export function isExportDestinationSelected(row:Row) { return (row.allocations ?? []).some(a => a.kind==='factory'); }
+
+export interface ResourceProductionLine {
+  id: string;
+  name: string;
+  capacity: number;
+  actual: number;
+  feed: RowFeedState;
+}
+
+export function resourceProduction(factory: Factory, feeds: FactoryLineFeeds) {
+  const byItem = new Map<string, { capacity: number; lines: ResourceProductionLine[] }>();
+  for (const row of allLines(factory)) {
+    const feed = feeds.byRowId[row.id];
+    if (!feed) continue;
+    for (const output of feed.nameplateOutputs) {
+      const production = byItem.get(output.item) ?? { capacity: 0, lines: [] };
+      production.capacity += output.rate;
+      production.lines.push({
+        id: row.id,
+        name: lineName(row),
+        capacity: output.rate,
+        actual: effectiveOutputRate(feeds, row, output.item),
+        feed,
+      });
+      byItem.set(output.item, production);
+    }
+  }
+  return byItem;
+}

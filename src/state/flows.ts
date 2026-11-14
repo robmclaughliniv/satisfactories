@@ -48,7 +48,12 @@ export function buildFlows(world:World,f:Factory):Flow[] {
     if(recipeById(r.recipeId)?.outputs.some(o => o.item===a.item)) ensure('export',a.item);
   })));
   (f.exportOrder || []).forEach(item => {if(itemSupply(world,f,item)>0.001) ensure('export',item);});
-  (f.importOrder || []).forEach(item => ensure('import',item));
+  // Import order is a display preference. Receiving stations can exist before a delivery is linked.
+  for (const station of world.stations ?? []) {
+    if (station.role === 'import' && station.homeFactoryId === f.id) {
+      ensure('import', station.resourceId);
+    }
+  }
   return [...map.values()].sort((a,b) => a.dir===b.dir ? 0 : a.dir==='import'?-1:1);
 }
 export function applyFlowOrder(flows:Flow[],order:string[]|undefined):Flow[] {
