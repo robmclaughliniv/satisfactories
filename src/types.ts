@@ -9,6 +9,7 @@ export type {
   StationRole,
   Vehicle,
   Station,
+  OutputAllocation,
   Row,
   RowDestination,
   RowSource,

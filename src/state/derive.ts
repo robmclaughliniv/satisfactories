@@ -1,7 +1,7 @@
 import { recipeById } from '../data/gameData';
 import type { Factory, World } from '../types';
-import { exportStations, importedByItem, vehicleHops } from '../model/logistics';
-import { computeFactoryLineFeeds } from './lineFeeds';
+import { allocationShipments, legacyRouteDelivery, exportStations, importedByItem, vehicleHops } from '../model/logistics';
+import { computeFactoryLineFeeds, rowDestinationShares } from './lineFeeds';
 
 export interface Aggregate {
   per: Record<string, { in: number; out: number }>;
@@ -89,30 +89,34 @@ export function aggregateEffective(world: World, factory: Factory): Aggregate {
 
 export { importedByItem };
 
-/** Produced + imported + local supply for an item at a factory. */
+/** Explicit export shares plus external supply not claimed by production rows. */
 export function itemSupply(world: World, factory: Factory, item: string): number {
-  const made = aggregateEffective(world, factory).per[item]?.out || 0;
-  const local = localInputByItem(factory)[item] || 0;
-  return made + local + importedByItem(world, factory, item);
+  const feeds = computeFactoryLineFeeds(world, factory);
+  let made = 0;
+  const reservedLocal: Record<string,number> = {};
+  let reservedImport = 0;
+  factory.sections.forEach(section => section.rows.forEach(row => {
+    rowDestinationShares(factory, row, feeds).forEach(share => {
+      if (share.kind === 'export') made += share.outputs.find(o => o.item === item)?.rate || 0;
+    });
+    if (!recipeById(row.recipeId)?.inputs.some(i => i.item === item) || row.count <= 0) return;
+    row.sources.forEach(source => {
+      if (source.kind === 'local') reservedLocal[source.localInputId] = (reservedLocal[source.localInputId] || 0) + (source.rate || 0);
+      else if (source.item === item) reservedImport += source.rate || 0;
+    });
+  }));
+  const local = factory.localInputs.filter(i => i.item === item).reduce((sum,i) => sum+Math.max(0,i.rate-(reservedLocal[i.id] || 0)),0);
+  return made + local + Math.max(0,importedByItem(world,factory,item)-reservedImport);
 }
 
 /** Outbound route, vehicle hop, and station export total for an item. */
 export function itemExported(world: World, factory: Factory, item: string): number {
-  let exported = 0;
-  world.routes.forEach((r) => {
-    if (r.from === factory.id && r.item === item) exported += r.rate;
+  let exported = allocationShipments(world).filter(a => a.from === factory.id && a.item === item).reduce((sum,a) => sum+a.rate,0);
+  world.routes.forEach(r => {
+    if (r.from === factory.id && r.item === item) exported += legacyRouteDelivery(world,r.from,r.to,item,r.rate);
   });
-  vehicleHops(world).forEach((hop) => {
-    if (hop.fromFactoryId === factory.id && hop.item === item) exported += hop.rate;
-  });
-  exportStations(world, factory.id, item).forEach((station) => {
-    if (station.vehicles.length === 0) {
-      exported += station.totalRate;
-      return;
-    }
-    station.vehicles.forEach((v) => {
-      if (!v.destinationStationId) exported += v.perVehicleRate;
-    });
+  vehicleHops(world).forEach(h => {
+    if (h.fromFactoryId === factory.id && h.item === item) exported += legacyRouteDelivery(world,h.fromFactoryId,h.toFactoryId,item,h.rate);
   });
   return exported;
 }
@@ -149,7 +153,7 @@ export function rollupWorld(world: World): Record<string, RollupEntry> {
   return per;
 }
 
-/** Items in inventory (produced + imports) not already exported via stations/routes. */
+/** Items with export supply not already exported via stations/routes. */
 export function exportableItems(world: World, factory: Factory): { item: string; headroom: number }[] {
   const eff = aggregateEffective(world, factory);
   const supplyItems = new Set<string>();

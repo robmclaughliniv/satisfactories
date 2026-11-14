@@ -1,5 +1,5 @@
 import type { World } from './schema';
-import { transportFromStationType, vehicleHops } from './logistics';
+import { allocationShipments, hasFactoryAllocation, legacyRouteDelivery, transportFromStationType, vehicleHops } from './logistics';
 
 export interface MapConnection {
   key: string;
@@ -12,18 +12,20 @@ export interface MapConnection {
 export function buildMapConnections(world: World): MapConnection[] {
   const cm: Record<string, MapConnection> = {};
 
-  world.routes.forEach((r) => {
+  [...world.routes.filter(r => !hasFactoryAllocation(world,r.from,r.to,r.item)).map(r => ({...r, rate:legacyRouteDelivery(world,r.from,r.to,r.item,r.rate)})).filter(r => r.rate > 0.001), ...allocationShipments(world)].forEach((r) => {
     const key = [r.from, r.to].slice().sort().join('__');
     if (!cm[key]) cm[key] = { key, a: r.from, b: r.to, items: [] };
     cm[key].items.push({ item: r.item, rate: r.rate, t: r.t, from: r.from, to: r.to });
   });
 
   vehicleHops(world).forEach((hop) => {
+    if (hasFactoryAllocation(world,hop.fromFactoryId,hop.toFactoryId,hop.item)) return;
+    if (legacyRouteDelivery(world,hop.fromFactoryId,hop.toFactoryId,hop.item,hop.rate) <= 0.001) return;
     const key = [hop.fromFactoryId, hop.toFactoryId].slice().sort().join('__');
     if (!cm[key]) cm[key] = { key, a: hop.fromFactoryId, b: hop.toFactoryId, items: [] };
     cm[key].items.push({
       item: hop.item,
-      rate: hop.rate,
+      rate: legacyRouteDelivery(world,hop.fromFactoryId,hop.toFactoryId,hop.item,hop.rate),
       t: transportFromStationType(hop.type),
       from: hop.fromFactoryId,
       to: hop.toFactoryId,

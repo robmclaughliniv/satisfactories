@@ -37,12 +37,24 @@ export const RowDestinationSchema = z.discriminatedUnion('kind', [
 ]);
 
 export const RowSourceSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('local'), localInputId: z.string() }),
-  z.object({ kind: z.literal('import'), item: z.string() }),
+  z.object({ kind: z.literal('local'), localInputId: z.string(), rate: z.number().finite().nonnegative().optional() }),
+  z.object({ kind: z.literal('import'), item: z.string(), rate: z.number().finite().nonnegative().optional() }),
 ]);
+
+export const OutputAllocationSchema = z.object({
+  id: z.string(),
+  item: z.string(),
+  rate: z.number().finite().nonnegative(),
+  kind: z.enum(['line', 'factory', 'review']),
+  targetId: z.string(),
+  transport: TransportSchema.optional(),
+  reviewFor: z.enum(['line', 'factory']).optional(),
+});
 
 export const RowSchema = z.object({
   id: z.string(),
+  name: z.string().default(''),
+  allocations: z.array(OutputAllocationSchema).default([]),
   recipeId: z.string(),
   count: z.number(),
   destinations: z.array(RowDestinationSchema).default([]),
@@ -104,7 +116,7 @@ export const WorldSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const SCHEMA_VERSION = 9 as const;
+export const SCHEMA_VERSION = 10 as const;
 
 /** Persisted envelope (localStorage now, database later). */
 export const PersistedStateSchema = z.object({
@@ -140,3 +152,5 @@ export const WorldTemplateSchema = z.object({
 });
 
 export type WorldTemplate = z.infer<typeof WorldTemplateSchema>;
+
+export type OutputAllocation = z.infer<typeof OutputAllocationSchema>;

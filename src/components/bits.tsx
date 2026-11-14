@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { fmt, initials, itemColor, transportColor } from '../data/gameData';
+import { useStore } from '../state/store';
 import type { Flow, FlowLeg } from '../state/flows';
 
 export const SG = "'Space Grotesk'";
@@ -86,14 +87,21 @@ function FlowLegRow({
   actionLabel?: string;
 }) {
   const [hovered, setHovered] = useState(false);
-  const clickable = !!(leg.routeId || leg.localInputId || leg.stationId) && !!onLegClick;
+  const { openFactory, up } = useStore();
+  const clickable = !!leg.allocationId || (!!(leg.routeId || leg.localInputId || leg.stationId) && !!onLegClick);
+  const visit = () => {
+    if (leg.allocationId && leg.sourceFactoryId && leg.sourceRowId) {
+      openFactory(leg.sourceFactoryId);
+      up(s => ({ expanded: { ...s.expanded, [leg.sourceRowId!]: true } }));
+    } else onLegClick?.(leg);
+  };
   const deletable = clickable && !!onLegDelete && (canDeleteLeg ? canDeleteLeg(leg) : true);
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={clickable ? () => onLegClick!(leg) : undefined}
+      onClick={clickable ? visit : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -141,8 +149,8 @@ function FlowLegRow({
       <span style={{ flex: 1, fontSize: 11, color: '#AEB4BE', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {leg.partner}
       </span>
-      <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}</span>
-      {clickable && <span style={{ fontSize: 9.5, color: '#5E646E' }}>{actionLabel}</span>}
+      <span style={{ fontFamily: MONO, fontSize: 10.5, color: '#9097A1' }}>{fmt(leg.rate) + '/m'}{leg.requested !== undefined && leg.rate + 0.001 < leg.requested && <small style={{display:'block',color:'#E98170'}}>of {fmt(leg.requested)}</small>}</span>
+      {clickable && <span style={{ fontSize: 9.5, color: '#5E646E' }}>{leg.allocationId ? 'View line' : actionLabel}</span>}
     </div>
   );
 }
@@ -427,7 +435,7 @@ export function FlowList({
                     actionLabel={legActionLabel?.(leg) ?? 'Edit'}
                   />
                 ))}
-                {addLeg?.(fl)}
+                {!fl.legs.some(leg => leg.allocationId) && addLeg?.(fl)}
               </div>
             )}
           </div>
