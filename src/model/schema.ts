@@ -91,6 +91,8 @@ export const FactorySchema = z.object({
   /** User-defined order of import/export resource rows (by item name). */
   importOrder: z.array(z.string()).default([]),
   exportOrder: z.array(z.string()).default([]),
+  /** Resource pins for this factory, independent of its production snapshot. */
+  favoriteItems: z.array(z.string()).optional(),
   /** Monotonic station naming counter — never reused after delete. */
   stationSeq: z.number().default(0),
   /** JSON snapshot of factory draft state at last commit — sections, local inputs, flow order, outbound routes, stations. */

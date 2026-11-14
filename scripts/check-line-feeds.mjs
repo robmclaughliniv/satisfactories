@@ -47,6 +47,13 @@ try {
   assert.equal(aggregateEffective(world,b).per['Iron Plate'].out,20);
   assert.equal(buildFlows(world,a).find(f => f.dir==='export').total,30);
   assert.equal(buildFlows(world,b).find(f => f.dir==='import').total,30);
+  b.importOrder = ['Coal', 'Iron Ingot'];
+  const receiver = { id: 'coal-receiver', name: 'Coal receiver', type: 'Train', homeFactoryId: b.id,
+    resourceId: 'Coal', role: 'import', totalRate: 0, vehicles: [] };
+  world.stations.push(receiver);
+  assert.equal(buildFlows(world,b).find(f => f.key === 'import|Coal').total, 0);
+  world.stations.pop();
+  assert.deepEqual(buildFlows(world,b).filter(f => f.dir === 'import').map(f => f.item), ['Iron Ingot']);
   assert.equal(buildMapConnections(world)[0].items[0].rate,30);
   world.routes=[{id:'existing-transport',from:'A',to:'B',item:'Iron Ingot',rate:30,t:'Belt'}];
   assert.equal(importedByItem(world,b,'Iron Ingot'),30,'Transport must not duplicate allocation delivery');
@@ -97,6 +104,22 @@ try {
   assert.ok(upgraded.allocations.some(a => a.kind==='factory' && a.targetId==='B' && a.rate===30));
   assert.equal(upgraded.sources[0].rate,80);
   const sample=instantiateTemplate(SAMPLE_WORLD);
+  const [favoriteFactory, otherFactory] = sample.factories;
+  favoriteFactory.favoriteItems = ['Modular Frame'];
+  otherFactory.favoriteItems = [];
+  assert.equal(isFactoryDirty(favoriteFactory, sample.routes, sample.stations), false);
+  applyBaseline(favoriteFactory, sample, parseBaseline(favoriteFactory.baseline));
+  const sampleBackup = buildBackupEnvelope({
+    worlds: [sample], worldId: sample.id, favItems: ['Iron Ore'], favFactories: [],
+  });
+  const restoredSample = migratePersisted(JSON.parse(JSON.stringify(sampleBackup)));
+  assert.deepEqual(restoredSample.worlds[0].factories[0].favoriteItems, ['Modular Frame']);
+  assert.deepEqual(restoredSample.worlds[0].factories[1].favoriteItems, []);
+  assert.deepEqual(restoredSample.favItems, ['Iron Ore']);
+  delete sampleBackup.worlds[0].factories[0].favoriteItems;
+  const restoredLegacy = migratePersisted(JSON.parse(JSON.stringify(sampleBackup)));
+  assert.equal(restoredLegacy.worlds[0].factories[0].favoriteItems, undefined);
+  assert.deepEqual(restoredLegacy.favItems, ['Iron Ore']);
   assert.ok(sample.factories.every(f => f.sections.every(s => s.rows.every(r => !!r.name))));
   assert.ok(sample.factories.every(f => !isFactoryDirty(f,sample.routes,sample.stations)));
   assert.ok(Object.values(computeWorldLineFeeds(sample)).every(f => f.converged));

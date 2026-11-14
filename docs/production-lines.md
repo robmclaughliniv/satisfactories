@@ -6,9 +6,9 @@
    Categories organize lines. Moving a line keeps its ID and connections.
    Deleting a category moves its lines to **Uncategorized**. Deleting a
    connected line prompts you to confirm removal of its allocations.
-2. Add a local node in **Factory input supply**. Local nodes are shared pools
-   keyed by node, and incoming shipments are pooled by item at the receiving
-   factory. Use **+ Input supply** on a line to claim a fixed rate from either
+2. Use **+ Add local input** in the **Factory balance** sidebar to add a local
+   node. Local nodes are shared pools keyed by node, and incoming shipments
+   are pooled by item at the receiving factory. Use **+ Input supply** on a line to claim a fixed rate from either
    pool. Multiple lines can share the same pool up to its available rate.
    Editing or removing a claim leaves the source intact.
 3. Under **Output allocations**, use **+ Production Line** to supply another

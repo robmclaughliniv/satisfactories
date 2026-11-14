@@ -9,7 +9,7 @@ and save compatibility.
 | Area | Entry points |
 | --- | --- |
 | App and persistence | `src/App.tsx` mounts screens and shared modals. `src/state/store.tsx` handles navigation, active-world changes, and browser storage. |
-| Factory editor | `src/components/screens/FactoryScreen.tsx` composes `FactoryInputPool.tsx`, `LineEditor.tsx`, and `ProductionLineConnections.tsx` under `src/components/`. The claim dialog lives in `src/components/modals/InputSupplyModal.tsx`. |
+| Factory editor | `src/components/screens/FactoryScreen.tsx` composes `LineEditor.tsx` and `ProductionLineConnections.tsx` under `src/components/`. The claim dialog lives in `src/components/modals/InputSupplyModal.tsx`. |
 | Production and rollups | Under `src/state/`, `lineFeeds.ts` calculates effective line rates and deliveries, `inputSupply.ts` validates claims, and `derive.ts` computes aggregates and world rollups. |
 | Logistics and map | `src/model/logistics.ts` calculates shipments. `src/state/flows.ts` and `src/model/mapConnections.ts` assemble sidebar and map data. `src/components/screens/MapScreen.tsx` and its sibling `useMapCamera.ts` handle map interactions. `src/components/SplitLayout.tsx` and `src/styles/global.css` handle shared layout. |
 | Saves and sample worlds | Under `src/model/`, `schema.ts` defines persisted data, `migrations.ts` upgrades it, `production.ts` converts legacy connections, `baseline.ts` manages factory snapshots, and `backup.ts` handles JSON files. `world.ts` initializes worlds from templates in `src/data/templates/`. |
@@ -26,7 +26,7 @@ browser for interaction and layout checks.
 1. Load **Northern Stretch** from **Worlds** in a disposable browser profile
    or on a separate origin. In **Factories**, select **Cygnus Iron Foundry**
    twice to open it. Set **Iron Ingot 1** to four smelters, add a 120/min Iron
-   Ore node with **+ Local source**, then expand the line and claim 120/min.
+   Ore node with **+ Add local input** in the sidebar, then expand the line and claim 120/min.
 2. Allocate 40/min of Iron Ingot to the Iron Plate line and export 60/min to
    **Polaris Copper Junction**. Verify 20/min surplus on the smelting line,
    40/min supplied on the plate line, and 60/min on both factory flows. Check

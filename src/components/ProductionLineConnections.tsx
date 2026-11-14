@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { fmt, recipeById } from '../data/gameData';
 import { importedByItem } from '../model/logistics';
 import { freshId } from '../model/world';
-import { allLines, computeFactoryLineFeeds, effectiveOutputRate, lineName, outputRemaining, type FactoryLineFeeds } from '../state/lineFeeds';
+import { allLines, computeFactoryLineFeeds, lineResourceBalances, lineName, outputRemaining, type FactoryLineFeeds } from '../state/lineFeeds';
 import { useStore } from '../state/store';
 import type { Factory, OutputAllocation, Row, RowSource, Transport, World } from '../types';
 
@@ -24,6 +24,7 @@ export function ProductionLineConnections({f,row,world,feeds}:{f:Factory;row:Row
   },[!!draft]);
   const rec=recipeById(row.recipeId);
   if(!rec) return null;
+  const balances = lineResourceBalances(feeds, row);
   const lines=allLines(f);
   const allocations=row.allocations || [];
   const editRow=(fn:(r:Row,factory:Factory,w:World)=>void) => mutateWorld(w => {
@@ -60,8 +61,10 @@ export function ProductionLineConnections({f,row,world,feeds}:{f:Factory;row:Row
   return <div className="line-connections">
     <div className="line-connection-column">
       <div className="line-connection-heading">Input supply</div>
-      {feeds.byRowId[row.id]?.inputs.map(input => <div key={input.item} className="line-input-balance">
-        <strong>{input.item}</strong><span style={{color:input.available+0.001<input.need?'#E98170':'#69CD94'}}>{fmt(input.available)} / {fmt(input.need)}/m</span>
+      {balances.inputs.map(input => <div key={input.item} className="line-input-balance">
+        <strong>{input.item}</strong>
+        <span>{fmt(input.available)} / {fmt(input.need)}/m</span>
+        <BalanceStatus status={input.status} delta={input.delta} />
       </div>)}
       {f.sections.flatMap(s => s.rows).flatMap(source => (source.allocations || []).filter(a => a.kind==='line' && a.targetId===row.id).map(a => <div className="line-allocation" key={a.id}><span>{lineName(source)}<small>{a.item}</small></span><span>{fmt(feeds.delivered[a.id] || 0)} / {fmt(a.rate)}/m</span></div>))}
       {row.sources.map(source => {
@@ -73,10 +76,14 @@ export function ProductionLineConnections({f,row,world,feeds}:{f:Factory;row:Row
     </div>
     <div className="line-connection-column">
       <div className="line-connection-heading">Output allocations</div>
-      {rec.outputs.map(output => {
-        const remaining=outputRemaining(feeds,row,output.item);
-        return <div className="line-output-budget" key={output.item}><strong>{output.item}</strong><span>{fmt(effectiveOutputRate(feeds,row,output.item))}/m produced</span><b style={{color:remaining< -0.001?'#E98170':'#69CD94'}}>{remaining< -0.001 ? `${fmt(-remaining)}/m overallocated` : `${fmt(remaining)}/m surplus`}</b>{remaining< -0.001 && <small>Delivery paused. Adjust allocations to match available output.</small>}</div>;
-      })}
+      {balances.outputs.map(output => <div className="line-output-budget" key={output.item}>
+        <strong>{output.item}</strong>
+        <span>{fmt(output.rate)}/m produced</span>
+        {output.status === 'deficit' ? <>
+          <b className="line-balance-deficit">{fmt(output.rate - output.delta)}/m allocated · {fmt(-output.delta)}/m over capacity</b>
+          <small>All deliveries of this item are paused until production covers the allocated rate. Reduce allocations or increase production.</small>
+        </> : <BalanceStatus status={output.status} delta={output.delta} />}
+      </div>)}
       {allocations.map(a => <div className="line-allocation" key={a.id}>
         <span>{a.kind==='line' ? lineName(lines.find(r => r.id===a.targetId) || {...row,name:'Missing line'}) : a.kind==='factory' ? world.factories.find(x => x.id===a.targetId)?.name || 'Missing factory' : 'Needs review'}<small>{a.item} · {a.kind==='factory'?'Export':a.kind==='review'?a.targetId:'Production line'}</small></span>
         <span style={{color:(feeds.delivered[a.id] || 0)+0.001<a.rate?'#E98170':'#69CD94'}}>{fmt(feeds.delivered[a.id] || 0)} / {fmt(a.rate)}/m</span>
@@ -106,4 +113,11 @@ export function ProductionLineConnections({f,row,world,feeds}:{f:Factory;row:Row
       </form>}
     </dialog>
   </div>;
+}
+
+function BalanceStatus({ status, delta }: {
+  status: 'surplus' | 'deficit' | 'balanced'; delta: number;
+}) {
+  const label = status === 'balanced' ? 'Balanced' : `${status === 'surplus' ? 'Surplus' : 'Deficit'} ${fmt(Math.abs(delta))}/m`;
+  return <b className={`line-balance-${status}`}>{label}</b>;
 }
