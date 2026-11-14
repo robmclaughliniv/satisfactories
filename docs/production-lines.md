@@ -1,45 +1,66 @@
 # Production lines and allocations
 
-Categories organize production lines. A line keeps its ID, name, recipe,
-counts, input assignments, and output allocations when moved to another
-category. Deleting a category moves its lines to Uncategorized. Deleting a
-connected line removes its allocations after explaining the impact.
+## Set up production
 
-Each allocation reserves a fixed amount of one output item per minute, for
-one other line in the same factory or one other factory in the current world.
-Both allocation dialogs show actual output minus all existing reservations.
-Editing an allocation returns its existing reservation to that dialog's budget.
-Nothing is automatically split or exported. Recipes with multiple outputs have
-separate budgets for each item.
+1. Create a production line, choose a recipe, and set the machine count.
+   Categories organize lines. Moving a line keeps its ID and connections.
+   Deleting a category moves its lines to **Uncategorized**. Deleting a
+   connected line prompts you to confirm removal of its allocations.
+2. Add a local node in **Factory input supply**. Local nodes are shared pools
+   keyed by node, and incoming shipments are pooled by item at the receiving
+   factory. Use **+ Input supply** on a line to claim a fixed rate from either
+   pool. Multiple lines can share the same pool up to its available rate.
+   Editing or removing a claim leaves the source intact.
+3. Under **Output allocations**, use **+ Production Line** to supply another
+   line in the same factory that consumes the item. Use **+ Export** to ship
+   to another factory in the world and choose the transport there. A receiving
+   line must claim the imported supply before it can use it.
 
-Local inputs belong to the factory and are added in Factory input supply.
-Imported resources also arrive at the factory. Lines claim explicit amounts
-from these shared pools; the line dialog never creates a source.
-Editing or removing a claim leaves the parent source intact.
-The same source cannot be reserved twice. A line's actual production is limited
-by its least-supplied required input. Unallocated output is surplus.
+Use **Commit** in factory detail to save the current working configuration as
+the factory's reset point. **Reset** restores that snapshot. Browser storage
+also saves working changes between visits.
 
-If production drops below saved output reservations, the requested rates remain
-unchanged. Delivery of that item's allocations pauses until the user adjusts
-them; no destination receives an automatic priority or a proportional share.
-Oversubscribed input pools behave the same way. The UI shows requested and
-supplied rates, input deficits, and output overallocation. Circular flows start
-without assumed inventory; a convergence warning appears for unstable plans.
+## Read rates and resolve shortages
 
-Factory exports are shared connections: the same calculated shipment appears
-as an export, an import, and a map connection. Receiving lines can assign that
-imported supply. Transport is selected on the export allocation. Matching older
-routes or vehicle links are retained as transport configuration and do not
-create a second shipment. Older transport without a line allocation can move
-unreserved raw local inputs; it cannot implicitly export unassigned production.
+- **Line inputs** compare supplied rates with the recipe requirements at the
+  configured machine count. The least-supplied required input determines the
+  fraction of nameplate production the line can achieve, up to 100%. Power
+  estimates use the configured machine count and recipe power.
+- **Line outputs** have a separate allocation budget for each item. Surplus
+  here is actual production minus saved requests. Editing an allocation adds
+  its existing reservation back to the available budget for that item.
+- **Factory resource balance** adds effective production, local supply, and
+  delivered imports, then subtracts nameplate recipe demand and delivered
+  exports.
+- **Factory flows** show delivered shipments on both ends of a connection.
+  The map uses the same delivered rates. Factory allocations take precedence
+  over legacy routes and vehicle links for the same source, destination, and
+  item. Unmatched legacy transport can carry unclaimed raw local supply when
+  there is enough for all its requests for that item.
+- **Resources** totals effective recipe production and consumption across
+  the world, with local node supply included on the production side. An
+  individual line can show an input deficit while the world has spare supply
+  of that item.
 
-Schema version 10 migrates existing line IDs and category names, generates line
-names, converts category feeds to explicit line requests using their previous
-nameplate shares, and converts input claims to fixed rates. Explicit old export
-selections use known factory destinations where available. Unresolved intent
-is shown as a Needs review allocation that can be edited or removed. Working
-and committed snapshots migrate independently. JSON backup loading uses the
-same migration as local storage.
+If requests for one line output exceed its actual rate, delivery pauses for
+all allocations of that output. If claims on a local node or imported item
+exceed that pool's supply, those claims deliver zero. The saved rates remain
+in place. Restore supply or edit the affected rates to resume delivery.
+Circular flows start with zero assumed supply. Factory detail warns if the
+calculation fails to stabilize. An unfed loop can stabilize at zero.
 
-Run `npm test` for allocation, migration, transport, and persistence checks.
-Run `npm run build` for TypeScript validation and the production build.
+## Save compatibility
+
+Version 9 worlds upgrade to schema version 10 when loaded from browser storage
+or a JSON backup. The conversion keeps existing line IDs and categories and
+generates missing line names. It converts category feeds into fixed requests
+based on recipe rates, machine counts, and compatible targets' demand. Explicit
+legacy export destinations use matching route or station rates where available.
+Unresolved destinations can appear as **Needs review** allocations that you can
+edit or remove. Legacy local and import claims without rates get fixed shares
+based on the available legacy supply and the number of lines claiming it.
+
+The migration runs separately on the working copy and committed snapshot.
+Keep the original JSON when upgrading older backups. Saves at version 8 or
+earlier currently skip the version 9-to-10 production conversion, so legacy
+connections may need to be recreated after loading.
