@@ -1,132 +1,59 @@
 import type { Factory, World } from '../types';
-import { exportStations, transportFromStationType, vehicleHops } from '../model/logistics';
-
+import { allocationShipments, hasFactoryAllocation, legacyRouteDelivery, transportFromStationType, vehicleHops } from '../model/logistics';
+import { recipeById } from '../data/gameData';
+import { itemSupply } from './derive';
 export interface FlowLeg {
-  partner: string;
-  color: string;
-  transport: string;
-  rate: number;
-  routeId?: string;
-  localInputId?: string;
-  stationId?: string;
-  vehicleId?: string;
+  partner:string; color:string; transport:string; rate:number;
+  routeId?:string; localInputId?:string; stationId?:string; vehicleId?:string;
+  allocationId?:string; sourceFactoryId?:string; sourceRowId?:string; requested?:number;
 }
-
-export interface Flow {
-  key: string;
-  dir: 'import' | 'export';
-  item: string;
-  total: number;
-  legs: FlowLeg[];
+export interface Flow {key:string;dir:'import'|'export';item:string;total:number;legs:FlowLeg[];}
+/** Every view uses the same delivered shipments as the production engine. */
+export function buildFlows(world:World,f:Factory):Flow[] {
+  const map = new Map<string,Flow>();
+  const ensure=(dir:Flow['dir'],item:string) => {
+    const key=dir+'|'+item;
+    if(!map.has(key)) map.set(key,{key,dir,item,total:0,legs:[]});
+    return map.get(key)!;
+  };
+  const add=(from:string,to:string,item:string,leg:FlowLeg) => {
+    if(from!==f.id && to!==f.id) return;
+    const dir=from===f.id?'export':'import';
+    const other=world.factories.find(x => x.id===(dir==='export'?to:from));
+    if(!other) return;
+    const flow=ensure(dir,item);flow.total+=leg.rate;
+    flow.legs.push({...leg,partner:other.name,color:other.color});
+  };
+  allocationShipments(world).forEach(a => add(a.from,a.to,a.item,{
+    partner:'',color:'',rate:a.rate,requested:a.requested,transport:a.t,
+    allocationId:a.allocationId,sourceFactoryId:a.from,sourceRowId:a.rowId,
+  }));
+  world.routes.forEach(r => {
+    if(hasFactoryAllocation(world,r.from,r.to,r.item)) return;
+    const rate=legacyRouteDelivery(world,r.from,r.to,r.item,r.rate);
+    if(rate<=0.001) return;
+    add(r.from,r.to,r.item,{partner:'',color:'',rate,transport:r.t,routeId:r.id});
+  });
+  vehicleHops(world).forEach(h => {
+    if(hasFactoryAllocation(world,h.fromFactoryId,h.toFactoryId,h.item)) return;
+    const rate=legacyRouteDelivery(world,h.fromFactoryId,h.toFactoryId,h.item,h.rate);
+    if(rate<=0.001) return;
+    add(h.fromFactoryId,h.toFactoryId,h.item,{partner:'',color:'',rate,transport:transportFromStationType(h.type),stationId:h.stationId,vehicleId:h.vehicleId});
+  });
+  f.localInputs.forEach(li => {
+    const flow=ensure('import',li.item);flow.total+=li.rate;
+    flow.legs.push({partner:'Local node',color:'#6B7280',transport:li.t,rate:li.rate,localInputId:li.id});
+  });
+  f.sections.forEach(s => s.rows.forEach(r => r.allocations?.filter(a => a.kind==='factory').forEach(a => {
+    if(recipeById(r.recipeId)?.outputs.some(o => o.item===a.item)) ensure('export',a.item);
+  })));
+  (f.exportOrder || []).forEach(item => {if(itemSupply(world,f,item)>0.001) ensure('export',item);});
+  (f.importOrder || []).forEach(item => ensure('import',item));
+  return [...map.values()].sort((a,b) => a.dir===b.dir ? 0 : a.dir==='import'?-1:1);
 }
-
-/** Group the world's routes and vehicle hops touching a factory into per-item import/export flows. */
-export function buildFlows(world: World, f: Factory): Flow[] {
-  const facById: Record<string, Factory> = {};
-  world.factories.forEach((x) => (facById[x.id] = x));
-  const flowMap: Record<string, Flow> = {};
-
-  world.routes.forEach((r) => {
-    let dir: 'import' | 'export';
-    let partner: Factory | undefined;
-    if (r.to === f.id) {
-      dir = 'import';
-      partner = facById[r.from];
-    } else if (r.from === f.id) {
-      dir = 'export';
-      partner = facById[r.to];
-    } else return;
-    if (!partner) return;
-    const key = dir + '|' + r.item;
-    if (!flowMap[key]) flowMap[key] = { key, dir, item: r.item, total: 0, legs: [] };
-    flowMap[key].total += r.rate;
-    flowMap[key].legs.push({ partner: partner.name, color: partner.color, transport: r.t || 'Belt', rate: r.rate, routeId: r.id });
-  });
-
-  vehicleHops(world).forEach((hop) => {
-    let dir: 'import' | 'export';
-    let partner: Factory | undefined;
-    if (hop.toFactoryId === f.id) {
-      dir = 'import';
-      partner = facById[hop.fromFactoryId];
-    } else if (hop.fromFactoryId === f.id) {
-      dir = 'export';
-      partner = facById[hop.toFactoryId];
-    } else return;
-    if (!partner) return;
-    const key = dir + '|' + hop.item;
-    if (!flowMap[key]) flowMap[key] = { key, dir, item: hop.item, total: 0, legs: [] };
-    flowMap[key].total += hop.rate;
-    if (dir === 'import') {
-      flowMap[key].legs.push({
-        partner: partner.name,
-        color: partner.color,
-        transport: transportFromStationType(hop.type),
-        rate: hop.rate,
-        stationId: hop.stationId,
-        vehicleId: hop.vehicleId,
-      });
-    }
-  });
-
-  (f.localInputs || []).forEach((li) => {
-    const key = 'import|' + li.item;
-    if (!flowMap[key]) flowMap[key] = { key, dir: 'import', item: li.item, total: 0, legs: [] };
-    flowMap[key].total += li.rate;
-    flowMap[key].legs.push({ partner: 'Local node', color: '#6B7280', transport: li.t || 'Belt', rate: li.rate, localInputId: li.id });
-  });
-
-  exportStations(world, f.id).forEach((station) => {
-    const key = 'export|' + station.resourceId;
-    if (!flowMap[key]) flowMap[key] = { key, dir: 'export', item: station.resourceId, total: 0, legs: [] };
-
-    if (station.vehicles.length === 0) {
-      flowMap[key].total += station.totalRate;
-      return;
-    }
-
-    const undestined = station.vehicles.filter((v) => !v.destinationStationId);
-    if (undestined.length === 0) return;
-    flowMap[key].total += undestined.reduce((sum, v) => sum + v.perVehicleRate, 0);
-  });
-
-  (f.exportOrder ?? []).forEach((item) => {
-    const key = 'export|' + item;
-    if (!flowMap[key]) flowMap[key] = { key, dir: 'export', item, total: 0, legs: [] };
-  });
-
-  (f.importOrder ?? []).forEach((item) => {
-    const key = 'import|' + item;
-    if (!flowMap[key]) flowMap[key] = { key, dir: 'import', item, total: 0, legs: [] };
-  });
-
-  return Object.keys(flowMap)
-    .sort((a, b) => {
-      const A = flowMap[a];
-      const B = flowMap[b];
-      if (A.dir !== B.dir) return A.dir === 'import' ? -1 : 1;
-      return 0;
-    })
-    .map((k) => {
-      const flow = flowMap[k];
-      flow.legs.sort((a, b) => a.rate - b.rate);
-      return flow;
-    });
-}
-
-/** Apply a saved item-name order; unknown items keep relative discovery order at the end. */
-export function applyFlowOrder(flows: Flow[], order: string[] | undefined): Flow[] {
-  if (!order?.length) return flows;
-  const remaining = new Map(flows.map((fl) => [fl.item, fl]));
-  const ordered: Flow[] = [];
-  for (const item of order) {
-    const fl = remaining.get(item);
-    if (!fl) continue;
-    ordered.push(fl);
-    remaining.delete(item);
-  }
-  for (const fl of flows) {
-    if (remaining.has(fl.item)) ordered.push(fl);
-  }
-  return ordered;
+export function applyFlowOrder(flows:Flow[],order:string[]|undefined):Flow[] {
+  if(!order?.length) return flows;
+  const remaining=new Map(flows.map(f => [f.item,f]));const result:Flow[]=[];
+  order.forEach(item => {const flow=remaining.get(item);if(flow) {result.push(flow);remaining.delete(item);}});
+  return [...result,...remaining.values()];
 }

@@ -1,4 +1,5 @@
 import type { Factory, Station, StationRole, StationType, Vehicle, World } from './schema';
+import { computeFactoryLineFeeds, computeWorldLineFeeds } from '../state/lineFeeds';
 import { freshId } from './world';
 
 const STATION_TRANSPORT_TYPES = new Set<StationType>(['train', 'truck', 'drone']);
@@ -177,13 +178,13 @@ export function vehicleHops(world: World): VehicleHop[] {
 }
 
 /** Imported belt/pipe routes and vehicle hops for an item at a factory. */
-export function importedByItem(world: World, factory: Factory, item: string): number {
+export function transportImportedByItem(world: World, factory: Factory, item: string): number {
   let imported = 0;
   world.routes.forEach((r) => {
-    if (r.to === factory.id && r.item === item) imported += r.rate;
+    if (r.to === factory.id && r.item === item && !hasFactoryAllocation(world,r.from,r.to,item)) imported += legacyRouteDelivery(world,r.from,r.to,item,r.rate);
   });
   vehicleHops(world).forEach((hop) => {
-    if (hop.toFactoryId === factory.id && hop.item === item) imported += hop.rate;
+    if (hop.toFactoryId === factory.id && hop.item === item && !hasFactoryAllocation(world,hop.fromFactoryId,hop.toFactoryId,item)) imported += legacyRouteDelivery(world,hop.fromFactoryId,hop.toFactoryId,item,hop.rate);
   });
   return imported;
 }
@@ -233,4 +234,38 @@ export function stationReservedTotal(station: Station): number {
   if (station.role !== 'export') return 0;
   if (station.vehicles.length === 0) return station.totalRate;
   return station.totalRate;
+}
+
+export function importedByItem(world: World, factory: Factory, item: string): number {
+  return transportImportedByItem(world, factory, item) + (computeFactoryLineFeeds(world, factory).imports[item] || 0);
+}
+
+/** A factory allocation owns its shipment; matching legacy transport is metadata. */
+export function hasFactoryAllocation(world: World, from: string, to: string, item: string): boolean {
+  return world.factories.find(f => f.id === from)?.sections.some(s => s.rows.some(r =>
+    r.allocations?.some(a => a.kind === 'factory' && a.targetId === to && a.item === item))) || false;
+}
+
+export function allocationShipments(world: World) {
+  const feeds = computeWorldLineFeeds(world);
+  return world.factories.flatMap(f => f.sections.flatMap(s => s.rows.flatMap(row =>
+    (row.allocations || []).filter(a => a.kind === 'factory' && world.factories.some(target => target.id === a.targetId)).map(a => ({
+      allocationId: a.id, rowId: row.id, from: f.id, to: a.targetId, item: a.item,
+      rate: feeds[f.id]?.delivered[a.id] || 0, requested: a.rate,
+      t: a.transport || 'Unset',
+    })))));
+}
+
+/** Legacy transport may move unassigned raw local supply, never implicit line output. */
+export function legacyRouteDelivery(world: World, from: string, to: string, item: string, rate: number): number {
+  if (hasFactoryAllocation(world,from,to,item)) return 0;
+  const factory = world.factories.find(f => f.id === from);
+  if (!factory) return 0;
+  const raw = factory.localInputs.filter(li => li.item === item).reduce((sum,li) => {
+    const reserved = factory.sections.flatMap(s => s.rows).reduce((n,r) => n + r.sources.filter(s => s.kind === 'local' && s.localInputId === li.id).reduce((v,s) => v + (s.rate || 0),0),0);
+    return sum + Math.max(0,li.rate-reserved);
+  },0);
+  const requested = world.routes.filter(r => r.from === from && r.item === item && !hasFactoryAllocation(world,from,r.to,item)).reduce((sum,r) => sum+r.rate,0) +
+    vehicleHops(world).filter(h => h.fromFactoryId === from && h.item === item && !hasFactoryAllocation(world,from,h.toFactoryId,item)).reduce((sum,h) => sum+h.rate,0);
+  return requested <= raw + 0.001 ? rate : 0;
 }

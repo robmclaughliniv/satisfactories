@@ -1,3 +1,4 @@
+import { upgradeProduction } from './production';
 import { PersistedStateSchema, SCHEMA_VERSION, type Factory, type PersistedStateV2, type Route, type Station, type StationType, type World } from './schema';
 import { parseBaseline } from './baseline';
 import { createVehicle, nextStationSeq, stationName } from './logistics';
@@ -43,6 +44,20 @@ export function migratePersisted(raw: unknown): PersistedStateV2 | null {
 
   if (obj.schemaVersion === 8) {
     obj = migrateV8ToV9(obj);
+  }
+
+  if (obj.schemaVersion === 9) {
+    // Parse defaults before migrating legacy rows and their committed snapshots.
+    const candidate = PersistedStateSchema.safeParse({ ...obj, schemaVersion: 10 });
+    if (!candidate.success) return null;
+    candidate.data.worlds.forEach(world => world.factories.forEach(factory => {
+      upgradeProduction(factory, world);
+      const baseline = parseBaseline(factory.baseline);
+      const committed = { ...factory, ...baseline };
+      upgradeProduction(committed, { routes: baseline.routes, stations: [...(world.stations || []).filter(s => s.homeFactoryId !== factory.id), ...baseline.stations] });
+      factory.baseline = JSON.stringify({ ...baseline, sections: committed.sections });
+    }));
+    obj = candidate.data;
   }
 
   if (obj.schemaVersion !== SCHEMA_VERSION) return null;

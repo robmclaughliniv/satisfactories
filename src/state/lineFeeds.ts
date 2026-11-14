@@ -1,15 +1,8 @@
 import { recipeById } from '../data/gameData';
-import { importedByItem } from '../model/logistics';
-import type { Factory, Row, RowDestination, RowSource, Section, World } from '../types';
+import { transportImportedByItem } from '../model/logistics';
+import type { Factory, Row, Section, World } from '../types';
 
 const EPS = 0.001;
-const MAX_ITER = 32;
-
-interface RowRef {
-  sectionId: string;
-  row: Row;
-}
-
 export interface RowFeedState {
   sectionId: string;
   efficiency: number;
@@ -17,418 +10,142 @@ export interface RowFeedState {
   nameplateOutputs: { item: string; rate: number }[];
   effectiveOutputs: { item: string; rate: number }[];
 }
-
 export interface FactoryLineFeeds {
   byRowId: Record<string, RowFeedState>;
   sectionInbound: Record<string, Record<string, number>>;
+  delivered: Record<string, number>;
+  imports: Record<string, number>;
+  converged: boolean;
 }
-
-function collectRows(factory: Factory): RowRef[] {
-  const refs: RowRef[] = [];
-  factory.sections.forEach((sec) => {
-    sec.rows.forEach((row) => refs.push({ sectionId: sec.id, row }));
-  });
-  return refs;
+export function lineName(row: Row): string { return row.name || recipeById(row.recipeId)?.name || 'Production line'; }
+export function allLines(factory: Factory): Row[] { return factory.sections.flatMap(s => s.rows); }
+export function nextLineName(factory: Factory, recipeId: string): string {
+  const base = recipeById(recipeId)?.outputs[0]?.item || 'Production line';
+  const names = new Set(allLines(factory).map(lineName));
+  let index = 1;
+  while (names.has(`${base} ${index}`)) index++;
+  return `${base} ${index}`;
 }
+const key = (factoryId: string, rowId: string) => `${factoryId}:${rowId}`;
 
-/** Empty destinations resolve to export-only. */
-export function resolveRowDestinations(row: Row): RowDestination[] {
-  const destinations = row.destinations ?? [];
-  if (destinations.length === 0) return [{ kind: 'export' }];
-  return destinations;
-}
-
-function buildInboundBySection(factory: Factory, eff: Record<string, number>): Record<string, Record<string, number>> {
-  const inboundBySection: Record<string, Record<string, number>> = {};
-  factory.sections.forEach((sec) => {
-    sec.rows.forEach((row) => {
-      const rec = recipeById(row.recipeId);
-      if (!rec) return;
-      const rowEff = eff[row.id] ?? 1;
-      const dests = resolveRowDestinations(row);
-      const share = dests.length;
-      dests.forEach((dest) => {
-        if (dest.kind !== 'section') return;
-        const targetSecId = dest.sectionId;
-        if (!inboundBySection[targetSecId]) inboundBySection[targetSecId] = {};
-        rec.outputs.forEach((op) => {
-          const rate = (op.rate * row.count * rowEff) / share;
-          inboundBySection[targetSecId][op.item] = (inboundBySection[targetSecId][op.item] || 0) + rate;
+/** A shortage never rewrites requests or silently redistributes them.
+ * An oversubscribed output/source is held until its explicit rates are adjusted. */
+export function computeWorldLineFeeds(world: World): Record<string, FactoryLineFeeds> {
+  const refs = world.factories.flatMap(factory => factory.sections.flatMap(section =>
+    section.rows.map(row => ({ factory, section, row }))));
+  let efficiencies: Record<string, number> = Object.fromEntries(refs.map(({factory,row}) => [key(factory.id,row.id), 0]));
+  let result: Record<string, FactoryLineFeeds> = {};
+  let previousDeliveries: Record<string, number> = {};
+  for (let iteration = 0; iteration < 256; iteration++) {
+    result = Object.fromEntries(world.factories.map(f => [f.id, {
+      byRowId: {}, sectionInbound: {}, delivered: {}, imports: {}, converged: false,
+    }]));
+    const inbound: Record<string, Record<string, number>> = {};
+    const add = (fid: string, rid: string, item: string, rate: number) => {
+      const k = key(fid, rid); inbound[k] ??= {}; inbound[k][item] = (inbound[k][item] || 0) + rate;
+    };
+    refs.forEach(({factory,row}) => {
+      const recipe = recipeById(row.recipeId);
+      recipe?.outputs.forEach(output => {
+        const allocations = (row.allocations ?? []).filter(a => a.item === output.item);
+        const requested = allocations.reduce((sum,a) => sum+a.rate,0);
+        const actual = output.rate * row.count * (efficiencies[key(factory.id,row.id)] || 0);
+        allocations.forEach(a => {
+          const targetRow = a.kind === 'line' ? allLines(factory).find(r => r.id === a.targetId) : undefined;
+          const valid = a.kind === 'line'
+            ? targetRow && targetRow.id !== row.id && recipeById(targetRow.recipeId)?.inputs.some(i => i.item === a.item)
+            : a.kind === 'factory' && a.targetId !== factory.id && !!result[a.targetId];
+          const delivered = valid && requested <= actual + EPS ? a.rate : 0;
+          result[factory.id].delivered[a.id] = delivered;
+          if (a.kind === 'line' && targetRow) add(factory.id, targetRow.id, a.item, delivered);
+          if (a.kind === 'factory' && result[a.targetId]) {
+            result[a.targetId].imports[a.item] = (result[a.targetId].imports[a.item] || 0) + delivered;
+          }
         });
       });
     });
-  });
-  return inboundBySection;
-}
-
-function countClaimants(rows: RowRef[]): {
-  localClaimants: Record<string, string[]>;
-  importClaimants: Record<string, string[]>;
-} {
-  const localClaimants: Record<string, string[]> = {};
-  const importClaimants: Record<string, string[]> = {};
-  rows.forEach(({ row }) => {
-    (row.sources ?? []).forEach((src) => {
-      if (src.kind === 'local') {
-        if (!localClaimants[src.localInputId]) localClaimants[src.localInputId] = [];
-        localClaimants[src.localInputId].push(row.id);
-      } else if (src.kind === 'import') {
-        if (!importClaimants[src.item]) importClaimants[src.item] = [];
-        importClaimants[src.item].push(row.id);
-      }
+    world.factories.forEach(factory => {
+      const rows = allLines(factory);
+      const requestedLocal: Record<string, number> = {};
+      const requestedImport: Record<string, number> = {};
+      rows.forEach(row => (row.sources ?? []).forEach(source => {
+        const item = source.kind === 'local' ? factory.localInputs.find(li => li.id === source.localInputId)?.item : source.item;
+        if (!item || !recipeById(row.recipeId)?.inputs.some(i => i.item === item) || row.count <= 0) return;
+        const pool = source.kind === 'local' ? requestedLocal : requestedImport;
+        const id = source.kind === 'local' ? source.localInputId : source.item;
+        pool[id] = (pool[id] || 0) + (source.rate ?? 0);
+      }));
+      rows.forEach(row => (row.sources ?? []).forEach(source => {
+        const li = source.kind === 'local' ? factory.localInputs.find(i => i.id === source.localInputId) : undefined;
+        const item = source.kind === 'local' ? li?.item : source.item;
+        if (!item || !recipeById(row.recipeId)?.inputs.some(i => i.item === item) || row.count <= 0) return;
+        const supply = source.kind === 'local' ? li?.rate || 0 : transportImportedByItem(world,factory,item) + (result[factory.id].imports[item] || 0);
+        const requested = source.kind === 'local' ? requestedLocal[source.localInputId] : requestedImport[item];
+        add(factory.id,row.id,item,requested <= supply + EPS ? source.rate ?? 0 : 0);
+      }));
     });
-  });
-  return { localClaimants, importClaimants };
-}
-
-function availableForRowInput(
-  world: World,
-  factory: Factory,
-  sectionId: string,
-  sectionNeedByItem: Record<string, number>,
-  inboundBySection: Record<string, Record<string, number>>,
-  row: Row,
-  item: string,
-  rowNeed: number,
-  localClaimants: Record<string, string[]>,
-  importClaimants: Record<string, string[]>,
-): number {
-  let available = 0;
-  const sectionNeed = sectionNeedByItem[item] || 0;
-  if (sectionNeed > EPS && rowNeed > EPS) {
-    available += ((inboundBySection[sectionId]?.[item] || 0) * rowNeed) / sectionNeed;
-  }
-  (row.sources ?? []).forEach((src) => {
-    if (src.kind === 'local') {
-      const li = (factory.localInputs || []).find((x) => x.id === src.localInputId);
-      if (li && li.item === item) {
-        const claimants = localClaimants[src.localInputId]?.length || 1;
-        available += li.rate / claimants;
-      }
-    }
-  });
-  if ((row.sources ?? []).some((s) => s.kind === 'import' && s.item === item)) {
-    const claimants = importClaimants[item]?.length || 1;
-    available += importedByItem(world, factory, item) / claimants;
-  }
-  return available;
-}
-
-/** Iterate to fixed point: row output scales with input availability (cascading). */
-export function computeFactoryLineFeeds(world: World, factory: Factory): FactoryLineFeeds {
-  const rows = collectRows(factory);
-  const eff: Record<string, number> = {};
-  rows.forEach(({ row }) => {
-    eff[row.id] = 1;
-  });
-
-  const sectionNeedCache: Record<string, Record<string, number>> = {};
-  factory.sections.forEach((sec) => {
-    sectionNeedCache[sec.id] = sectionNeeds(sec);
-  });
-
-  for (let iter = 0; iter < MAX_ITER; iter++) {
-    const inboundBySection = buildInboundBySection(factory, eff);
-    const { localClaimants, importClaimants } = countClaimants(rows);
-    let maxDelta = 0;
-
-    rows.forEach(({ sectionId, row }) => {
+    const next: Record<string, number> = {};
+    let delta = 0;
+    refs.forEach(({factory,section,row}) => {
       const rec = recipeById(row.recipeId);
       if (!rec) return;
-
-      if (rec.inputs.length === 0) {
-        const old = eff[row.id] ?? 1;
-        maxDelta = Math.max(maxDelta, Math.abs(old - 1));
-        eff[row.id] = 1;
-        return;
-      }
-
-      let minRatio = 1;
-      rec.inputs.forEach((ip) => {
-        const need = ip.rate * row.count;
-        if (need <= EPS) return;
-        const available = availableForRowInput(
-          world,
-          factory,
-          sectionId,
-          sectionNeedCache[sectionId]!,
-          inboundBySection,
-          row,
-          ip.item,
-          need,
-          localClaimants,
-          importClaimants,
-        );
-        minRatio = Math.min(minRatio, Math.min(1, available / need));
+      const inputs = rec.inputs.map(i => ({item:i.item, need:i.rate*row.count, available:inbound[key(factory.id,row.id)]?.[i.item] || 0}));
+      const efficiency = Math.min(1, ...inputs.map(i => i.need > EPS ? i.available/i.need : 1));
+      next[key(factory.id,row.id)] = efficiency;
+      delta = Math.max(delta,Math.abs(efficiency-(efficiencies[key(factory.id,row.id)] || 0)));
+      result[factory.id].byRowId[row.id] = {
+        sectionId:section.id, efficiency, inputs,
+        nameplateOutputs:rec.outputs.map(o => ({item:o.item,rate:o.rate*row.count})),
+        effectiveOutputs:rec.outputs.map(o => ({item:o.item,rate:o.rate*row.count*efficiency})),
+      };
+      result[factory.id].sectionInbound[section.id] ??= {};
+      inputs.forEach(i => {
+        const totals = result[factory.id].sectionInbound[section.id];
+        totals[i.item] = (totals[i.item] || 0)+i.available;
       });
-
-      const old = eff[row.id] ?? 1;
-      maxDelta = Math.max(maxDelta, Math.abs(old - minRatio));
-      eff[row.id] = minRatio;
     });
-
-    if (maxDelta < EPS) break;
+    const deliveries: Record<string, number> = Object.fromEntries(Object.entries(result).flatMap(([fid,r]) => Object.entries(r.delivered).map(([id,rate]) => [key(fid,id),rate])));
+    Object.entries(deliveries).forEach(([id,value]) => { delta = Math.max(delta, Math.abs(value-(previousDeliveries[id] || 0))); });
+    efficiencies = next; previousDeliveries = deliveries;
+    if (delta < EPS) { Object.values(result).forEach(r => r.converged = true); break; }
   }
-
-  const sectionInbound = buildInboundBySection(factory, eff);
-  const byRowId: Record<string, RowFeedState> = {};
-  const { localClaimants, importClaimants } = countClaimants(rows);
-  const finalInbound = buildInboundBySection(factory, eff);
-
-  rows.forEach(({ sectionId, row }) => {
-    const rec = recipeById(row.recipeId);
-    if (!rec) return;
-    const efficiency = eff[row.id] ?? 1;
-    const inputs = rec.inputs.map((ip) => {
-      const need = ip.rate * row.count;
-      const available = availableForRowInput(
-        world,
-        factory,
-        sectionId,
-        sectionNeedCache[sectionId]!,
-        finalInbound,
-        row,
-        ip.item,
-        need,
-        localClaimants,
-        importClaimants,
-      );
-      return { item: ip.item, need, available };
-    });
-    const nameplateOutputs = rec.outputs.map((op) => ({ item: op.item, rate: op.rate * row.count }));
-    const effectiveOutputs = rec.outputs.map((op) => ({
-      item: op.item,
-      rate: op.rate * row.count * efficiency,
-    }));
-    byRowId[row.id] = { sectionId, efficiency, inputs, nameplateOutputs, effectiveOutputs };
-  });
-
-  return { byRowId, sectionInbound };
+  return result;
 }
-
-export function rowEfficiency(feeds: FactoryLineFeeds, rowId: string): number {
-  return feeds.byRowId[rowId]?.efficiency ?? 1;
+export function computeFactoryLineFeeds(world: World, factory: Factory): FactoryLineFeeds {
+  return computeWorldLineFeeds(world)[factory.id] ?? {byRowId:{},sectionInbound:{},delivered:{},imports:{},converged:true};
 }
-
+export function rowEfficiency(feeds: FactoryLineFeeds, rowId: string): number { return feeds.byRowId[rowId]?.efficiency ?? 0; }
 export function effectiveOutputRate(feeds: FactoryLineFeeds, row: Row, item: string): number {
-  const state = feeds.byRowId[row.id];
-  if (!state) {
-    const rec = recipeById(row.recipeId);
-    const op = rec?.outputs.find((o) => o.item === item);
-    return op ? op.rate * row.count : 0;
-  }
-  return state.effectiveOutputs.find((o) => o.item === item)?.rate ?? 0;
+  return feeds.byRowId[row.id]?.effectiveOutputs.find(o => o.item === item)?.rate ?? 0;
 }
-
+export function outputRemaining(feeds: FactoryLineFeeds, row: Row, item: string, editingId?: string): number {
+  return effectiveOutputRate(feeds,row,item) - (row.allocations ?? []).filter(a => a.item === item && a.id !== editingId).reduce((s,a) => s+a.rate,0);
+}
 export function sectionNeeds(section: Section): Record<string, number> {
   const needs: Record<string, number> = {};
-  section.rows.forEach((row) => {
-    const rec = recipeById(row.recipeId);
-    if (!rec) return;
-    rec.inputs.forEach((ip) => {
-      needs[ip.item] = (needs[ip.item] || 0) + ip.rate * row.count;
-    });
-  });
+  section.rows.forEach(r => recipeById(r.recipeId)?.inputs.forEach(i => {needs[i.item]=(needs[i.item] || 0)+i.rate*r.count;}));
   return needs;
 }
-
-export function sectionInboundFromFeeds(feeds: FactoryLineFeeds, sectionId: string): Record<string, number> {
-  return feeds.sectionInbound[sectionId] ?? {};
-}
-
-export interface ItemBalance {
-  item: string;
-  need: number;
-  inbound: number;
-  deficit: number;
-}
-
+export interface ItemBalance { item:string; need:number; inbound:number; deficit:number; }
 export function sectionBalance(factory: Factory, sectionId: string, feeds: FactoryLineFeeds): ItemBalance[] {
-  const section = factory.sections.find((s) => s.id === sectionId);
-  if (!section) return [];
-  const needs = sectionNeeds(section);
-  const inbound = sectionInboundFromFeeds(feeds, sectionId);
-  const items = new Set([...Object.keys(needs), ...Object.keys(inbound)]);
-  const result: ItemBalance[] = [];
-  items.forEach((item) => {
-    const need = needs[item] || 0;
-    const inb = inbound[item] || 0;
-    const deficit = Math.max(0, need - inb);
-    if (need > EPS || inb > EPS || deficit > EPS) {
-      result.push({ item, need, inbound: inb, deficit });
-    }
-  });
-  result.sort((a, b) => b.deficit - a.deficit || b.need - a.need);
-  return result;
+  const totals: Record<string,ItemBalance> = {};
+  factory.sections.find(s => s.id === sectionId)?.rows.forEach(r => feeds.byRowId[r.id]?.inputs.forEach(i => {
+    totals[i.item] ??= {item:i.item,need:0,inbound:0,deficit:0};
+    totals[i.item].need+=i.need;totals[i.item].inbound+=i.available;totals[i.item].deficit+=Math.max(0,i.need-i.available);
+  }));
+  return Object.values(totals);
 }
-
-export function sectionHasDeficit(factory: Factory, sectionId: string, feeds: FactoryLineFeeds): boolean {
-  return sectionBalance(factory, sectionId, feeds).some((b) => b.deficit > EPS);
+export function sectionHasDeficit(f:Factory,id:string,feeds:FactoryLineFeeds) { return sectionBalance(f,id,feeds).some(i => i.deficit>EPS); }
+export function sectionMaxDeficit(f:Factory,id:string,feeds:FactoryLineFeeds) { return Math.max(0,...sectionBalance(f,id,feeds).map(i => i.deficit)); }
+export function sectionInboundFromFeeds(feeds:FactoryLineFeeds,id:string) { return feeds.sectionInbound[id] ?? {}; }
+export interface InputSource {sectionId:string;sectionName:string;rowId:string;recipeName:string;rate:number;}
+export function inputSourcesForSection(f:Factory,sectionId:string,item:string,feeds:FactoryLineFeeds):InputSource[] {
+  const targets = new Set(f.sections.find(s => s.id === sectionId)?.rows.map(r => r.id));
+  return f.sections.flatMap(s => s.rows.flatMap(r => (r.allocations ?? []).filter(a => a.kind==='line' && targets.has(a.targetId) && a.item===item).map(a => ({sectionId:s.id,sectionName:s.name,rowId:r.id,recipeName:lineName(r),rate:feeds.delivered[a.id] || 0}))));
 }
-
-export function sectionMaxDeficit(factory: Factory, sectionId: string, feeds: FactoryLineFeeds): number {
-  return Math.max(0, ...sectionBalance(factory, sectionId, feeds).map((b) => b.deficit), 0);
+export function rowDestinationShares(factory:Factory,row:Row,feeds:FactoryLineFeeds) {
+  return (row.allocations ?? []).map(a => ({key:a.id,label:a.kind==='line' ? lineName(allLines(factory).find(r => r.id===a.targetId) ?? row) : 'Export',kind:a.kind==='line' ? 'section' as const : 'export' as const,outputs:[{item:a.item,rate:feeds.delivered[a.id] || 0}]}));
 }
-
-export interface InputSource {
-  sectionId: string;
-  sectionName: string;
-  rowId: string;
-  recipeName: string;
-  rate: number;
-}
-
-export function inputSourcesForSection(
-  factory: Factory,
-  sectionId: string,
-  item: string,
-  feeds: FactoryLineFeeds,
-): InputSource[] {
-  const sources: InputSource[] = [];
-  factory.sections.forEach((sec) => {
-    sec.rows.forEach((row) => {
-      const rec = recipeById(row.recipeId);
-      if (!rec) return;
-      const dests = resolveRowDestinations(row);
-      const targetsSection = dests.some((d) => d.kind === 'section' && d.sectionId === sectionId);
-      if (!targetsSection) return;
-      const produces = rec.outputs.find((op) => op.item === item);
-      if (!produces) return;
-      const totalEff = feeds.byRowId[row.id]?.efficiency ?? 1;
-      const share = dests.length;
-      sources.push({
-        sectionId: sec.id,
-        sectionName: sec.name,
-        rowId: row.id,
-        recipeName: rec.name,
-        rate: (produces.rate * row.count * totalEff) / share,
-      });
-    });
-  });
-  return sources;
-}
-
-export interface DestShare {
-  key: string;
-  label: string;
-  kind: 'section' | 'export';
-  sectionId?: string;
-  outputs: { item: string; rate: number }[];
-}
-
-export function rowDestinationShares(factory: Factory, row: Row, feeds: FactoryLineFeeds): DestShare[] {
-  const rec = recipeById(row.recipeId);
-  if (!rec) return [];
-  const dests = resolveRowDestinations(row);
-  const share = dests.length;
-  const efficiency = feeds.byRowId[row.id]?.efficiency ?? 1;
-  return dests.map((dest) => {
-    const outputs = rec.outputs.map((op) => ({
-      item: op.item,
-      rate: (op.rate * row.count * efficiency) / share,
-    }));
-    if (dest.kind === 'export') {
-      return { key: 'export', label: 'Export', kind: 'export' as const, outputs };
-    }
-    const sec = factory.sections.find((s) => s.id === dest.sectionId);
-    return {
-      key: dest.sectionId,
-      label: sec?.name ?? 'Unknown',
-      kind: 'section' as const,
-      sectionId: dest.sectionId,
-      outputs,
-    };
-  });
-}
-
-export function sectionFeedStatus(factory: Factory, sectionId: string): string {
-  const section = factory.sections.find((s) => s.id === sectionId);
-  if (!section || section.rows.length === 0) return '';
-
-  const destKeys = new Set<string>();
-  section.rows.forEach((row) => {
-    resolveRowDestinations(row).forEach((d) => {
-      destKeys.add(d.kind === 'export' ? 'export' : d.sectionId);
-    });
-  });
-
-  if (destKeys.size === 1) {
-    const key = [...destKeys][0]!;
-    if (key === 'export') return 'Exported';
-    const target = factory.sections.find((s) => s.id === key);
-    return target ? `→ ${target.name}` : '→ ?';
-  }
-  return `${destKeys.size} destinations`;
-}
-
-export function rowFeedStatus(factory: Factory, row: Row): string {
-  const dests = resolveRowDestinations(row);
-  if (dests.length === 1) {
-    const d = dests[0]!;
-    if (d.kind === 'export') return 'Export';
-    const sec = factory.sections.find((s) => s.id === d.sectionId);
-    return sec ? `→ ${sec.name}` : '→ ?';
-  }
-  return `${dests.length} destinations`;
-}
-
-export function normalizeDestinations(destinations: RowDestination[], ownSectionId: string): RowDestination[] {
-  const seen = new Set<string>();
-  const result: RowDestination[] = [];
-  let hasExport = false;
-  for (const d of destinations) {
-    if (d.kind === 'export') {
-      if (!hasExport) {
-        result.push({ kind: 'export' });
-        hasExport = true;
-      }
-    } else if (d.sectionId !== ownSectionId && !seen.has(d.sectionId)) {
-      seen.add(d.sectionId);
-      result.push({ kind: 'section', sectionId: d.sectionId });
-    }
-  }
-  return result;
-}
-
-export function isExportDestinationSelected(row: Row): boolean {
-  const stored = row.destinations ?? [];
-  return stored.length === 0 || stored.some((d) => d.kind === 'export');
-}
-
-export function isSectionDestinationSelected(row: Row, sectionId: string): boolean {
-  return (row.destinations ?? []).some((d) => d.kind === 'section' && d.sectionId === sectionId);
-}
-
-export function isLocalSourceSelected(row: Row, localInputId: string): boolean {
-  return (row.sources ?? []).some((s) => s.kind === 'local' && s.localInputId === localInputId);
-}
-
-export function isImportSourceSelected(row: Row, item: string): boolean {
-  return (row.sources ?? []).some((s) => s.kind === 'import' && s.item === item);
-}
-
-export function toggleRowDestination(current: RowDestination[], ownSectionId: string, target: RowDestination): RowDestination[] {
-  const normalized = normalizeDestinations(current, ownSectionId);
-  const isExport = target.kind === 'export';
-
-  const has = normalized.some((d) =>
-    isExport ? d.kind === 'export' : d.kind === 'section' && d.sectionId === target.sectionId,
-  );
-
-  if (has) {
-    return normalized.filter((d) =>
-      isExport ? d.kind !== 'export' : !(d.kind === 'section' && d.sectionId === target.sectionId),
-    );
-  }
-
-  return normalizeDestinations([...normalized, target], ownSectionId);
-}
-
-export function toggleRowSource(current: RowSource[], target: RowSource): RowSource[] {
-  const key = target.kind === 'local' ? `local:${target.localInputId}` : `import:${target.item}`;
-  const has = current.some((s) => (s.kind === 'local' ? `local:${s.localInputId}` : `import:${s.item}`) === key);
-  if (has) {
-    return current.filter((s) => (s.kind === 'local' ? `local:${s.localInputId}` : `import:${s.item}`) !== key);
-  }
-  return [...current, target];
-}
+export function sectionFeedStatus(f:Factory,id:string) { return `${f.sections.find(s => s.id===id)?.rows.length || 0} lines`; }
+export function rowFeedStatus(_f:Factory,row:Row) { return row.allocations?.length ? `${row.allocations.length} allocations` : 'Unassigned'; }
+export function isExportDestinationSelected(row:Row) { return (row.allocations ?? []).some(a => a.kind==='factory'); }

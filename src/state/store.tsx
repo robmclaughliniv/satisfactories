@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { defaultTransportForItem } from '../data/gameData';
+import { recipeById, defaultTransportForItem } from '../data/gameData';
 import { SAMPLE_WORLD } from '../data/templates';
 import { buildBackupEnvelope, getLastBackupAt, loadBackupFromFile, recordLastBackupAt, saveBackupToFile } from '../model/backup';
 import { migratePersisted } from '../model/migrations';
@@ -17,8 +17,6 @@ import type {
   MapLock,
   PickerState,
   RouteModalState,
-  RowDestination,
-  RowSource,
   Screen,
   Station,
   StationEditModalState,
@@ -27,7 +25,7 @@ import type {
   Transport,
   World,
 } from '../types';
-import { normalizeDestinations, toggleRowDestination, toggleRowSource } from './lineFeeds';
+import { nextLineName } from './lineFeeds';
 import {
   createStation,
   createVehicle,
@@ -257,16 +255,22 @@ export function useActions() {
   };
 
   const removeRow = (fid: string, sid: string, rid: string) => {
-    mutateWorld((w) => {
-      const s = w.factories.find((f) => f.id === fid)?.sections.find((x) => x.id === sid);
-      if (s) s.rows = s.rows.filter((x) => x.id !== rid);
+    const f = world?.factories.find(f => f.id === fid);
+    const connections = f?.sections.flatMap(s => s.rows).reduce((n,r) => n + r.allocations.filter(a => a.kind === 'line' && a.targetId === rid).length + (r.id === rid ? r.allocations.length : 0), 0) || 0;
+    if (connections && !window.confirm(`Delete this production line and remove its ${connections} allocation(s)?`)) return;
+    mutateWorld(w => {
+      const factory = w.factories.find(f => f.id === fid);
+      factory?.sections.forEach(s => {
+        s.rows = s.rows.filter(r => r.id !== rid);
+        s.rows.forEach(r => { r.allocations = r.allocations.filter(a => a.kind !== 'line' || a.targetId !== rid); });
+      });
     });
   };
 
   const addSection = (fid: string) => {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === fid);
-      if (f) f.sections.push({ id: 's_' + Date.now(), name: 'New Section', rows: [] });
+      if (f) f.sections.push({ id: 's_' + Date.now(), name: 'New category', rows: [] });
     });
   };
 
@@ -279,60 +283,21 @@ export function useActions() {
     });
   };
 
-  const setRowDestinations = (fid: string, sid: string, rid: string, destinations: RowDestination[]) => {
-    mutateWorld((w) => {
-      const row = w.factories
-        .find((f) => f.id === fid)
-        ?.sections.find((s) => s.id === sid)
-        ?.rows.find((x) => x.id === rid);
-      if (row) row.destinations = normalizeDestinations(destinations, sid);
-    });
-  };
-
-  const toggleDestination = (fid: string, sid: string, rid: string, target: RowDestination) => {
-    mutateWorld((w) => {
-      const row = w.factories
-        .find((f) => f.id === fid)
-        ?.sections.find((s) => s.id === sid)
-        ?.rows.find((x) => x.id === rid);
-      if (row) {
-        row.destinations = toggleRowDestination(row.destinations ?? [], sid, target);
-      }
-    });
-  };
-
-  const toggleSource = (fid: string, sid: string, rid: string, target: RowSource) => {
-    mutateWorld((w) => {
-      const row = w.factories
-        .find((f) => f.id === fid)
-        ?.sections.find((s) => s.id === sid)
-        ?.rows.find((x) => x.id === rid);
-      if (row) {
-        row.sources = toggleRowSource(row.sources ?? [], target);
-      }
-    });
-  };
-
   const removeSection = (fid: string, sid: string) => {
     const factory = world?.factories.find((f) => f.id === fid);
     const section = factory?.sections.find((s) => s.id === sid);
     if (!section) return;
-    if (section.rows.length > 0 && !window.confirm(`Delete production line "${section.name}" and its ${section.rows.length} recipe(s)?`)) {
-      return;
-    }
-
-    const rowIds = new Set(section.rows.map((r) => r.id));
-    mutateWorld((w) => {
-      const f = w.factories.find((x) => x.id === fid);
+    if (section.rows.length > 0 && !window.confirm(`Remove category "${section.name}"? Its production lines and connections will move to Uncategorized.`)) return;
+    const rowIds = new Set<string>();
+    mutateWorld(w => {
+      const f = w.factories.find(x => x.id === fid);
       if (!f) return;
-      f.sections.forEach((sec) => {
-        sec.rows.forEach((row) => {
-          row.destinations = (row.destinations ?? []).filter(
-            (d) => d.kind !== 'section' || d.sectionId !== sid,
-          );
-        });
-      });
-      f.sections = f.sections.filter((s) => s.id !== sid);
+      if (section.rows.length) {
+        let target = f.sections.find(s => s.id !== sid && s.name === 'Uncategorized');
+        if (!target) { target = { id: freshId('category'), name: 'Uncategorized', rows: [] }; f.sections.push(target); }
+        target.rows.push(...f.sections.find(s => s.id === sid)!.rows);
+      }
+      f.sections = f.sections.filter(s => s.id !== sid);
     });
     up((s) => {
       const expanded = { ...s.expanded };
@@ -351,14 +316,28 @@ export function useActions() {
     if (pk.mode === 'edit') {
       mutateWorld((w) => {
         const r = w.factories.find((f) => f.id === pk.factoryId)?.sections.find((s) => s.id === pk.sectionId)?.rows.find((x) => x.id === pk.rowId);
-        if (r) r.recipeId = recipeId;
+        if (r) {
+          r.recipeId = recipeId;
+          const recipe = recipeById(recipeId);
+          const factory = w.factories.find(f => f.id === pk.factoryId)!;
+          factory.sections.forEach(s => s.rows.forEach(line => {
+            line.allocations = line.allocations.map(a => {
+              if ((line.id === r.id && !recipe?.outputs.some(o => o.item === a.item)) ||
+                  (a.kind === 'line' && a.targetId === r.id && !recipe?.inputs.some(i => i.item === a.item))) {
+                return {...a, reviewFor: a.kind === 'line' ? 'line' as const : 'factory' as const, kind: 'review' as const};
+              }
+              return a;
+            });
+          }));
+          r.sources = r.sources.filter(source => recipe?.inputs.some(i => i.item === (source.kind === 'import' ? source.item : factory.localInputs.find(li => li.id === source.localInputId)?.item)));
+        }
       });
       up({ picker: null, pickerSearch: '' });
     } else {
-      const newId = 'r_' + Date.now();
+      const newId = freshId('line');
       mutateWorld((w) => {
         const s = w.factories.find((f) => f.id === pk.factoryId)?.sections.find((x) => x.id === pk.sectionId);
-        if (s) s.rows.push({ id: newId, recipeId, count: 1, destinations: [], sources: [] });
+        if (s) s.rows.push({ id: newId, name: nextLineName(w.factories.find(f => f.id === pk.factoryId)!, recipeId), allocations: [], recipeId, count: 1, destinations: [], sources: [] });
       });
       up({ picker: { mode: 'edit', factoryId: pk.factoryId, sectionId: pk.sectionId, rowId: newId }, pickerSearch: '' });
     }
@@ -473,14 +452,16 @@ export function useActions() {
     if (!world) return;
     const hasStations = exportStations(world, factoryId, item).length > 0;
     const hasRoutes = world.routes.some((r) => r.from === factoryId && r.item === item);
-    if (hasStations || hasRoutes) {
-      if (!window.confirm(`Remove ${item} from exports and delete its stations and routes?`)) return;
+    const hasAllocations = world.factories.find(f => f.id === factoryId)?.sections.some(s => s.rows.some(r => r.allocations.some(a => a.kind === 'factory' && a.item === item)));
+    if (hasStations || hasRoutes || hasAllocations) {
+      if (!window.confirm(`Remove ${item} export allocations and their stations and routes?`)) return;
     }
 
     mutateWorld((w) => {
       const factory = w.factories.find((f) => f.id === factoryId);
       if (!factory) return;
       factory.exportOrder = (factory.exportOrder ?? []).filter((x) => x !== item);
+      factory.sections.forEach(s => s.rows.forEach(r => { r.allocations = r.allocations.filter(a => a.kind !== 'factory' || a.item !== item); }));
       exportStations(w, factoryId, item).forEach((station) => removeStationFromWorld(w, station.id));
       w.routes = w.routes.filter((r) => !(r.from === factoryId && r.item === item));
     });
@@ -965,9 +946,6 @@ export function useActions() {
     removeRow,
     addSection,
     renameSection,
-    setRowDestinations,
-    toggleDestination,
-    toggleSource,
     removeSection,
     openRecipePicker,
     pickRecipe,

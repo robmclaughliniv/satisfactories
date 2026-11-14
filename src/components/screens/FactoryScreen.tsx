@@ -1,25 +1,15 @@
+import { FactoryInputPool } from '../FactoryInputPool';
+import { ProductionLineConnections } from '../ProductionLineConnections';
+import { LineEditor } from '../LineEditor';
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
 import { aggregate, aggregateEffective, exportRemainder, importedByItem, itemExported, itemSupply, localInputByItem } from '../../state/derive';
 import {
-  computeFactoryLineFeeds,
-  effectiveOutputRate,
-  inputSourcesForSection,
-  isExportDestinationSelected,
-  isImportSourceSelected,
-  isLocalSourceSelected,
-  isSectionDestinationSelected,
-  rowDestinationShares,
-  rowEfficiency,
-  rowFeedStatus,
-  sectionFeedStatus,
-  sectionHasDeficit,
-  sectionMaxDeficit,
-  sectionNeeds,
-  type FactoryLineFeeds,
+  lineName, computeFactoryLineFeeds, effectiveOutputRate, rowEfficiency,
+  rowFeedStatus, sectionFeedStatus, sectionHasDeficit, sectionMaxDeficit,
 } from '../../state/lineFeeds';
 import { isFactoryDirty } from '../../model/baseline';
-import { vehicleHops } from '../../model/logistics';
+import { buildMapConnections } from '../../model/mapConnections';
 import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, Row, Section, World } from '../../types';
@@ -66,28 +56,17 @@ function IdentityPanel({
 }) {
   const sm = statusMeta(f.status);
   const linked: { name: string; color: string; dir: string; item: string; id: string }[] = [];
-  const facById: Record<string, Factory> = {};
-  world.factories.forEach((x) => (facById[x.id] = x));
-  world.routes.forEach((r) => {
-    if (r.from === f.id) {
-      const o = facById[r.to];
-      if (o) linked.push({ name: o.name, color: o.color, dir: '→ out', item: r.item, id: o.id });
+  const seen = new Set<string>();
+  buildMapConnections(world).forEach(connection => connection.items.forEach(item => {
+    const outbound = item.from === f.id;
+    if (!outbound && item.to !== f.id) return;
+    const other = world.factories.find(x => x.id === (outbound ? item.to : item.from));
+    const key = `${other?.id}:${outbound}:${item.item}`;
+    if (other && !seen.has(key)) {
+      seen.add(key);
+      linked.push({name:other.name,color:other.color,dir:outbound ? '→ out' : '← in',item:item.item,id:other.id});
     }
-    if (r.to === f.id) {
-      const o = facById[r.from];
-      if (o) linked.push({ name: o.name, color: o.color, dir: '← in', item: r.item, id: o.id });
-    }
-  });
-  vehicleHops(world).forEach((hop) => {
-    if (hop.fromFactoryId === f.id) {
-      const o = facById[hop.toFactoryId];
-      if (o) linked.push({ name: o.name, color: o.color, dir: '→ out', item: hop.item, id: o.id });
-    }
-    if (hop.toFactoryId === f.id) {
-      const o = facById[hop.fromFactoryId];
-      if (o) linked.push({ name: o.name, color: o.color, dir: '← in', item: hop.item, id: o.id });
-    }
-  });
+  }));
   const coverStyle: CSSProperties = {
     position: 'relative',
     height: 118,
@@ -177,193 +156,10 @@ function chipStyle(color: string, bg: string, border: string): CSSProperties {
   };
 }
 
-function RowDestinationsPanel({
-  f,
-  sec,
-  row,
-  feeds,
-  onToggle,
-}: {
-  f: Factory;
-  sec: Section;
-  row: Row;
-  feeds: FactoryLineFeeds;
-  onToggle: (target: { kind: 'export' } | { kind: 'section'; sectionId: string }) => void;
-}) {
-  const shares = rowDestinationShares(f, row, feeds);
-  const otherSections = f.sections.filter((s) => s.id !== sec.id);
-
-  return (
-    <div style={{ flex: 1, minWidth: 180 }}>
-      <span style={{ fontSize: 9, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5E646E', display: 'block', marginBottom: 6 }}>
-        Destinations
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {otherSections.map((other) => {
-          const checked = isSectionDestinationSelected(row, other.id);
-          return (
-            <label
-              key={other.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11.5, color: checked ? '#C2C8D2' : '#8A909A' }}
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onToggle({ kind: 'section', sectionId: other.id })}
-                style={{ accentColor: f.color }}
-              />
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{other.name}</span>
-            </label>
-          );
-        })}
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11.5, color: isExportDestinationSelected(row) ? '#C2C8D2' : '#8A909A' }}>
-          <input
-            type="checkbox"
-            checked={isExportDestinationSelected(row)}
-            onChange={() => onToggle({ kind: 'export' })}
-            style={{ accentColor: '#9097A1' }}
-          />
-          <span>Export</span>
-        </label>
-      </div>
-      {shares.length > 0 && (
-        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid #1A1E25', paddingTop: 8 }}>
-          {shares.map((share) => (
-            <div key={share.key} style={{ fontSize: 10.5, color: '#9097A1' }}>
-              <span style={{ color: share.kind === 'export' ? '#9097A1' : '#C2C8D2' }}>{share.label}</span>
-              {share.outputs.map((op) => (
-                <span key={op.item} style={{ fontFamily: MONO, marginLeft: 6, color: '#5BCB86' }}>
-                  +{fmt(op.rate)}/m {op.item}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RowSourcesPanel({
-  f,
-  sec,
-  row,
-  feeds,
-  world,
-  onToggleSource,
-}: {
-  f: Factory;
-  sec: Section;
-  row: Row;
-  feeds: FactoryLineFeeds;
-  world: World;
-  onToggleSource: (target: { kind: 'local'; localInputId: string } | { kind: 'import'; item: string }) => void;
-}) {
-  const rec = recipeById(row.recipeId);
-  if (!rec) return null;
-  const needs = sectionNeeds(sec);
-  const inputItems = new Set(rec.inputs.map((ip) => ip.item));
-  const localOptions = (f.localInputs || []).filter((li) => inputItems.has(li.item));
-  const importOptions = [...inputItems].filter(
-    (item) => importedByItem(world, f, item) > 0.001 || (f.importOrder ?? []).includes(item),
-  );
-
-  return (
-    <div style={{ flex: 1, minWidth: 180 }}>
-      <span style={{ fontSize: 9, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5E646E', display: 'block', marginBottom: 6 }}>
-        Sources
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {rec.inputs.length === 0 && <span style={{ fontSize: 11, color: '#5E646E' }}>Raw / none</span>}
-        {rec.inputs.map((ip) => {
-          const need = needs[ip.item] || 0;
-          const sources = inputSourcesForSection(f, sec.id, ip.item, feeds);
-          const lineInbound = sources.reduce((sum, s) => sum + s.rate, 0);
-          const rowState = feeds.byRowId[row.id];
-          const inputState = rowState?.inputs.find((x) => x.item === ip.item);
-          const available = inputState?.available ?? lineInbound;
-          const deficit = Math.max(0, need - available);
-          const rowNeed = ip.rate * row.count;
-          return (
-            <div key={ip.item}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                <ItemSquare item={ip.item} />
-                <span style={{ fontSize: 11.5, color: '#C2C8D2', flex: 1 }}>{ip.item}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: '#E5604D' }}>{fmt(rowNeed)}/m</span>
-              </div>
-              {sources.length > 0 ? (
-                <div style={{ paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {sources.map((src) => (
-                    <div key={`${src.sectionId}-${src.rowId}`} style={{ fontSize: 10.5, color: '#8A909A' }}>
-                      ← {src.sectionName} · {src.recipeName}
-                      <span style={{ fontFamily: MONO, marginLeft: 6, color: '#5BCB86' }}>+{fmt(src.rate)}/m</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ paddingLeft: 28, fontSize: 10.5, color: '#5E646E', fontStyle: 'italic' }}>No line feeds mapped</div>
-              )}
-              {deficit > 0.001 && (
-                <div style={{ paddingLeft: 28, marginTop: 3, fontSize: 10.5, fontFamily: MONO, color: '#E5604D' }}>
-                  Deficit −{fmt(deficit)}/m (line needs {fmt(need)}/m, available {fmt(available)}/m)
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {(localOptions.length > 0 || importOptions.length > 0) && (
-        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #1A1E25', paddingTop: 8 }}>
-          <span style={{ fontSize: 9, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5E646E' }}>Claim supply</span>
-          {localOptions.map((li) => {
-            const checked = isLocalSourceSelected(row, li.id);
-            return (
-              <label
-                key={li.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11.5, color: checked ? '#C2C8D2' : '#8A909A' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggleSource({ kind: 'local', localInputId: li.id })}
-                  style={{ accentColor: '#8B9DC3' }}
-                />
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  Local · {li.item} · {fmt(li.rate)}/m
-                </span>
-              </label>
-            );
-          })}
-          {importOptions.map((item) => {
-            const checked = isImportSourceSelected(row, item);
-            const rate = importedByItem(world, f, item);
-            return (
-              <label
-                key={item}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 11.5, color: checked ? '#C2C8D2' : '#8A909A' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggleSource({ kind: 'import', item })}
-                  style={{ accentColor: '#F5A95B' }}
-                />
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  Import · {item} · {fmt(rate)}/m
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeof aggregate>; effAgg: ReturnType<typeof aggregateEffective> }) {
   const { st, up } = useStore();
   const world = useWorld();
-  const { setRowCount, removeRow, addSection, renameSection, openRecipePicker, resetFactory, commitFactory, openLocalInput, toggleFav, toggleDestination, toggleSource, removeSection } = useActions();
+  const { setRowCount, removeRow, addSection, renameSection, openRecipePicker, resetFactory, commitFactory, openLocalInput, toggleFav, removeSection } = useActions();
 
   const lineFeeds = useMemo(() => computeFactoryLineFeeds(world, f), [world, f]);
 
@@ -378,7 +174,7 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
 
   const balanceForItem = (item: string) => {
     const made = effAgg.per[item]?.out || 0;
-    const need = effAgg.per[item]?.in || 0;
+    const need = agg.per[item]?.in || 0;
     const imp = importedByItem(world, f, item);
     const local = localByItem[item] || 0;
     const exp = itemExported(world, f, item);
@@ -525,7 +321,7 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 15 }}>Production</div>
           <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 1 }}>
-            {agg.machines} machines across {f.sections.length} sections
+            {agg.machines} machines across {f.sections.length} categories
           </div>
         </div>
         {dirty && (
@@ -564,6 +360,8 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
         </button>
       </div>
 
+      <FactoryInputPool factory={f} world={world} />
+
       <AccordionSection
         title="Favorites"
         count={favorites.length}
@@ -595,9 +393,10 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
         </AccordionSection>
       )}
 
+      {!lineFeeds.converged && <p role="alert" style={{color:'#E98170'}}>Production has not stabilized. Review circular allocations and input supply.</p>}
       <AccordionSection
         title="Production lines"
-        count={`${agg.machines} machines · ${f.sections.length} sections`}
+        count={`${agg.machines} machines · ${f.sections.length} categories`}
         expanded={acc.lines}
         onToggle={() => setAcc((s) => ({ ...s, lines: !s.lines }))}
         mb={0}
@@ -649,12 +448,12 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                   </span>
                 )}
                 {feedStatus && (
-                  <span style={chipStyle('#8A909A', '#15171D', '#262B34')} title="Where this line sends its output">
+                  <span style={chipStyle('#8A909A', '#15171D', '#262B34')} title="Production lines in this category">
                     {feedStatus}
                   </span>
                 )}
                 {hasDeficit && (
-                  <span style={chipStyle('#E5604D', '#1A0E0E', '#3A2020')} title="Inputs not fully covered by other production lines">
+                  <span style={chipStyle('#E5604D', '#1A0E0E', '#3A2020')} title="Inputs not fully covered by assigned supply">
                     Deficit −{fmt(maxDeficit)}/m
                   </span>
                 )}
@@ -663,11 +462,11 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                   onClick={() => openRecipePicker('add', f.id, sec.id, null)}
                   style={{ background: '#1A1D24', border: '1px solid #2A2F39', color: '#C2C8D2', borderRadius: 6, padding: '4px 9px', fontSize: 11, cursor: 'pointer' }}
                 >
-                  ＋ Recipe
+                  ＋ Production Line
                 </button>
                 <button
                   onClick={() => removeSection(f.id, sec.id)}
-                  title="Delete production line"
+                  title="Remove category and move its lines"
                   style={{ background: 'transparent', border: 'none', color: '#5E646E', cursor: 'pointer', fontSize: 16, padding: '0 2px', lineHeight: 1 }}
                 >
                   ×
@@ -687,7 +486,7 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                 }}
               >
                 <span style={{ width: 18 }}></span>
-                <span style={{ flex: 1, minWidth: 70 }}>Recipe</span>
+                <span style={{ flex: 1, minWidth: 70 }}>Production line</span>
                 <span data-m-colhide="" style={{ width: 82 }}>Building</span>
                 <span style={{ width: 58, textAlign: 'center' }}>Machines</span>
                 <span style={{ width: 72, textAlign: 'right' }}>Rate</span>
@@ -741,7 +540,7 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                         }}
                       >
                         <ItemSquare item={prim.item} size={24} radius={6} fontSize={9} />
-                        <span style={{ fontWeight: 500, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.name}</span>
+                        <span style={{ fontWeight: 500, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lineName(row)}</span>
                         {rec.alt && (
                           <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.04em', color: '#C58BE0', border: '1px solid #4A3358', background: '#221A2B', borderRadius: 4, padding: '1px 5px' }}>
                             ALT
@@ -805,6 +604,7 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                     </div>
                     {exp && (
                       <div style={{ padding: '10px 16px 14px 42px', background: '#0B0C10', borderTop: '1px solid #15181E' }}>
+                        <LineEditor f={f} row={row} sectionId={sec.id} />
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <span style={{ fontSize: 9, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5E646E' }}>Inputs</span>
@@ -843,28 +643,14 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap', borderTop: '1px solid #15181E', paddingTop: 12 }}>
-                          <RowSourcesPanel
-                            f={f}
-                            sec={sec}
-                            row={row}
-                            feeds={lineFeeds}
-                            world={world}
-                            onToggleSource={(target) => toggleSource(f.id, sec.id, row.id, target)}
-                          />
-                          <RowDestinationsPanel
-                            f={f}
-                            sec={sec}
-                            row={row}
-                            feeds={lineFeeds}
-                            onToggle={(target) => toggleDestination(f.id, sec.id, row.id, target)}
-                          />
+                          <ProductionLineConnections f={f} row={row} feeds={lineFeeds} world={world} />
                         </div>
                       </div>
                     )}
                   </div>
                 );
               })}
-              {sec.rows.length === 0 && <div style={{ padding: 14, textAlign: 'center', fontSize: 11.5, color: '#5E646E' }}>No recipes yet — add one to derive rates.</div>}
+              {sec.rows.length === 0 && <div style={{ padding: 14, textAlign: 'center', fontSize: 11.5, color: '#5E646E' }}>No production lines yet — add one to get started.</div>}
             </div>
           );
         })}
@@ -873,7 +659,7 @@ function ProductionPanel({ f, agg, effAgg }: { f: Factory; agg: ReturnType<typeo
           onClick={() => addSection(f.id)}
           style={{ width: '100%', background: 'transparent', border: '1px dashed #2A2F39', color: '#8A909A', borderRadius: 10, padding: 11, fontSize: 12, cursor: 'pointer', marginTop: 4 }}
         >
-          ＋ Add section
+          ＋ Add category
         </button>
       </AccordionSection>
     </section>

@@ -1,3 +1,4 @@
+import { upgradeProduction } from './production';
 import type { Factory, World, WorldTemplate } from './schema';
 import { captureBaseline } from './baseline';
 import { normalizeWorldLogistics } from './migrations';
@@ -52,6 +53,7 @@ export function instantiateTemplate(template: WorldTemplate): World {
     updatedAt: now,
   };
   normalizeWorldLogistics(world);
+  world.factories.forEach(f => upgradeProduction(f, world));
   world.factories.forEach((factory) => {
     factory.baseline = captureBaseline(factory, world.routes, world.stations ?? []);
   });

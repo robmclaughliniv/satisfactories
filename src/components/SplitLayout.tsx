@@ -384,7 +384,7 @@ export const SplitLayout = forwardRef<SplitLayoutHandle, SplitLayoutProps>(funct
         />
       )}
 
-      <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div data-m-split-main="" style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {!mobile && left && !leftOpen && leftCollapsible && <CollapseTab side="left" onExpand={expandLeft} />}
         {panes.main}
         {!mobile && right && !rightOpen && rightCollapsible && <CollapseTab side="right" onExpand={expandRight} />}
