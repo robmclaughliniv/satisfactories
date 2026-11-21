@@ -36,8 +36,10 @@ export function useMapCamera(
   viewEl: RefObject<HTMLDivElement | null>,
   mapEl: RefObject<HTMLDivElement | null>,
   blockInteractionRef: RefObject<boolean>,
+  cameras: Map<string, MapCamera>,
+  worldId: string,
 ) {
-  const [camera, setCamera] = useState<MapCamera>({ zoom: 1, panX: 0, panY: 0 });
+  const [camera, setCamera] = useState<MapCamera>(() => cameras.get(worldId) ?? { zoom: 1, panX: 0, panY: 0 });
   const [gesturing, setGesturing] = useState(false);
   const [panning, setPanning] = useState(false);
 
@@ -313,8 +315,10 @@ export function useMapCamera(
       cancelAnimationFrame(animationId.current);
       clearTimeout(wheelTimer.current);
       panCleanup.current?.();
+      // Read the live camera so navigation during a gesture retains the painted view.
+      cameras.set(worldId, { ...camRef.current });
     },
-    [],
+    [cameras, worldId],
   );
 
   const zoomed = camera.zoom > 1.001;

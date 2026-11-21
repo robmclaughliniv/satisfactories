@@ -7,7 +7,7 @@ import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
 import { SplitLayout } from '../SplitLayout';
-import { useMapCamera } from './useMapCamera';
+import { useMapCamera, type MapCamera } from './useMapCamera';
 
 function chipStyle(active: boolean): CSSProperties {
   return {
@@ -217,6 +217,8 @@ const MapRoutes = memo(function MapRoutes({ connections, facById, hoverRoute, an
 });
 
 interface MapViewportProps {
+  cameras: Map<string, MapCamera>;
+  worldId: string;
   visible: Factory[];
   connections: Conn[];
   facById: Record<string, Factory>;
@@ -234,6 +236,8 @@ interface MapViewportProps {
 }
 
 function MapViewport({
+  cameras,
+  worldId,
   visible,
   connections,
   facById,
@@ -256,6 +260,8 @@ function MapViewport({
     viewEl,
     mapEl,
     blockInteractionRef,
+    cameras,
+    worldId,
   );
 
   const onPinHover = useCallback(
@@ -407,7 +413,7 @@ function MapViewport({
   );
 }
 
-export function MapScreen() {
+export function MapScreen({ cameras }: { cameras: Map<string, MapCamera> }) {
   const { st, up, openFactory } = useStore();
   const world = useWorld();
   const { openCreateFactory, movePin } = useActions();
@@ -646,6 +652,9 @@ export function MapScreen() {
 
               {facs.length > 0 && (
                 <MapViewport
+                  key={world.id}
+                  cameras={cameras}
+                  worldId={world.id}
                   visible={visible}
                   connections={connections}
                   facById={facByIdForRoutes}

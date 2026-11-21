@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import type { MapCamera } from './components/screens/useMapCamera';
 import { Header } from './components/Header';
 import { NavRail } from './components/NavRail';
 import { AddExportResourceModal } from './components/modals/AddExportResourceModal';
@@ -17,7 +19,8 @@ import { StoreProvider, useStore } from './state/store';
 function Shell() {
   // Effective screen from the store: world-bound screens (map, factory,
   // factories, rollup) fall back to 'worlds' when no world is active.
-  const { screen } = useStore();
+  const { screen, st } = useStore();
+  const mapCameras = useRef(new Map<string, MapCamera>());
   return (
     <div
       style={{
@@ -35,7 +38,7 @@ function Shell() {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <Header />
         <main style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
-          {screen === 'map' && <MapScreen />}
+          {screen === 'map' && <MapScreen key={st.worldId} cameras={mapCameras.current} />}
           {screen === 'factory' && <FactoryScreen />}
           {screen === 'factories' && <FactoriesScreen />}
           {screen === 'rollup' && <RollupScreen />}
