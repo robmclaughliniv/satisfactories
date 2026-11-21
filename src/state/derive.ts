@@ -125,7 +125,10 @@ export function exportRemainder(world: World, factory: Factory, item: string): n
   return itemSupply(world, factory, item) - itemExported(world, factory, item);
 }
 
+export interface ResourceRecipeRate { factoryId: string; recipeId: string; name: string; rate: number }
+
 export interface RollupEntry {
+  recipes: ResourceRecipeRate[];
   produced: number;
   consumed: number;
   producers: { id: string; name: string; color: string; rate: number }[];
@@ -137,15 +140,28 @@ export function rollupWorld(world: World): Record<string, RollupEntry> {
   world.factories.forEach((f) => {
     const a = aggregateEffective(world, f);
     Object.keys(a.per).forEach((item) => {
-      per[item] = per[item] || { produced: 0, consumed: 0, producers: [], consumers: [] };
+      per[item] = per[item] || { produced: 0, consumed: 0, producers: [], consumers: [], recipes: [] };
       per[item].produced += a.per[item].out;
       per[item].consumed += a.per[item].in;
       if (a.per[item].out > 0.001) per[item].producers.push({ id: f.id, name: f.name, color: f.color, rate: a.per[item].out });
       if (a.per[item].in > 0.001) per[item].consumers.push({ id: f.id, name: f.name, color: f.color, rate: a.per[item].in });
     });
+    const feeds = computeFactoryLineFeeds(world, f);
+    f.sections.forEach(section => section.rows.forEach(row => {
+      const recipe = recipeById(row.recipeId);
+      if (!recipe) return;
+      recipe.outputs.forEach(output => {
+        const rate = output.rate * row.count * (feeds.byRowId[row.id]?.efficiency ?? 1);
+        if (rate <= 0.001 || !per[output.item]) return;
+        const existing = per[output.item].recipes.find(r => r.factoryId === f.id && r.recipeId === recipe.id);
+        if (existing) existing.rate += rate;
+        else per[output.item].recipes.push({ factoryId: f.id, recipeId: recipe.id, name: recipe.name, rate });
+      });
+    }));
     Object.entries(localInputByItem(f)).forEach(([item, rate]) => {
       if (rate <= 0.001) return;
-      per[item] = per[item] || { produced: 0, consumed: 0, producers: [], consumers: [] };
+      per[item] = per[item] || { produced: 0, consumed: 0, producers: [], consumers: [], recipes: [] };
+      per[item].recipes.push({ factoryId: f.id, recipeId: "local", name: "Local supply", rate });
       per[item].produced += rate;
       per[item].producers.push({ id: f.id, name: f.name + ' (local)', color: f.color, rate });
     });

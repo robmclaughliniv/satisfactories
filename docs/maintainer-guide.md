@@ -40,6 +40,24 @@ browser for interaction and layout checks.
    pan and zoom, sidebar resizing, and mobile stacking. For game data changes,
    check alternate recipes and recipes with multiple outputs.
 
+For resource UI changes, open **Resources**, click an item to pin its sidebar,
+then move across other cards and verify the selection stays highlighted. Search
+for `copper` and check that the grid and expanded **Resource metrics** show the
+same resources. Change metric, time range, filters, and sorting. Recipe rates
+beneath each producing factory and the production share bars must reconcile
+with effective output. Local node supply is included in factory production,
+while the recipe share bar describes recipe output only.
+
+The metrics accordion uses Recharts and stores world-wide rate snapshots on each
+explicit factory commit. The selector shows the latest 10, 25, 50, 100, or all
+commits in chronological order. Draft autosaves and reset do not create entries;
+reset leaves history intact. History belongs to each world and is included in
+local storage and JSON backups. Existing saves and new templates begin with an
+empty history; past commits cannot be reconstructed. Snapshot metrics come from
+`src/state/resourceMetrics.ts` and use the same effective rates and configured
+capacity as the resource cards. Current filters choose which resource series to
+show; they never change saved snapshots.
+
 Use `npm run preview` to check the production build. If an old bundle appears,
 check the production service worker before clearing site data.
 

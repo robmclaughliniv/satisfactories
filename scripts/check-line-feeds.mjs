@@ -5,7 +5,7 @@ try {
   const { FactorySchema, WorldSchema, SCHEMA_VERSION } = await server.ssrLoadModule('/src/model/schema.ts');
   const { computeFactoryLineFeeds, computeWorldLineFeeds, outputRemaining, nextLineName } = await server.ssrLoadModule('/src/state/lineFeeds.ts');
   const { importedByItem, allocationShipments } = await server.ssrLoadModule('/src/model/logistics.ts');
-  const { aggregateEffective, itemExported } = await server.ssrLoadModule('/src/state/derive.ts');
+  const { aggregateEffective, itemExported, rollupWorld } = await server.ssrLoadModule('/src/state/derive.ts');
   const { buildFlows } = await server.ssrLoadModule('/src/state/flows.ts');
   const { buildMapConnections } = await server.ssrLoadModule('/src/model/mapConnections.ts');
   const { migratePersisted } = await server.ssrLoadModule('/src/model/migrations.ts');
@@ -171,6 +171,54 @@ try {
   assert.equal(availableInputSupply(world,b,'Second imported line',{kind:'import',item:'Iron Ingot',rate:6}),6);
   assert.equal(assignInputSupply(world,b.id,'Second imported line',{kind:'import',item:'Iron Ingot',rate:6}),null);
   assert.ok(assignInputSupply(world,b.id,'Second imported line',{kind:'import',item:'Iron Ingot',rate:7,previousKey:'import:Iron Ingot'}));
+  // Recipe detail must reconcile with effective production, including shared outputs and local supply.
+  const { RECIPES } = await server.ssrLoadModule('/src/data/gameData.ts');
+  const screwRecipes = RECIPES.filter(recipe => recipe.outputs.some(output => output.item === 'Screws')).slice(0, 2);
+  assert.equal(screwRecipes.length, 2);
+  const recipeFactory = factory('recipe-mix', [{ id: 'mix', name: 'Mix', rows: screwRecipes.flatMap(recipe => [row(recipe.id + '-1', recipe.id), row(recipe.id + '-2', recipe.id)]) }]);
+  recipeFactory.localInputs = screwRecipes.flatMap(recipe => recipe.inputs).map((input, index) => ({ id: 'mix-input-' + index, item: input.item, rate: 1000, t: 'Belt' }));
+  recipeFactory.sections[0].rows.forEach(line => {
+    const recipe = screwRecipes.find(recipe => recipe.id === line.recipeId);
+    line.sources = recipe.inputs.map(input => ({ kind: 'local', localInputId: recipeFactory.localInputs.find(local => local.item === input.item).id, rate: input.rate }));
+  });
+  const mixWorld = { ...world, factories: [recipeFactory], routes: [], stations: [] };
+  const mixed = rollupWorld(mixWorld)['Screws'];
+  assert.equal(mixed.recipes.length, 2, 'Repeated lines combine by recipe within one resource');
+  assert.ok(mixed.produced > 0);
+  assert.equal(mixed.recipes.reduce((sum, recipe) => sum + recipe.rate, 0), mixed.produced);
+  recipeFactory.localInputs.forEach(input => input.rate = 0);
+  assert.equal(rollupWorld(mixWorld)['Screws'].recipes.length, 0, 'Unfed recipes contribute no actual production');
+  const { commitFactoryWithMetrics } = await server.ssrLoadModule('/src/state/resourceMetrics.ts');
+  const historyWorld = instantiateTemplate(SAMPLE_WORLD);
+  const historyFactory = historyWorld.factories[0];
+  assert.deepEqual(historyWorld.resourceMetricHistory, [], 'Templates begin without invented commits');
+  commitFactoryWithMetrics(historyWorld, 'missing');
+  commitFactoryWithMetrics(historyWorld, historyFactory.id);
+  assert.equal(historyWorld.resourceMetricHistory.length, 0, 'Unchanged commits do not create history');
+  historyFactory.localInputs.push({ id: 'history-supply', item: 'Screws', rate: 100, t: 'Belt' });
+  commitFactoryWithMetrics(historyWorld, historyFactory.id);
+  assert.equal(historyWorld.resourceMetricHistory.length, 1);
+  const savedMetrics = JSON.stringify(historyWorld.resourceMetricHistory[0]);
+  const savedRollup = rollupWorld(historyWorld);
+  Object.entries(savedRollup).forEach(([item, rates]) => {
+    assert.equal(historyWorld.resourceMetricHistory[0].values[item].produced, rates.produced);
+    assert.equal(historyWorld.resourceMetricHistory[0].values[item].consumed, rates.consumed);
+  });
+  historyFactory.localInputs.find(input => input.id === 'history-supply').rate = 200;
+  assert.equal(JSON.stringify(historyWorld.resourceMetricHistory[0]), savedMetrics, 'Draft edits preserve past metrics');
+  applyBaseline(historyFactory, historyWorld, parseBaseline(historyFactory.baseline));
+  assert.equal(historyWorld.resourceMetricHistory.length, 1, 'Reset does not add or erase commits');
+  historyFactory.localInputs.find(input => input.id === 'history-supply').rate = 200;
+  commitFactoryWithMetrics(historyWorld, historyFactory.id);
+  assert.equal(historyWorld.resourceMetricHistory.length, 2);
+  assert.equal(JSON.stringify(historyWorld.resourceMetricHistory[0]), savedMetrics);
+  const historyEnvelope = buildBackupEnvelope({ worlds: [historyWorld], worldId: historyWorld.id, favItems: [], favFactories: [] });
+  const reloadedHistory = migratePersisted(JSON.parse(JSON.stringify(historyEnvelope)));
+  assert.deepEqual(reloadedHistory.worlds[0].resourceMetricHistory, historyWorld.resourceMetricHistory, 'Storage and backup JSON retain history');
+  const oldHistoryEnvelope = JSON.parse(JSON.stringify(historyEnvelope));
+  delete oldHistoryEnvelope.worlds[0].resourceMetricHistory;
+  assert.deepEqual(migratePersisted(oldHistoryEnvelope).worlds[0].resourceMetricHistory, [], 'Existing saves default to empty history');
+  console.log('Passed: commit metrics, immutable history, reset, template defaults, existing saves, storage and backup round trips.');
   console.log('Passed: shared factory nodes and imports, exact claims, overclaim prevention, editing and releasing claims without deleting supply.');
   console.log('Passed: exact line allocations, remaining budgets, same-category feeds, cross-factory deliveries, shortage holds, transport deduplication, category moves, names, migration, templates, commit/reset and backup round trips.');
 } finally { await server.close(); }

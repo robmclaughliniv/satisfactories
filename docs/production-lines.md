@@ -18,7 +18,12 @@
 
 Use **Commit** in factory detail to save the current working configuration as
 the factory's reset point. **Reset** restores that snapshot. Browser storage
-also saves working changes between visits.
+also saves working changes between visits. Each explicit factory commit also
+records a world-wide resource metrics snapshot. In **Resources → Resource
+metrics**, choose the latest 10, 25, 50, 100, or all commits to compare saved
+production, consumption, and efficiency. History persists with the world and
+its JSON backups. Draft autosaves and factory reset do not add snapshots or
+rewrite earlier commits. Older saves start tracking from their next commit.
 
 ## Read rates and resolve shortages
 
