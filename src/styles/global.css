@@ -212,3 +212,27 @@ select:focus {
 .line-balance-balanced{color:#9aa5b1}
 .line-input-balance{flex-wrap:wrap;gap:4px 8px}
 .line-input-balance b{font-size:11px}
+
+.resource-route-endpoint {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #e7e9ed;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.resource-filters > summary {
+  color: #c2c8d2;
+  font-size: 12px;
+  cursor: pointer;
+  padding-block: 5px;
+  margin-bottom: 6px;
+}
+
+.resource-filters > summary::marker {
+  color: #9097a1;
+}

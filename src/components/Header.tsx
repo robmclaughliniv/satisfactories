@@ -1,5 +1,5 @@
 import { RECIPES } from '../data/gameData';
-import { useActions, useStore } from '../state/store';
+import { useStore } from '../state/store';
 import { SG } from './bits';
 
 const screenTitle: Record<string, string> = {
@@ -13,7 +13,6 @@ const screenTitle: Record<string, string> = {
 
 export function Header() {
   const { st, up, world, screen, factory, go } = useStore();
-  const { openRoute } = useActions();
 
   const leaf = screen === 'factory' ? factory(st.selFactory)?.name ?? null : null;
 
@@ -118,25 +117,6 @@ export function Header() {
         )}
       </div>
       <div style={{ flex: 1 }}></div>
-      {screen === 'map' && (
-        <button
-          onClick={() => openRoute()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            background: '#15171D',
-            border: '1px solid #262B34',
-            borderRadius: 8,
-            padding: '7px 12px',
-            cursor: 'pointer',
-            color: '#C2C8D2',
-            fontSize: 12.5,
-          }}
-        >
-          ⛓ Add belt/pipe route
-        </button>
-      )}
       {screen === 'reference' && <div style={{ fontSize: 12, color: '#6B7280' }}>{RECIPES.length} recipes</div>}
     </header>
   );
