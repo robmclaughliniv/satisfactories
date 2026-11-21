@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { fmt, ITEMS, itemColor, RECIPES } from '../../data/gameData';
 import { resourceUnlock, unlockGroups } from '../../data/resourceTiers';
 import { buildFlows } from '../../state/flows';
@@ -6,6 +6,9 @@ import { aggregate, localInputByItem, rollupWorld } from '../../state/derive';
 import { useActions, useStore, useWorld } from '../../state/store';
 import { ItemSquare, MONO, SG } from '../bits';
 import { SplitLayout } from '../SplitLayout';
+
+const ResourceMetrics = lazy(() => import('../ResourceMetrics'));
+import { RateBars, ShareBar } from '../ResourceCharts';
 
 const allNames = Object.keys(ITEMS).sort((a, b) => a.localeCompare(b));
 const tags = [...new Set(Object.values(ITEMS).map(({ cat }) => cat))].sort();
@@ -43,6 +46,10 @@ export function RollupScreen() {
   const world = useWorld();
   const { toggleFav } = useActions();
 
+  const [search, setSearch] = useState('');
+  const [pinned, setPinned] = useState<string | null>(null);
+  const [graphsOpen, setGraphsOpen] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [ingredient, setIngredient] = useState('');
   const [tier, setTier] = useState('');
   const [tag, setTag] = useState('');
@@ -79,6 +86,7 @@ export function RollupScreen() {
     .filter((recipe) => recipe.inputs.some(({ item }) => item === ingredient))
     .flatMap((recipe) => recipe.outputs.map(({ item }) => item)) : []);
   const visibleItems = items.filter((entry) =>
+    entry.item.toLowerCase().includes(search.trim().toLowerCase()) &&
     (scope !== 'world' || Boolean(per[entry.item])) &&
     (scope !== 'produced' || entry.produced > 0.001) &&
     (!ingredient || entry.item === ingredient || directOutputs.has(entry.item)) &&
@@ -105,13 +113,14 @@ export function RollupScreen() {
   const maxP = items.reduce((m, x) => Math.max(m, x.produced), 0) || 1;
   const maxC = items.reduce((m, x) => Math.max(m, x.consumed), 0) || 1;
 
-  const fc = st.rollupFocus;
+  const fc = pinned ?? hovered ?? st.rollupFocus;
   const focusedItem = items.find(({ item }) => item === fc);
   const rsb = focusedItem ? {
     ...focusedItem,
     name: focusedItem.item,
     producers: per[focusedItem.item]?.producers ?? [],
     consumers: per[focusedItem.item]?.consumers ?? [],
+    recipes: per[focusedItem.item]?.recipes ?? [],
   } : null;
   const exports = useMemo(() => {
     if (!fc) return [];
@@ -144,11 +153,18 @@ export function RollupScreen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(216px,1fr))', gap: 12, marginBottom: 28 }}>
           {favorites.map((it) => {
             const nc = netColor(it.net);
-            const focused = st.rollupFocus === it.item;
+            const focused = fc === it.item;
             return (
               <div
                 key={it.item}
-                onMouseEnter={() => up({ rollupFocus: it.item })}
+                className="resource-card"
+                role="button"
+                tabIndex={0}
+                aria-pressed={pinned === it.item}
+                aria-label={`Inspect ${it.item}`}
+                onClick={() => { setPinned(it.item); up({ rollupFocus: it.item }); }}
+                onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setPinned(it.item); up({ rollupFocus: it.item }); } }}
+                onMouseEnter={() => { if (!pinned) setHovered(it.item); }}
                 style={{
                   background: '#0F1116',
                   border: `1px solid ${focused ? nc + '88' : '#1C2027'}`,
@@ -161,15 +177,17 @@ export function RollupScreen() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <ItemSquare item={it.item} size={34} radius={8} fontSize={11} />
                   <span style={{ flex: 1, fontWeight: 600, fontSize: 13.5, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.item}</span>
-                  <span
+                  <button
+                    type="button"
+                    aria-label={`Toggle favorite ${it.item}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFav(it.item);
                     }}
-                    style={{ color: '#F5A95B', fontSize: 15, cursor: 'pointer', flex: '0 0 auto' }}
+                    style={{ background: 'none', border: 0, padding: 0, color: '#F5A95B', fontSize: 15, cursor: 'pointer', flex: '0 0 auto' }}
                   >
                     ★
-                  </span>
+                  </button>
                 </div>
                 <div style={{ fontFamily: MONO, fontWeight: 600, fontSize: 24, color: nc }}>{(it.net > 0 ? '+' : '') + fmt(it.net)}/m</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 9 }}>
@@ -200,12 +218,17 @@ export function RollupScreen() {
           )}
         </div>
 
+        <details className="resource-metrics" onToggle={event => setGraphsOpen(event.currentTarget.open)}>
+          <summary>Resource metrics <span>Production · consumption · efficiency</span></summary>
+          <Suspense fallback={<p>Loading metrics…</p>}><ResourceMetrics key={world.id} history={world.resourceMetricHistory} visibleItems={visibleItems} open={graphsOpen} /></Suspense>
+        </details>
         <h2 style={{ fontFamily: SG, fontWeight: 600, fontSize: 14, margin: '0 0 6px' }}>
           Items <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 400, color: '#9097A1' }}>{visibleItems.length}</span>
         </h2>
         <details open className="resource-filters">
           <summary>Filters and sorting</summary>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8, marginBottom: 12 }}>
+            <label className="resource-search">Search resources<input type="search" placeholder="e.g. copper" value={search} onChange={event => setSearch(event.target.value)} /></label>
             <ResourceSelect label="Resource or ingredient" value={ingredient} onChange={(value) => {
               setIngredient(value);
               if (value) setScope('all');
@@ -229,13 +252,20 @@ export function RollupScreen() {
           {visibleItems.map((it) => {
             const nc = netColor(it.net);
             const fav = st.favItems.includes(it.item);
-            const focused = st.rollupFocus === it.item;
+            const focused = fc === it.item;
             const pPct = Math.round((it.produced / maxP) * 100);
             const cPct = Math.round((it.consumed / maxC) * 100);
             return (
               <div
                 key={it.item}
-                onMouseEnter={() => up({ rollupFocus: it.item })}
+                className="resource-card"
+                role="button"
+                tabIndex={0}
+                aria-pressed={pinned === it.item}
+                aria-label={`Inspect ${it.item}`}
+                onClick={() => { setPinned(it.item); up({ rollupFocus: it.item }); }}
+                onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setPinned(it.item); up({ rollupFocus: it.item }); } }}
+                onMouseEnter={() => { if (!pinned) setHovered(it.item); }}
                 style={{
                   position: 'relative',
                   background: focused ? '#15181E' : '#0F1116',
@@ -248,15 +278,17 @@ export function RollupScreen() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <ItemSquare item={it.item} size={24} radius={6} fontSize={9} />
-                  <span
+                  <button
+                    type="button"
+                    aria-label={`Toggle favorite ${it.item}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFav(it.item);
                     }}
-                    style={{ marginLeft: 'auto', color: fav ? '#F5A95B' : '#4B515B', fontSize: 14, cursor: 'pointer', flex: '0 0 auto' }}
+                    style={{ background: 'none', border: 0, padding: 0, marginLeft: 'auto', color: fav ? '#F5A95B' : '#4B515B', fontSize: 14, cursor: 'pointer', flex: '0 0 auto' }}
                   >
                     {fav ? '★' : '☆'}
-                  </span>
+                  </button>
                 </div>
                 <div style={{ fontSize: 12, color: '#C2C8D2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.item}</div>
                 <div style={{ fontFamily: MONO, fontWeight: 600, fontSize: 14, color: nc, margin: '3px 0 9px' }}>
@@ -324,7 +356,11 @@ export function RollupScreen() {
                 <div style={{ fontFamily: MONO, fontWeight: 600, fontSize: 14, color: '#E5604D', marginTop: 2 }}>{fmt(rsb.consumed)}/m</div>
               </div>
             </div>
+            {pinned && <button className="resource-unpin" onClick={() => { setPinned(null); setHovered(null); }}>Pinned · Resume hover previews</button>}
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 14px' }}>
+              <RateBars produced={rsb.produced} consumed={rsb.consumed} maxP={maxP} maxC={maxC} />
+              <ShareBar title="Production by factory" entries={Object.values(rsb.producers.reduce<Record<string, { id: string; name: string; rate: number }>>((acc, p) => { const entry = acc[p.id] ??= { id: p.id, name: p.name.replace(' (local)', ''), rate: 0 }; entry.rate += p.rate; return acc; }, {}))} />
+              <ShareBar title="Production by recipe" entries={Object.values(rsb.recipes.reduce<Record<string, { id: string; name: string; rate: number }>>((acc, r) => { const entry = acc[r.recipeId] ??= { id: r.recipeId, name: r.name, rate: 0 }; entry.rate += r.rate; return acc; }, {}))} />
               <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#F5A95B', marginBottom: 9 }}>Exports</div>
               <div style={{ display: 'grid', gap: 6, marginBottom: 18 }}>
                 {exports.map(({ from, partner, partnerFactoryId, rate, transport, requested }, index) => (
@@ -345,12 +381,14 @@ export function RollupScreen() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
                 {rsb.producers.map((p) => (
                   <div
-                    key={p.id}
+                    key={p.id + p.name}
                     onClick={() => openFactory(p.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#0C100C', border: '1px solid #1B2A1E', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}
                   >
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flex: '0 0 auto' }}></span>
-                    <span style={{ flex: 1, fontSize: 12, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                    <span style={{ flex: 1, fontSize: 12, minWidth: 0 }}>{p.name}
+                      {rsb.recipes.filter(r => r.factoryId === p.id && (p.name.endsWith(' (local)') ? r.recipeId === 'local' : r.recipeId !== 'local')).map(r => <span className="resource-recipe" key={r.recipeId}>{r.name}<span>+{fmt(r.rate)}/m</span></span>)}
+                    </span>
                     <span style={{ fontFamily: MONO, fontSize: 11.5, color: '#5BCB86' }}>+{fmt(p.rate)}/m</span>
                   </div>
                 ))}
@@ -360,7 +398,7 @@ export function RollupScreen() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {rsb.consumers.map((p) => (
                   <div
-                    key={p.id}
+                    key={p.id + p.name}
                     onClick={() => openFactory(p.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#100C0C', border: '1px solid #2A1B1B', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}
                   >
@@ -386,7 +424,7 @@ export function RollupScreen() {
             <div style={{ width: 54, height: 54, borderRadius: 14, border: '1.5px dashed #2E343F', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5E646E', fontSize: 22 }}>
               ⬡
             </div>
-            <div style={{ fontSize: 12.5, color: '#7B828D', maxWidth: 200 }}>Hover any item to see its production map — who makes it, who consumes it.</div>
+            <div style={{ fontSize: 12.5, color: '#7B828D', maxWidth: 200 }}>Click any item to pin its production map — who makes it, who consumes it.</div>
           </div>
         )}
       </aside>

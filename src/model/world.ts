@@ -19,6 +19,7 @@ export function createEmptyWorld(name: string): World {
     factories: [],
     routes: [],
     stations: [],
+    resourceMetricHistory: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -49,6 +50,7 @@ export function instantiateTemplate(template: WorldTemplate): World {
     factories,
     routes,
     stations,
+    resourceMetricHistory: [],
     createdAt: now,
     updatedAt: now,
   };

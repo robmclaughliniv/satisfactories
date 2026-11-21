@@ -1,3 +1,4 @@
+import { commitFactoryWithMetrics } from './resourceMetrics';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { recipeById, defaultTransportForItem } from '../data/gameData';
 import { SAMPLE_WORLD } from '../data/templates';
@@ -353,7 +354,7 @@ export function useActions() {
   const commitFactory = (fid: string) => {
     mutateWorld((w) => {
       const f = w.factories.find((x) => x.id === fid);
-      if (f) f.baseline = captureBaseline(f, w.routes, w.stations ?? []);
+      if (f) commitFactoryWithMetrics(w, fid);
     });
   };
 

@@ -108,10 +108,23 @@ export const RouteSchema = z.object({
   t: TransportSchema,
 });
 
+export const ResourceMetricSnapshotSchema = z.object({
+  factoryId: z.string(),
+  factoryName: z.string(),
+  savedAt: z.string(),
+  values: z.record(z.string(), z.object({
+    produced: z.number().nonnegative(),
+    consumed: z.number().nonnegative(),
+    efficiency: z.number().nonnegative().nullable(),
+  })),
+});
+export type ResourceMetricSnapshot = z.infer<typeof ResourceMetricSnapshotSchema>;
+
 export const WorldSchema = z.object({
   id: z.string(),
   name: z.string(),
   factories: z.array(FactorySchema),
+  resourceMetricHistory: z.array(ResourceMetricSnapshotSchema).default([]),
   routes: z.array(RouteSchema),
   stations: z.array(StationSchema).default([]),
   createdAt: z.string(),
