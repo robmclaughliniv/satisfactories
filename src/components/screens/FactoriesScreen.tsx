@@ -7,12 +7,21 @@ import type { Factory } from '../../types';
 import { FlowList, MONO, ProducedRow, SG, SectionLabel } from '../bits';
 import { SplitLayout, type SplitLayoutHandle } from '../SplitLayout';
 
+function factoryOutputs(world: ReturnType<typeof useWorld>, factory: Factory) {
+  const { per } = aggregateEffective(world, factory);
+  return Object.entries(per)
+    .filter(([, rates]) => rates.out > 0.001)
+    .map(([item, rates]) => ({ item, out: rates.out }))
+    .sort((a, b) => b.out - a.out);
+}
+
 export function FactoriesScreen() {
   const { st, up, openFactory } = useStore();
   const world = useWorld();
   const splitRef = useRef<SplitLayoutHandle>(null);
   const {
     toggleFavFactory,
+    openEditFactory,
     openRoute,
     openLocalInput,
     removeLocalInput,
@@ -22,19 +31,41 @@ export function FactoriesScreen() {
 
   const factories = [...world.factories].sort((a, b) => a.name.localeCompare(b.name));
   const favorites = factories.filter((f) => st.favFactories.includes(f.id));
-  const maxPower = factories.reduce((m, f) => Math.max(m, aggregate(f).power), 0) || 1;
-  const maxMachines = factories.reduce((m, f) => Math.max(m, aggregate(f).machines), 0) || 1;
-
   const focused = st.factoriesFocus ? world.factories.find((f) => f.id === st.factoriesFocus) : null;
 
   const onCardClick = (f: Factory) => {
-    if (st.factoriesFocus === f.id) {
-      openFactory(f.id);
-      return;
-    }
     up({ factoriesFocus: f.id });
     splitRef.current?.expandRight();
   };
+
+  const editButton = (f: Factory) => (
+    <button
+      type="button"
+      aria-label={`Edit ${f.name}`}
+      title="Edit factory"
+      onClick={(event) => {
+        event.stopPropagation();
+        openEditFactory(f);
+      }}
+      style={{ display: 'grid', placeItems: 'center', width: 24, height: 24, flexShrink: 0, padding: 0, border: '1px solid #2A2F39', borderRadius: 6, color: '#C2C8D2', background: '#15171D', cursor: 'pointer' }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m16 3 5 5L9 20l-6 1 1-6L16 3Z M13 6l5 5" />
+      </svg>
+    </button>
+  );
+
+  const openProduction = (f: Factory) => (
+    <button
+      onClick={(event) => {
+        event.stopPropagation();
+        openFactory(f.id);
+      }}
+      style={{ marginTop: 9, background: 'transparent', border: 'none', padding: '3px 0', color: '#F5A95B', cursor: 'pointer', fontSize: 11 }}
+    >
+      Open production →
+    </button>
+  );
 
   return (
     <SplitLayout
@@ -57,7 +88,7 @@ export function FactoriesScreen() {
               </span>
             </div>
             <div style={{ fontSize: 12.5, color: '#7B828D', marginBottom: 22 }}>
-              Browse every plant at a glance — power, machines, and status.
+              Power and machine counts are planning estimates.
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 11 }}>
@@ -75,12 +106,23 @@ export function FactoriesScreen() {
             >
               {favorites.map((f) => {
                 const agg = aggregate(f);
+                const starred = f.favoriteItems ?? [];
+                const effective = starred.length ? aggregateEffective(world, f).per : {};
+                const flows = starred.length ? buildFlows(world, f) : [];
                 const sm = statusMeta(f.status);
                 const isFocused = st.factoriesFocus === f.id;
                 return (
                   <div
                     key={f.id}
+                    tabIndex={0}
+                    aria-label={`View details for ${f.name}`}
                     onClick={() => onCardClick(f)}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
+                        onCardClick(f);
+                      }
+                    }}
                     style={{
                       background: '#0F1116',
                       border: `1px solid ${isFocused ? f.color + '88' : '#1C2027'}`,
@@ -132,6 +174,7 @@ export function FactoriesScreen() {
                       >
                         ★
                       </span>
+                      {editButton(f)}
                     </div>
                     <div style={{ fontFamily: MONO, fontWeight: 600, fontSize: 22, color: '#F5A95B' }}>
                       {fmt(agg.power)}
@@ -154,6 +197,25 @@ export function FactoriesScreen() {
                         {sm.label}
                       </span>
                     </div>
+                    <div style={{ marginTop: 12, paddingTop: 9, borderTop: '1px solid #262B34' }}>
+                      <SectionLabel color="#9097A1" mb={5}>Starred resources</SectionLabel>
+                      {starred.map((item) => {
+                        const rates = flows.filter((flow) => flow.item === item).map((flow) => (
+                          (flow.dir === 'export' ? '↑ ' : '↓ ') + fmt(flow.total) + '/m'
+                        ));
+                        const produced = effective[item]?.out ?? 0;
+                        const required = agg.per[item]?.in ?? 0;
+                        const rate = rates.length
+                          ? rates.join(' · ')
+                          : produced > 0.001 ? '+' + fmt(produced) + '/m'
+                            : required > 0.001 ? fmt(required) + '/m required' : '0/m';
+                        return <ProducedRow key={item} name={item} rate={rate} />;
+                      })}
+                      {starred.length === 0 && (
+                        <div style={{ fontSize: 11, color: '#9097A1' }}>No starred resources yet</div>
+                      )}
+                    </div>
+                    {openProduction(f)}
                   </div>
                 );
               })}
@@ -178,7 +240,7 @@ export function FactoriesScreen() {
               <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 14 }}>All factories</span>
               <span style={{ fontSize: 11, color: '#5E646E' }}>{factories.length}</span>
               <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6B7280' }}>
-                Click for details · again to open →
+                Click a card for details
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(148px,1fr))', gap: 10 }}>
@@ -187,12 +249,18 @@ export function FactoriesScreen() {
                 const sm = statusMeta(f.status);
                 const fav = st.favFactories.includes(f.id);
                 const isFocused = st.factoriesFocus === f.id;
-                const pPct = Math.round((agg.power / maxPower) * 100);
-                const mPct = Math.round((agg.machines / maxMachines) * 100);
                 return (
                   <div
                     key={f.id}
+                    tabIndex={0}
+                    aria-label={`View details for ${f.name}`}
                     onClick={() => onCardClick(f)}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
+                        onCardClick(f);
+                      }
+                    }}
                     style={{
                       position: 'relative',
                       background: isFocused ? '#15181E' : '#0F1116',
@@ -238,6 +306,7 @@ export function FactoriesScreen() {
                       >
                         {fav ? '★' : '☆'}
                       </span>
+                      {editButton(f)}
                     </div>
                     <div
                       style={{
@@ -254,52 +323,7 @@ export function FactoriesScreen() {
                       {fmt(agg.power)}
                       <span style={{ fontSize: 9, color: '#5E646E', fontWeight: 400 }}> MW</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                      <div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: 8.5,
-                            marginBottom: 3,
-                          }}
-                        >
-                          <span style={{ color: '#F5A95B', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                            Power
-                          </span>
-                          <span style={{ fontFamily: MONO, color: '#9097A1' }}>{pPct}%</span>
-                        </div>
-                        <div style={{ height: 5, background: '#15181E', borderRadius: 3, overflow: 'hidden' }}>
-                          <div
-                            style={{ height: '100%', width: `${pPct}%`, background: '#F5A95B', borderRadius: 3 }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: 8.5,
-                            marginBottom: 3,
-                          }}
-                        >
-                          <span style={{ color: '#8A909A', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                            Mach
-                          </span>
-                          <span style={{ fontFamily: MONO, color: '#9097A1' }}>
-                            {agg.machines} · {mPct}%
-                          </span>
-                        </div>
-                        <div style={{ height: 5, background: '#15181E', borderRadius: 3, overflow: 'hidden' }}>
-                          <div
-                            style={{ height: '100%', width: `${mPct}%`, background: '#6B7280', borderRadius: 3 }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
+                    <div style={{ fontSize: 11, color: '#9097A1' }}>{agg.machines} machines</div>
                     <div
                       style={{
                         marginTop: 8,
@@ -313,6 +337,7 @@ export function FactoriesScreen() {
                     >
                       {sm.label}
                     </div>
+                    {openProduction(f)}
                   </div>
                 );
               })}
@@ -390,7 +415,7 @@ export function FactoriesScreen() {
                   ▣
                 </div>
                 <div style={{ fontSize: 12.5, color: '#7B828D', maxWidth: 200 }}>
-                  Click any factory to see its details. Click again to open the full editor.
+                  Select a factory to see its production and flows.
                 </div>
               </div>
             )}
@@ -430,12 +455,8 @@ function FactoryDetailSidebar({
 }) {
   const world = useWorld();
   const agg = aggregate(f);
-  const effAgg = aggregateEffective(world, f);
   const sm = statusMeta(f.status);
-  const produced = Object.keys(effAgg.per)
-    .filter((i) => effAgg.per[i].out > 0.001)
-    .map((i) => ({ item: i, out: effAgg.per[i].out }))
-    .sort((a, b) => b.out - a.out);
+  const produced = factoryOutputs(world, f);
   const flows = buildFlows(world, f);
   const imports = applyFlowOrder(
     flows.filter((fl) => fl.dir === 'import'),
@@ -569,7 +590,6 @@ function FactoryDetailSidebar({
         </div>
       </div>
       <div style={{ padding: '12px 14px', borderTop: '1px solid #161A21', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ fontSize: 11, color: '#6B7280' }}>Click again or open below</div>
         <button
           onClick={onToggleFav}
           style={{

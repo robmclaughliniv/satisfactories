@@ -5,6 +5,7 @@ import { itemSupply } from './derive';
 export interface FlowLeg {
   partner:string; color:string; transport:string; rate:number;
   routeId?:string; localInputId?:string; stationId?:string; vehicleId?:string;
+  partnerFactoryId?:string;
   allocationId?:string; sourceFactoryId?:string; sourceRowId?:string; requested?:number;
 }
 export interface Flow {key:string;dir:'import'|'export';item:string;total:number;legs:FlowLeg[];}
@@ -22,7 +23,7 @@ export function buildFlows(world:World,f:Factory):Flow[] {
     const other=world.factories.find(x => x.id===(dir==='export'?to:from));
     if(!other) return;
     const flow=ensure(dir,item);flow.total+=leg.rate;
-    flow.legs.push({...leg,partner:other.name,color:other.color});
+    flow.legs.push({...leg,partner:other.name,color:other.color,partnerFactoryId:other.id});
   };
   allocationShipments(world).forEach(a => add(a.from,a.to,a.item,{
     partner:'',color:'',rate:a.rate,requested:a.requested,transport:a.t,

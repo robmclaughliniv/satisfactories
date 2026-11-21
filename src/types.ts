@@ -54,7 +54,7 @@ export interface PickerState {
 }
 
 export interface FactoryModalState {
-  editing: boolean;
+  factoryId?: string;
   name: string;
   color: string;
   status: Status;

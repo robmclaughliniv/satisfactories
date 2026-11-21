@@ -358,23 +358,48 @@ export function useActions() {
   };
 
   const openCreateFactory = () => {
-    up({ factoryModal: { editing: false, name: '', color: '#F5882E', status: 'planned', tagline: '', tier: 'Mid-sized Factory', tags: '', cover: '' } });
+    up({ factoryModal: { name: '', color: '#F5882E', status: 'planned', tagline: '', tier: 'Mid-sized Factory', tags: '', cover: '' } });
+  };
+
+  const openEditFactory = (f: Factory) => {
+    up({ factoryModal: {
+      factoryId: f.id,
+      name: f.name,
+      color: f.color,
+      status: f.status,
+      tier: f.tier,
+      tagline: f.tagline,
+      tags: f.tags.join(', '),
+      cover: f.cover ?? '',
+    } });
   };
 
   const saveFactory = () => {
     const m = st.factoryModal;
     if (!m || !m.name.trim()) return;
+    const metadata = {
+      name: m.name.trim(),
+      color: m.color,
+      status: m.status,
+      tier: m.tier || 'Mid-sized Factory',
+      tagline: m.tagline,
+      tags: m.tags.split(',').map((t) => t.trim()).filter(Boolean),
+      cover: m.cover,
+    };
+    if (m.factoryId) {
+      mutateWorld((w) => {
+        const f = w.factories.find((x) => x.id === m.factoryId);
+        if (f) Object.assign(f, metadata);
+      });
+      up({ factoryModal: null });
+      return;
+    }
     const id = 'f_' + Date.now();
     mutateWorld((w) => {
       w.factories.push({
+        ...metadata,
         id,
-        name: m.name.trim(),
-        color: m.color,
-        status: m.status,
-        tier: m.tier || 'Mid-sized Factory',
-        tagline: m.tagline || 'Newly placed factory.',
-        tags: m.tags ? m.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-        cover: m.cover || '',
+        tagline: metadata.tagline || 'Newly placed factory.',
         x: 45 + (Math.random() * 10 - 5),
         y: 45 + (Math.random() * 10 - 5),
         sections: [],
@@ -964,6 +989,7 @@ export function useActions() {
     resetFactory,
     commitFactory,
     openCreateFactory,
+    openEditFactory,
     saveFactory,
     openRoute,
     addFlowLeg,

@@ -1,18 +1,101 @@
-import { fmt, itemColor } from '../../data/gameData';
-import { rollupWorld } from '../../state/derive';
+import { useMemo, useState } from 'react';
+import { fmt, ITEMS, itemColor, RECIPES } from '../../data/gameData';
+import { resourceUnlock, unlockGroups } from '../../data/resourceTiers';
+import { buildFlows } from '../../state/flows';
+import { aggregate, localInputByItem, rollupWorld } from '../../state/derive';
 import { useActions, useStore, useWorld } from '../../state/store';
 import { ItemSquare, MONO, SG } from '../bits';
 import { SplitLayout } from '../SplitLayout';
+
+const allNames = Object.keys(ITEMS).sort((a, b) => a.localeCompare(b));
+const tags = [...new Set(Object.values(ITEMS).map(({ cat }) => cat))].sort();
+const sortFields = {
+  net: 'Net balance',
+  produced: 'Production',
+  consumed: 'Consumption',
+  efficiency: 'Efficiency',
+  surplus: 'Surplus',
+  deficit: 'Deficit',
+  item: 'Name',
+  tier: 'Milestone tier',
+};
+type SortField = keyof typeof sortFields;
+
+function ResourceSelect({ label, value, onChange, options }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <label style={{ display: 'grid', gap: 4, minWidth: 0, color: '#A0A7B2', fontSize: 11 }}>
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)}
+        style={{ width: '100%', minWidth: 0, background: '#15171D', border: '1px solid #2A2F39', borderRadius: 6, color: '#E7E9ED', padding: '7px 8px' }}>
+        {options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+      </select>
+    </label>
+  );
+}
 
 export function RollupScreen() {
   const { st, up, openFactory } = useStore();
   const world = useWorld();
   const { toggleFav } = useActions();
 
-  const per = rollupWorld(world);
-  const items = Object.keys(per)
-    .map((item) => ({ item, produced: per[item].produced, consumed: per[item].consumed, net: per[item].produced - per[item].consumed }))
-    .sort((a, b) => b.net - a.net);
+  const [ingredient, setIngredient] = useState('');
+  const [tier, setTier] = useState('');
+  const [tag, setTag] = useState('');
+  const [scope, setScope] = useState('world');
+  const [balance, setBalance] = useState('');
+  const [sort, setSort] = useState<SortField>('net');
+  const [order, setOrder] = useState('desc');
+
+  const per = useMemo(() => rollupWorld(world), [world]);
+  const items = useMemo(() => {
+    const capacity = new Map<string, number>();
+    for (const factory of world.factories) {
+      for (const [item, { out }] of Object.entries(aggregate(factory).per)) {
+        capacity.set(item, (capacity.get(item) ?? 0) + out);
+      }
+      for (const [item, rate] of Object.entries(localInputByItem(factory))) {
+        capacity.set(item, (capacity.get(item) ?? 0) + rate);
+      }
+    }
+    return [...new Set([...allNames, ...Object.keys(per)])].map((item) => {
+      const produced = per[item]?.produced ?? 0;
+      const consumed = per[item]?.consumed ?? 0;
+      const net = produced - consumed;
+      const configured = capacity.get(item) ?? 0;
+      const unlock = resourceUnlock(item);
+      return {
+        item, produced, consumed, net, unlock, tier: unlock?.tier ?? null,
+        efficiency: configured > 0 ? produced / configured : null,
+        surplus: net > 0.001 ? net : null, deficit: net < -0.001 ? -net : null,
+      };
+    });
+  }, [per, world]);
+  const directOutputs = new Set(ingredient ? RECIPES
+    .filter((recipe) => recipe.inputs.some(({ item }) => item === ingredient))
+    .flatMap((recipe) => recipe.outputs.map(({ item }) => item)) : []);
+  const visibleItems = items.filter((entry) =>
+    (scope !== 'world' || Boolean(per[entry.item])) &&
+    (scope !== 'produced' || entry.produced > 0.001) &&
+    (!ingredient || entry.item === ingredient || directOutputs.has(entry.item)) &&
+    (!tier || (entry.unlock?.group ?? 'unknown') === tier) &&
+    (!tag || ITEMS[entry.item]?.cat === tag) &&
+    (!balance || (balance === 'surplus' ? entry.net > 0.001 : entry.net < -0.001))
+  ).sort((a, b) => {
+    const left = a[sort];
+    const right = b[sort];
+    if (left === null || right === null) {
+      if (left !== right) return left === null ? 1 : -1;
+      return a.item.localeCompare(b.item);
+    }
+    const delta = typeof left === 'number' && typeof right === 'number'
+      ? left - right : String(left).localeCompare(String(right));
+    return (order === 'asc' ? delta : -delta) || a.item.localeCompare(b.item);
+  });
 
   const netColor = (net: number) => (net > 0.001 ? '#5BCB86' : net < -0.001 ? '#E5604D' : '#9097A1');
   const stOf = (net: number) => (net > 0.001 ? 'Surplus' : net < -0.001 ? 'Deficit' : 'Balanced');
@@ -23,7 +106,20 @@ export function RollupScreen() {
   const maxC = items.reduce((m, x) => Math.max(m, x.consumed), 0) || 1;
 
   const fc = st.rollupFocus;
-  const rsb = fc && per[fc] ? { name: fc, ...per[fc], net: per[fc].produced - per[fc].consumed } : null;
+  const focusedItem = items.find(({ item }) => item === fc);
+  const rsb = focusedItem ? {
+    ...focusedItem,
+    name: focusedItem.item,
+    producers: per[focusedItem.item]?.producers ?? [],
+    consumers: per[focusedItem.item]?.consumers ?? [],
+  } : null;
+  const exports = useMemo(() => {
+    if (!fc) return [];
+    return world.factories.flatMap((factory) => {
+      const flow = buildFlows(world, factory).find((entry) => entry.dir === 'export' && entry.item === fc);
+      return (flow?.legs ?? []).map((leg) => ({ from: factory, ...leg }));
+    });
+  }, [world, fc]);
 
   return (
     <SplitLayout
@@ -104,13 +200,33 @@ export function RollupScreen() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 11 }}>
-          <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 14 }}>All items</span>
-          <span style={{ fontSize: 11, color: '#5E646E' }}>{items.length}</span>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6B7280' }}>Hover for production map →</span>
-        </div>
+        <h2 style={{ fontFamily: SG, fontWeight: 600, fontSize: 14, margin: '0 0 6px' }}>
+          Items <span style={{ marginLeft: 4, fontSize: 11, fontWeight: 400, color: '#9097A1' }}>{visibleItems.length}</span>
+        </h2>
+        <details open className="resource-filters">
+          <summary>Filters and sorting</summary>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8, marginBottom: 12 }}>
+            <ResourceSelect label="Resource or ingredient" value={ingredient} onChange={(value) => {
+              setIngredient(value);
+              if (value) setScope('all');
+            }} options={[['', 'Any resource'], ...allNames.map((name): [string, string] => [name, name])]} />
+            <ResourceSelect label="Game unlock" value={tier} onChange={setTier}
+              options={[['', 'Any unlock'], ...unlockGroups]} />
+            <ResourceSelect label="Show" value={scope} onChange={setScope}
+              options={[['world', 'Used in this world'], ['produced', 'Produced here'], ['all', 'All resources']]} />
+            <ResourceSelect label="Resource tag" value={tag} onChange={setTag}
+              options={[['', 'Any tag'], ...tags.map((name): [string, string] => [name, name])]} />
+            <ResourceSelect label="Balance" value={balance} onChange={setBalance}
+              options={[['', 'Any balance'], ['surplus', 'Surplus'], ['deficit', 'Deficit']]} />
+            <ResourceSelect label="Sort by" value={sort} onChange={(value) => setSort(value as SortField)}
+              options={Object.entries(sortFields)} />
+            <ResourceSelect label="Sort order" value={order} onChange={setOrder}
+              options={[['desc', 'Descending'], ['asc', 'Ascending']]} />
+          </div>
+        </details>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(148px,1fr))', gap: 10 }}>
-          {items.map((it) => {
+          {visibleItems.length === 0 && <p style={{ gridColumn: '1/-1', color: '#9097A1' }}>No resources match these filters.</p>}
+          {visibleItems.map((it) => {
             const nc = netColor(it.net);
             const fav = st.favItems.includes(it.item);
             const focused = st.rollupFocus === it.item;
@@ -148,6 +264,12 @@ export function RollupScreen() {
                   <span style={{ fontSize: 9, color: '#5E646E', fontWeight: 400 }}>/m</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  <div style={{ fontSize: 10, color: '#9097A1' }}>
+                    {it.unlock
+                      ? unlockGroups.find(([key]) => key === it.unlock?.group)?.[1]
+                      : 'No unlock data'}
+                    {it.efficiency !== null && <div>{Math.round(it.efficiency * 100)}% efficient</div>}
+                  </div>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 8.5, marginBottom: 3 }}>
                       <span style={{ color: '#5BCB86', letterSpacing: '.04em', textTransform: 'uppercase' }}>Prod</span>
@@ -203,6 +325,22 @@ export function RollupScreen() {
               </div>
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#F5A95B', marginBottom: 9 }}>Exports</div>
+              <div style={{ display: 'grid', gap: 6, marginBottom: 18 }}>
+                {exports.map(({ from, partner, partnerFactoryId, rate, transport, requested }, index) => (
+                  <div key={index} style={{ display: 'grid', gap: 5, border: '1px solid #2A2F39', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 5 }}>
+                      <button className="resource-route-endpoint" onClick={() => openFactory(from.id)}>{from.name}</button>
+                      <span aria-label="exports to">→</span>
+                      <button className="resource-route-endpoint" onClick={() => partnerFactoryId && openFactory(partnerFactoryId)}>{partner}</button>
+                    </div>
+                    <span style={{ color: '#F5A95B', fontFamily: MONO }}>
+                      {fmt(rate)}/m · {transport}{requested != null && requested > rate + 0.001 ? ` · ${fmt(requested)}/m requested` : ''}
+                    </span>
+                  </div>
+                ))}
+                {exports.length === 0 && <div style={{ fontSize: 11, color: '#9097A1' }}>No factory exports for this resource.</div>}
+              </div>
               <div style={{ fontSize: 10, letterSpacing: '.06em', textTransform: 'uppercase', color: '#5BCB86', marginBottom: 9 }}>Produced by</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
                 {rsb.producers.map((p) => (
