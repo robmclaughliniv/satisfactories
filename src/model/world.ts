@@ -50,7 +50,7 @@ export function instantiateTemplate(template: WorldTemplate): World {
     factories,
     routes,
     stations,
-    resourceMetricHistory: [],
+    resourceMetricHistory: JSON.parse(JSON.stringify(template.resourceMetricHistory ?? [])),
     createdAt: now,
     updatedAt: now,
   };

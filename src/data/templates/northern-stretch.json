@@ -23,7 +23,31 @@
             {
               "id": "s_smelt_r0",
               "recipeId": "iron_ingot",
-              "count": 16
+              "count": 16,
+              "name": "Iron Ingot 1",
+              "sources": [
+                {
+                  "kind": "local",
+                  "localInputId": "cy_iron_node",
+                  "rate": 480
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "cy_ingot_plate",
+                  "item": "Iron Ingot",
+                  "rate": 240,
+                  "kind": "line",
+                  "targetId": "s_basic_r0"
+                },
+                {
+                  "id": "cy_ingot_rod",
+                  "item": "Iron Ingot",
+                  "rate": 135,
+                  "kind": "line",
+                  "targetId": "s_basic_r1"
+                }
+              ]
             }
           ]
         },
@@ -34,20 +58,99 @@
             {
               "id": "s_basic_r0",
               "recipeId": "iron_plate",
-              "count": 8
+              "count": 8,
+              "name": "Iron Plate 1",
+              "allocations": [
+                {
+                  "id": "cy_plate_atlas",
+                  "item": "Iron Plate",
+                  "rate": 120,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Train"
+                }
+              ]
             },
             {
               "id": "s_basic_r1",
               "recipeId": "iron_rod",
-              "count": 9
+              "count": 9,
+              "name": "Iron Rod 1",
+              "allocations": [
+                {
+                  "id": "cy_rod_screws",
+                  "item": "Iron Rod",
+                  "rate": 40,
+                  "kind": "line",
+                  "targetId": "s_basic_r2"
+                },
+                {
+                  "id": "cy_rod_atlas",
+                  "item": "Iron Rod",
+                  "rate": 60,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Belt"
+                },
+                {
+                  "id": "cy_rod_rebar",
+                  "item": "Iron Rod",
+                  "rate": 30,
+                  "kind": "line",
+                  "targetId": "s_basic_r3"
+                }
+              ]
             },
             {
               "id": "s_basic_r2",
               "recipeId": "screws",
-              "count": 4
+              "count": 4,
+              "name": "Screw Line 1",
+              "allocations": [
+                {
+                  "id": "cy_screws_atlas",
+                  "item": "Screws",
+                  "rate": 160,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Train"
+                }
+              ]
+            },
+            {
+              "id": "s_basic_r3",
+              "name": "Iron Rebar 1",
+              "recipeId": "iron_rebar",
+              "count": 2,
+              "destinations": [],
+              "sources": [],
+              "allocations": [
+                {
+                  "id": "cy_rebar_atlas",
+                  "item": "Iron Rebar",
+                  "rate": 15,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Truck"
+                }
+              ]
             }
           ]
         }
+      ],
+      "localInputs": [
+        {
+          "id": "cy_iron_node",
+          "item": "Iron Ore",
+          "rate": 600,
+          "t": "Belt"
+        }
+      ],
+      "exportOrder": [
+        "Iron Plate",
+        "Iron Rod",
+        "Screws",
+        "Iron Rebar"
       ]
     },
     {
@@ -72,7 +175,31 @@
             {
               "id": "p_smelt_r0",
               "recipeId": "copper_ingot",
-              "count": 10
+              "count": 10,
+              "name": "Copper Ingot 1",
+              "sources": [
+                {
+                  "kind": "local",
+                  "localInputId": "po_copper_node",
+                  "rate": 300
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "po_ingot_wire",
+                  "item": "Copper Ingot",
+                  "rate": 120,
+                  "kind": "line",
+                  "targetId": "p_wire_r0"
+                },
+                {
+                  "id": "po_ingot_sheet",
+                  "item": "Copper Ingot",
+                  "rate": 100,
+                  "kind": "line",
+                  "targetId": "p_wire_r2"
+                }
+              ]
             }
           ]
         },
@@ -83,15 +210,73 @@
             {
               "id": "p_wire_r0",
               "recipeId": "wire",
-              "count": 8
+              "count": 8,
+              "name": "Wire 1",
+              "allocations": [
+                {
+                  "id": "po_wire_cable",
+                  "item": "Wire",
+                  "rate": 240,
+                  "kind": "line",
+                  "targetId": "p_wire_r1"
+                }
+              ]
             },
             {
               "id": "p_wire_r1",
               "recipeId": "cable",
-              "count": 4
+              "count": 4,
+              "name": "Cable 1",
+              "allocations": [
+                {
+                  "id": "po_cable_atlas",
+                  "item": "Cable",
+                  "rate": 40,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Train"
+                }
+              ]
+            },
+            {
+              "id": "p_wire_r2",
+              "name": "Copper Sheet 1",
+              "recipeId": "copper_sheet",
+              "count": 4,
+              "destinations": [],
+              "sources": [
+                {
+                  "kind": "import",
+                  "item": "Copper Ingot",
+                  "rate": 100
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "po_sheet_meridian",
+                  "item": "Copper Sheet",
+                  "rate": 40,
+                  "kind": "factory",
+                  "targetId": "meridian",
+                  "transport": "Truck"
+                }
+              ]
             }
           ]
         }
+      ],
+      "localInputs": [
+        {
+          "id": "po_copper_node",
+          "item": "Copper Ore",
+          "rate": 360,
+          "t": "Belt"
+        }
+      ],
+      "exportOrder": [
+        "Wire",
+        "Cable",
+        "Copper Sheet"
       ]
     },
     {
@@ -100,7 +285,7 @@
       "color": "#D8553B",
       "status": "operational",
       "tier": "Mid-sized Factory",
-      "tagline": "Heavy steel production — ingots, beams and pipes.",
+      "tagline": "Heavy steel production \u2014 ingots, beams and pipes.",
       "tags": [
         "Steel",
         "Heavy"
@@ -116,7 +301,43 @@
             {
               "id": "v_found_r0",
               "recipeId": "steel_ingot",
-              "count": 12
+              "count": 22,
+              "name": "Steel Ingot 1",
+              "sources": [
+                {
+                  "kind": "local",
+                  "localInputId": "vu_iron_node",
+                  "rate": 990
+                },
+                {
+                  "kind": "local",
+                  "localInputId": "vu_coal_node",
+                  "rate": 990
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "vu_ingot_beam",
+                  "item": "Steel Ingot",
+                  "rate": 600,
+                  "kind": "line",
+                  "targetId": "v_stock_r0"
+                },
+                {
+                  "id": "vu_ingot_pipe",
+                  "item": "Steel Ingot",
+                  "rate": 180,
+                  "kind": "line",
+                  "targetId": "v_stock_r1"
+                },
+                {
+                  "id": "vu_ingot_beam2",
+                  "item": "Steel Ingot",
+                  "rate": 180,
+                  "kind": "line",
+                  "targetId": "v_stock_r2"
+                }
+              ]
             }
           ]
         },
@@ -127,15 +348,64 @@
             {
               "id": "v_stock_r0",
               "recipeId": "steel_beam",
-              "count": 6
+              "count": 10,
+              "name": "Steel Beam 1",
+              "allocations": [
+                {
+                  "id": "vu_beam_meridian",
+                  "item": "Steel Beam",
+                  "rate": 90,
+                  "kind": "factory",
+                  "targetId": "meridian",
+                  "transport": "Truck"
+                }
+              ]
             },
             {
               "id": "v_stock_r1",
               "recipeId": "steel_pipe",
-              "count": 6
+              "count": 6,
+              "name": "Steel Pipe 1",
+              "allocations": [
+                {
+                  "id": "vu_pipe_atlas",
+                  "item": "Steel Pipe",
+                  "rate": 120,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Pipe"
+                }
+              ]
+            },
+            {
+              "id": "v_stock_r2",
+              "name": "Steel Beam 2",
+              "recipeId": "steel_beam",
+              "count": 3,
+              "destinations": [],
+              "sources": [],
+              "allocations": []
             }
           ]
         }
+      ],
+      "localInputs": [
+        {
+          "id": "vu_iron_node",
+          "item": "Iron Ore",
+          "rate": 1100,
+          "t": "Belt"
+        },
+        {
+          "id": "vu_coal_node",
+          "item": "Coal",
+          "rate": 1100,
+          "t": "Belt"
+        }
+      ],
+      "exportOrder": [
+        "Steel Beam",
+        "Steel Pipe"
       ]
     },
     {
@@ -160,7 +430,24 @@
             {
               "id": "a_ref_r0",
               "recipeId": "caterium_ingot",
-              "count": 8
+              "count": 8,
+              "name": "Caterium Ingot 1",
+              "sources": [
+                {
+                  "kind": "local",
+                  "localInputId": "au_caterium_node",
+                  "rate": 360
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "au_ingot_quickwire",
+                  "item": "Caterium Ingot",
+                  "rate": 72,
+                  "kind": "line",
+                  "targetId": "a_qw_r0"
+                }
+              ]
             }
           ]
         },
@@ -171,10 +458,32 @@
             {
               "id": "a_qw_r0",
               "recipeId": "quickwire",
-              "count": 6
+              "count": 6,
+              "name": "Quickwire 1",
+              "allocations": [
+                {
+                  "id": "au_quickwire_polaris",
+                  "item": "Quickwire",
+                  "rate": 120,
+                  "kind": "factory",
+                  "targetId": "polaris",
+                  "transport": "Drone"
+                }
+              ]
             }
           ]
         }
+      ],
+      "localInputs": [
+        {
+          "id": "au_caterium_node",
+          "item": "Caterium Ore",
+          "rate": 400,
+          "t": "Belt"
+        }
+      ],
+      "exportOrder": [
+        "Quickwire"
       ]
     },
     {
@@ -183,7 +492,7 @@
       "color": "#3FA7C4",
       "status": "construction",
       "tier": "Mega-factory",
-      "tagline": "Frame megafactory — the heart of the heavy build pipeline.",
+      "tagline": "Frame megafactory \u2014 the heart of the heavy build pipeline.",
       "tags": [
         "Frames",
         "Assembly"
@@ -199,7 +508,29 @@
             {
               "id": "at_rip_r0",
               "recipeId": "reinforced_iron_plate",
-              "count": 6
+              "count": 6,
+              "name": "Reinforced Plate Line 1",
+              "sources": [
+                {
+                  "kind": "import",
+                  "item": "Iron Plate",
+                  "rate": 120
+                },
+                {
+                  "kind": "import",
+                  "item": "Screws",
+                  "rate": 120
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "at_rip_modular",
+                  "item": "Reinforced Iron Plate",
+                  "rate": 18,
+                  "kind": "line",
+                  "targetId": "at_mf_r0"
+                }
+              ]
             }
           ]
         },
@@ -210,7 +541,24 @@
             {
               "id": "at_mf_r0",
               "recipeId": "modular_frame",
-              "count": 6
+              "count": 6,
+              "name": "Modular Frame Line 1",
+              "sources": [
+                {
+                  "kind": "import",
+                  "item": "Iron Rod",
+                  "rate": 60
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "at_rip_modular",
+                  "item": "Reinforced Iron Plate",
+                  "rate": 10,
+                  "kind": "line",
+                  "targetId": "at_mf_r0"
+                }
+              ]
             }
           ]
         },
@@ -221,10 +569,35 @@
             {
               "id": "at_hmf_r0",
               "recipeId": "heavy_modular_frame",
-              "count": 4
+              "count": 1,
+              "name": "Heavy Modular Frame Line 1",
+              "sources": [
+                {
+                  "kind": "import",
+                  "item": "Steel Pipe",
+                  "rate": 40
+                },
+                {
+                  "kind": "import",
+                  "item": "Encased Industrial Beam",
+                  "rate": 10
+                },
+                {
+                  "kind": "import",
+                  "item": "Screws",
+                  "rate": 40
+                }
+              ]
             }
           ]
         }
+      ],
+      "importOrder": [
+        "Iron Plate",
+        "Iron Rod",
+        "Screws",
+        "Steel Pipe",
+        "Cable"
       ]
     },
     {
@@ -249,7 +622,24 @@
             {
               "id": "m_conc_r0",
               "recipeId": "concrete",
-              "count": 8
+              "count": 15,
+              "name": "Concrete 1",
+              "sources": [
+                {
+                  "kind": "local",
+                  "localInputId": "me_limestone_node",
+                  "rate": 675
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "me_concrete_encased",
+                  "item": "Concrete",
+                  "rate": 216,
+                  "kind": "line",
+                  "targetId": "m_beam_r0"
+                }
+              ]
             }
           ]
         },
@@ -260,9 +650,39 @@
             {
               "id": "m_beam_r0",
               "recipeId": "encased_industrial_beam",
-              "count": 6
+              "count": 6,
+              "name": "Encased Beam Line 1",
+              "sources": [
+                {
+                  "kind": "import",
+                  "item": "Steel Beam",
+                  "rate": 90
+                }
+              ],
+              "allocations": [
+                {
+                  "id": "me_encased_atlas",
+                  "item": "Encased Industrial Beam",
+                  "rate": 10,
+                  "kind": "factory",
+                  "targetId": "atlas",
+                  "transport": "Belt"
+                }
+              ]
             }
           ]
+        }
+      ],
+      "importOrder": [
+        "Steel Beam",
+        "Copper Sheet"
+      ],
+      "localInputs": [
+        {
+          "id": "me_limestone_node",
+          "item": "Limestone",
+          "rate": 700,
+          "t": "Belt"
         }
       ]
     }
@@ -317,20 +737,3824 @@
       "t": "Belt"
     },
     {
-      "id": "rt5b",
-      "from": "vulcan",
-      "to": "atlas",
-      "item": "Encased Industrial Beam",
-      "rate": 18,
-      "t": "Drone"
-    },
-    {
       "id": "rt6",
       "from": "aurum",
       "to": "polaris",
       "item": "Quickwire",
       "rate": 120,
       "t": "Drone"
+    }
+  ],
+  "resourceMetricHistory": [
+    {
+      "factoryId": "cygnus",
+      "factoryName": "Cygnus Iron Foundry",
+      "savedAt": "2026-09-01T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 403.2,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Iron Ingot": {
+          "produced": 144.0,
+          "consumed": 120.0,
+          "efficiency": 0.213
+        },
+        "Iron Plate": {
+          "produced": 60.8,
+          "consumed": 57.6,
+          "efficiency": 0.213
+        },
+        "Iron Rod": {
+          "produced": 36.0,
+          "consumed": 12.8,
+          "efficiency": 0.213
+        },
+        "Screws": {
+          "produced": 76.8,
+          "consumed": 115.2,
+          "efficiency": 0.213
+        },
+        "Iron Rebar": {
+          "produced": 4.8,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Copper Ore": {
+          "produced": 96.0,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Copper Ingot": {
+          "produced": 96.0,
+          "consumed": 70.4,
+          "efficiency": 0.213
+        },
+        "Wire": {
+          "produced": 76.8,
+          "consumed": 19.2,
+          "efficiency": 0.213
+        },
+        "Cable": {
+          "produced": 38.4,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Copper Sheet": {
+          "produced": 12.8,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Coal": {
+          "produced": 259.2,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Steel Ingot": {
+          "produced": 259.2,
+          "consumed": 249.6,
+          "efficiency": 0.213
+        },
+        "Steel Beam": {
+          "produced": 96.0,
+          "consumed": 105.6,
+          "efficiency": 0.213
+        },
+        "Steel Pipe": {
+          "produced": 76.8,
+          "consumed": 89.6,
+          "efficiency": 0.213
+        },
+        "Caterium Ore": {
+          "produced": 76.8,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Caterium Ingot": {
+          "produced": 76.8,
+          "consumed": 57.6,
+          "efficiency": 0.213
+        },
+        "Quickwire": {
+          "produced": 38.4,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Encased Industrial Beam": {
+          "produced": 19.2,
+          "consumed": 12.8,
+          "efficiency": 0.213
+        },
+        "Reinforced Iron Plate": {
+          "produced": 1.06,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 19.2,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 12.8,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 76.8,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        },
+        "Concrete": {
+          "produced": 38.4,
+          "consumed": 0.0,
+          "efficiency": 0.213
+        }
+      }
+    },
+    {
+      "factoryId": "polaris",
+      "factoryName": "Polaris Copper Junction",
+      "savedAt": "2026-09-03T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 504.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Iron Ingot": {
+          "produced": 180.0,
+          "consumed": 150.0,
+          "efficiency": 0.267
+        },
+        "Iron Plate": {
+          "produced": 76.0,
+          "consumed": 72.0,
+          "efficiency": 0.267
+        },
+        "Iron Rod": {
+          "produced": 45.0,
+          "consumed": 16.0,
+          "efficiency": 0.267
+        },
+        "Screws": {
+          "produced": 96.0,
+          "consumed": 144.0,
+          "efficiency": 0.267
+        },
+        "Iron Rebar": {
+          "produced": 6.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Copper Ore": {
+          "produced": 120.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Copper Ingot": {
+          "produced": 120.0,
+          "consumed": 88.0,
+          "efficiency": 0.267
+        },
+        "Wire": {
+          "produced": 96.0,
+          "consumed": 24.0,
+          "efficiency": 0.267
+        },
+        "Cable": {
+          "produced": 48.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Copper Sheet": {
+          "produced": 16.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Coal": {
+          "produced": 324.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Steel Ingot": {
+          "produced": 324.0,
+          "consumed": 312.0,
+          "efficiency": 0.267
+        },
+        "Steel Beam": {
+          "produced": 120.0,
+          "consumed": 132.0,
+          "efficiency": 0.267
+        },
+        "Steel Pipe": {
+          "produced": 96.0,
+          "consumed": 112.0,
+          "efficiency": 0.267
+        },
+        "Caterium Ore": {
+          "produced": 96.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Caterium Ingot": {
+          "produced": 96.0,
+          "consumed": 72.0,
+          "efficiency": 0.267
+        },
+        "Quickwire": {
+          "produced": 48.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Encased Industrial Beam": {
+          "produced": 24.0,
+          "consumed": 16.0,
+          "efficiency": 0.267
+        },
+        "Reinforced Iron Plate": {
+          "produced": 1.32,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 24.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 16.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 96.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        },
+        "Concrete": {
+          "produced": 48.0,
+          "consumed": 0.0,
+          "efficiency": 0.267
+        }
+      }
+    },
+    {
+      "factoryId": "vulcan",
+      "factoryName": "Vulcan Steelworks",
+      "savedAt": "2026-09-05T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 604.8,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Iron Ingot": {
+          "produced": 216.0,
+          "consumed": 180.0,
+          "efficiency": 0.32
+        },
+        "Iron Plate": {
+          "produced": 91.2,
+          "consumed": 86.4,
+          "efficiency": 0.32
+        },
+        "Iron Rod": {
+          "produced": 54.0,
+          "consumed": 19.2,
+          "efficiency": 0.32
+        },
+        "Screws": {
+          "produced": 115.2,
+          "consumed": 172.8,
+          "efficiency": 0.32
+        },
+        "Iron Rebar": {
+          "produced": 7.2,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Copper Ore": {
+          "produced": 144.0,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Copper Ingot": {
+          "produced": 144.0,
+          "consumed": 105.6,
+          "efficiency": 0.32
+        },
+        "Wire": {
+          "produced": 115.2,
+          "consumed": 28.8,
+          "efficiency": 0.32
+        },
+        "Cable": {
+          "produced": 57.6,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Copper Sheet": {
+          "produced": 19.2,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Coal": {
+          "produced": 388.8,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Steel Ingot": {
+          "produced": 388.8,
+          "consumed": 374.4,
+          "efficiency": 0.32
+        },
+        "Steel Beam": {
+          "produced": 144.0,
+          "consumed": 158.4,
+          "efficiency": 0.32
+        },
+        "Steel Pipe": {
+          "produced": 115.2,
+          "consumed": 134.4,
+          "efficiency": 0.32
+        },
+        "Caterium Ore": {
+          "produced": 115.2,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Caterium Ingot": {
+          "produced": 115.2,
+          "consumed": 86.4,
+          "efficiency": 0.32
+        },
+        "Quickwire": {
+          "produced": 57.6,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Encased Industrial Beam": {
+          "produced": 28.8,
+          "consumed": 19.2,
+          "efficiency": 0.32
+        },
+        "Reinforced Iron Plate": {
+          "produced": 1.59,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 28.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 19.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 115.2,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        },
+        "Concrete": {
+          "produced": 57.6,
+          "consumed": 0.0,
+          "efficiency": 0.32
+        }
+      }
+    },
+    {
+      "factoryId": "aurum",
+      "factoryName": "Aurum Caterium Refinery",
+      "savedAt": "2026-09-07T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 718.2,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Iron Ingot": {
+          "produced": 256.5,
+          "consumed": 213.75,
+          "efficiency": 0.38
+        },
+        "Iron Plate": {
+          "produced": 108.3,
+          "consumed": 102.6,
+          "efficiency": 0.38
+        },
+        "Iron Rod": {
+          "produced": 64.12,
+          "consumed": 22.8,
+          "efficiency": 0.38
+        },
+        "Screws": {
+          "produced": 136.8,
+          "consumed": 205.2,
+          "efficiency": 0.38
+        },
+        "Iron Rebar": {
+          "produced": 8.55,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Copper Ore": {
+          "produced": 171.0,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Copper Ingot": {
+          "produced": 171.0,
+          "consumed": 125.4,
+          "efficiency": 0.38
+        },
+        "Wire": {
+          "produced": 136.8,
+          "consumed": 34.2,
+          "efficiency": 0.38
+        },
+        "Cable": {
+          "produced": 68.4,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Copper Sheet": {
+          "produced": 22.8,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Coal": {
+          "produced": 461.7,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Steel Ingot": {
+          "produced": 461.7,
+          "consumed": 444.6,
+          "efficiency": 0.38
+        },
+        "Steel Beam": {
+          "produced": 171.0,
+          "consumed": 188.1,
+          "efficiency": 0.38
+        },
+        "Steel Pipe": {
+          "produced": 136.8,
+          "consumed": 159.6,
+          "efficiency": 0.38
+        },
+        "Caterium Ore": {
+          "produced": 136.8,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Caterium Ingot": {
+          "produced": 136.8,
+          "consumed": 102.6,
+          "efficiency": 0.38
+        },
+        "Quickwire": {
+          "produced": 68.4,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Encased Industrial Beam": {
+          "produced": 34.2,
+          "consumed": 22.8,
+          "efficiency": 0.38
+        },
+        "Reinforced Iron Plate": {
+          "produced": 1.89,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 34.2,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 22.8,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 136.8,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        },
+        "Concrete": {
+          "produced": 68.4,
+          "consumed": 0.0,
+          "efficiency": 0.38
+        }
+      }
+    },
+    {
+      "factoryId": "atlas",
+      "factoryName": "Atlas Frame Assembly",
+      "savedAt": "2026-09-09T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 819.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Iron Ingot": {
+          "produced": 292.5,
+          "consumed": 243.75,
+          "efficiency": 0.433
+        },
+        "Iron Plate": {
+          "produced": 123.5,
+          "consumed": 117.0,
+          "efficiency": 0.433
+        },
+        "Iron Rod": {
+          "produced": 73.12,
+          "consumed": 26.0,
+          "efficiency": 0.433
+        },
+        "Screws": {
+          "produced": 156.0,
+          "consumed": 234.0,
+          "efficiency": 0.433
+        },
+        "Iron Rebar": {
+          "produced": 9.75,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Copper Ore": {
+          "produced": 195.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Copper Ingot": {
+          "produced": 195.0,
+          "consumed": 143.0,
+          "efficiency": 0.433
+        },
+        "Wire": {
+          "produced": 156.0,
+          "consumed": 39.0,
+          "efficiency": 0.433
+        },
+        "Cable": {
+          "produced": 78.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Copper Sheet": {
+          "produced": 26.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Coal": {
+          "produced": 526.5,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Steel Ingot": {
+          "produced": 526.5,
+          "consumed": 507.0,
+          "efficiency": 0.433
+        },
+        "Steel Beam": {
+          "produced": 195.0,
+          "consumed": 214.5,
+          "efficiency": 0.433
+        },
+        "Steel Pipe": {
+          "produced": 156.0,
+          "consumed": 182.0,
+          "efficiency": 0.433
+        },
+        "Caterium Ore": {
+          "produced": 156.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Caterium Ingot": {
+          "produced": 156.0,
+          "consumed": 117.0,
+          "efficiency": 0.433
+        },
+        "Quickwire": {
+          "produced": 78.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Encased Industrial Beam": {
+          "produced": 39.0,
+          "consumed": 26.0,
+          "efficiency": 0.433
+        },
+        "Reinforced Iron Plate": {
+          "produced": 2.15,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 39.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 26.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 156.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        },
+        "Concrete": {
+          "produced": 78.0,
+          "consumed": 0.0,
+          "efficiency": 0.433
+        }
+      }
+    },
+    {
+      "factoryId": "meridian",
+      "factoryName": "Meridian Beam Works",
+      "savedAt": "2026-09-11T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 919.8,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Iron Ingot": {
+          "produced": 328.5,
+          "consumed": 273.75,
+          "efficiency": 0.487
+        },
+        "Iron Plate": {
+          "produced": 138.7,
+          "consumed": 131.4,
+          "efficiency": 0.487
+        },
+        "Iron Rod": {
+          "produced": 82.12,
+          "consumed": 29.2,
+          "efficiency": 0.487
+        },
+        "Screws": {
+          "produced": 175.2,
+          "consumed": 262.8,
+          "efficiency": 0.487
+        },
+        "Iron Rebar": {
+          "produced": 10.95,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Copper Ore": {
+          "produced": 219.0,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Copper Ingot": {
+          "produced": 219.0,
+          "consumed": 160.6,
+          "efficiency": 0.487
+        },
+        "Wire": {
+          "produced": 175.2,
+          "consumed": 43.8,
+          "efficiency": 0.487
+        },
+        "Cable": {
+          "produced": 87.6,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Copper Sheet": {
+          "produced": 29.2,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Coal": {
+          "produced": 591.3,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Steel Ingot": {
+          "produced": 591.3,
+          "consumed": 569.4,
+          "efficiency": 0.487
+        },
+        "Steel Beam": {
+          "produced": 219.0,
+          "consumed": 240.9,
+          "efficiency": 0.487
+        },
+        "Steel Pipe": {
+          "produced": 175.2,
+          "consumed": 204.4,
+          "efficiency": 0.487
+        },
+        "Caterium Ore": {
+          "produced": 175.2,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Caterium Ingot": {
+          "produced": 175.2,
+          "consumed": 131.4,
+          "efficiency": 0.487
+        },
+        "Quickwire": {
+          "produced": 87.6,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Encased Industrial Beam": {
+          "produced": 43.8,
+          "consumed": 29.2,
+          "efficiency": 0.487
+        },
+        "Reinforced Iron Plate": {
+          "produced": 2.41,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 43.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 29.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 175.2,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        },
+        "Concrete": {
+          "produced": 87.6,
+          "consumed": 0.0,
+          "efficiency": 0.487
+        }
+      }
+    },
+    {
+      "factoryId": "cygnus",
+      "factoryName": "Cygnus Iron Foundry",
+      "savedAt": "2026-09-13T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1020.6,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Iron Ingot": {
+          "produced": 364.5,
+          "consumed": 303.75,
+          "efficiency": 0.54
+        },
+        "Iron Plate": {
+          "produced": 153.9,
+          "consumed": 145.8,
+          "efficiency": 0.54
+        },
+        "Iron Rod": {
+          "produced": 91.12,
+          "consumed": 32.4,
+          "efficiency": 0.54
+        },
+        "Screws": {
+          "produced": 194.4,
+          "consumed": 291.6,
+          "efficiency": 0.54
+        },
+        "Iron Rebar": {
+          "produced": 12.15,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Copper Ore": {
+          "produced": 243.0,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Copper Ingot": {
+          "produced": 243.0,
+          "consumed": 178.2,
+          "efficiency": 0.54
+        },
+        "Wire": {
+          "produced": 194.4,
+          "consumed": 48.6,
+          "efficiency": 0.54
+        },
+        "Cable": {
+          "produced": 97.2,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Copper Sheet": {
+          "produced": 32.4,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Coal": {
+          "produced": 656.1,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Steel Ingot": {
+          "produced": 656.1,
+          "consumed": 631.8,
+          "efficiency": 0.54
+        },
+        "Steel Beam": {
+          "produced": 243.0,
+          "consumed": 267.3,
+          "efficiency": 0.54
+        },
+        "Steel Pipe": {
+          "produced": 194.4,
+          "consumed": 226.8,
+          "efficiency": 0.54
+        },
+        "Caterium Ore": {
+          "produced": 194.4,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Caterium Ingot": {
+          "produced": 194.4,
+          "consumed": 145.8,
+          "efficiency": 0.54
+        },
+        "Quickwire": {
+          "produced": 97.2,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Encased Industrial Beam": {
+          "produced": 48.6,
+          "consumed": 32.4,
+          "efficiency": 0.54
+        },
+        "Reinforced Iron Plate": {
+          "produced": 2.68,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 48.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 32.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 194.4,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        },
+        "Concrete": {
+          "produced": 97.2,
+          "consumed": 0.0,
+          "efficiency": 0.54
+        }
+      }
+    },
+    {
+      "factoryId": "polaris",
+      "factoryName": "Polaris Copper Junction",
+      "savedAt": "2026-09-15T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1108.8,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Iron Ingot": {
+          "produced": 396.0,
+          "consumed": 330.0,
+          "efficiency": 0.587
+        },
+        "Iron Plate": {
+          "produced": 167.2,
+          "consumed": 158.4,
+          "efficiency": 0.587
+        },
+        "Iron Rod": {
+          "produced": 99.0,
+          "consumed": 35.2,
+          "efficiency": 0.587
+        },
+        "Screws": {
+          "produced": 211.2,
+          "consumed": 316.8,
+          "efficiency": 0.587
+        },
+        "Iron Rebar": {
+          "produced": 13.2,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Copper Ore": {
+          "produced": 264.0,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Copper Ingot": {
+          "produced": 264.0,
+          "consumed": 193.6,
+          "efficiency": 0.587
+        },
+        "Wire": {
+          "produced": 211.2,
+          "consumed": 52.8,
+          "efficiency": 0.587
+        },
+        "Cable": {
+          "produced": 105.6,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Copper Sheet": {
+          "produced": 35.2,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Coal": {
+          "produced": 712.8,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Steel Ingot": {
+          "produced": 712.8,
+          "consumed": 686.4,
+          "efficiency": 0.587
+        },
+        "Steel Beam": {
+          "produced": 264.0,
+          "consumed": 290.4,
+          "efficiency": 0.587
+        },
+        "Steel Pipe": {
+          "produced": 211.2,
+          "consumed": 246.4,
+          "efficiency": 0.587
+        },
+        "Caterium Ore": {
+          "produced": 211.2,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Caterium Ingot": {
+          "produced": 211.2,
+          "consumed": 158.4,
+          "efficiency": 0.587
+        },
+        "Quickwire": {
+          "produced": 105.6,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Encased Industrial Beam": {
+          "produced": 52.8,
+          "consumed": 35.2,
+          "efficiency": 0.587
+        },
+        "Reinforced Iron Plate": {
+          "produced": 2.91,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 52.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 35.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 211.2,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        },
+        "Concrete": {
+          "produced": 105.6,
+          "consumed": 0.0,
+          "efficiency": 0.587
+        }
+      }
+    },
+    {
+      "factoryId": "vulcan",
+      "factoryName": "Vulcan Steelworks",
+      "savedAt": "2026-09-17T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1197.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Iron Ingot": {
+          "produced": 427.5,
+          "consumed": 356.25,
+          "efficiency": 0.633
+        },
+        "Iron Plate": {
+          "produced": 180.5,
+          "consumed": 171.0,
+          "efficiency": 0.633
+        },
+        "Iron Rod": {
+          "produced": 106.88,
+          "consumed": 38.0,
+          "efficiency": 0.633
+        },
+        "Screws": {
+          "produced": 228.0,
+          "consumed": 342.0,
+          "efficiency": 0.633
+        },
+        "Iron Rebar": {
+          "produced": 14.25,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Copper Ore": {
+          "produced": 285.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Copper Ingot": {
+          "produced": 285.0,
+          "consumed": 209.0,
+          "efficiency": 0.633
+        },
+        "Wire": {
+          "produced": 228.0,
+          "consumed": 57.0,
+          "efficiency": 0.633
+        },
+        "Cable": {
+          "produced": 114.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Copper Sheet": {
+          "produced": 38.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Coal": {
+          "produced": 769.5,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Steel Ingot": {
+          "produced": 769.5,
+          "consumed": 741.0,
+          "efficiency": 0.633
+        },
+        "Steel Beam": {
+          "produced": 285.0,
+          "consumed": 313.5,
+          "efficiency": 0.633
+        },
+        "Steel Pipe": {
+          "produced": 228.0,
+          "consumed": 266.0,
+          "efficiency": 0.633
+        },
+        "Caterium Ore": {
+          "produced": 228.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Caterium Ingot": {
+          "produced": 228.0,
+          "consumed": 171.0,
+          "efficiency": 0.633
+        },
+        "Quickwire": {
+          "produced": 114.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Encased Industrial Beam": {
+          "produced": 57.0,
+          "consumed": 38.0,
+          "efficiency": 0.633
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.14,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 57.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 38.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 228.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        },
+        "Concrete": {
+          "produced": 114.0,
+          "consumed": 0.0,
+          "efficiency": 0.633
+        }
+      }
+    },
+    {
+      "factoryId": "aurum",
+      "factoryName": "Aurum Caterium Refinery",
+      "savedAt": "2026-09-19T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1260.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Iron Ingot": {
+          "produced": 450.0,
+          "consumed": 375.0,
+          "efficiency": 0.667
+        },
+        "Iron Plate": {
+          "produced": 190.0,
+          "consumed": 180.0,
+          "efficiency": 0.667
+        },
+        "Iron Rod": {
+          "produced": 112.5,
+          "consumed": 40.0,
+          "efficiency": 0.667
+        },
+        "Screws": {
+          "produced": 240.0,
+          "consumed": 360.0,
+          "efficiency": 0.667
+        },
+        "Iron Rebar": {
+          "produced": 15.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Copper Ore": {
+          "produced": 300.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Copper Ingot": {
+          "produced": 300.0,
+          "consumed": 220.0,
+          "efficiency": 0.667
+        },
+        "Wire": {
+          "produced": 240.0,
+          "consumed": 60.0,
+          "efficiency": 0.667
+        },
+        "Cable": {
+          "produced": 120.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Copper Sheet": {
+          "produced": 40.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Coal": {
+          "produced": 810.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Steel Ingot": {
+          "produced": 810.0,
+          "consumed": 780.0,
+          "efficiency": 0.667
+        },
+        "Steel Beam": {
+          "produced": 300.0,
+          "consumed": 330.0,
+          "efficiency": 0.667
+        },
+        "Steel Pipe": {
+          "produced": 240.0,
+          "consumed": 280.0,
+          "efficiency": 0.667
+        },
+        "Caterium Ore": {
+          "produced": 240.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Caterium Ingot": {
+          "produced": 240.0,
+          "consumed": 180.0,
+          "efficiency": 0.667
+        },
+        "Quickwire": {
+          "produced": 120.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Encased Industrial Beam": {
+          "produced": 60.0,
+          "consumed": 40.0,
+          "efficiency": 0.667
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.31,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 60.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 40.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 240.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        },
+        "Concrete": {
+          "produced": 120.0,
+          "consumed": 0.0,
+          "efficiency": 0.667
+        }
+      }
+    },
+    {
+      "factoryId": "atlas",
+      "factoryName": "Atlas Frame Assembly",
+      "savedAt": "2026-09-21T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1335.6,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Iron Ingot": {
+          "produced": 477.0,
+          "consumed": 397.5,
+          "efficiency": 0.707
+        },
+        "Iron Plate": {
+          "produced": 201.4,
+          "consumed": 190.8,
+          "efficiency": 0.707
+        },
+        "Iron Rod": {
+          "produced": 119.25,
+          "consumed": 42.4,
+          "efficiency": 0.707
+        },
+        "Screws": {
+          "produced": 254.4,
+          "consumed": 381.6,
+          "efficiency": 0.707
+        },
+        "Iron Rebar": {
+          "produced": 15.9,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Copper Ore": {
+          "produced": 318.0,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Copper Ingot": {
+          "produced": 318.0,
+          "consumed": 233.2,
+          "efficiency": 0.707
+        },
+        "Wire": {
+          "produced": 254.4,
+          "consumed": 63.6,
+          "efficiency": 0.707
+        },
+        "Cable": {
+          "produced": 127.2,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Copper Sheet": {
+          "produced": 42.4,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Coal": {
+          "produced": 858.6,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Steel Ingot": {
+          "produced": 858.6,
+          "consumed": 826.8,
+          "efficiency": 0.707
+        },
+        "Steel Beam": {
+          "produced": 318.0,
+          "consumed": 349.8,
+          "efficiency": 0.707
+        },
+        "Steel Pipe": {
+          "produced": 254.4,
+          "consumed": 296.8,
+          "efficiency": 0.707
+        },
+        "Caterium Ore": {
+          "produced": 254.4,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Caterium Ingot": {
+          "produced": 254.4,
+          "consumed": 190.8,
+          "efficiency": 0.707
+        },
+        "Quickwire": {
+          "produced": 127.2,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Encased Industrial Beam": {
+          "produced": 63.6,
+          "consumed": 42.4,
+          "efficiency": 0.707
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.51,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 63.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 42.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 254.4,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        },
+        "Concrete": {
+          "produced": 127.2,
+          "consumed": 0.0,
+          "efficiency": 0.707
+        }
+      }
+    },
+    {
+      "factoryId": "meridian",
+      "factoryName": "Meridian Beam Works",
+      "savedAt": "2026-09-23T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1411.2,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Iron Ingot": {
+          "produced": 504.0,
+          "consumed": 420.0,
+          "efficiency": 0.747
+        },
+        "Iron Plate": {
+          "produced": 212.8,
+          "consumed": 201.6,
+          "efficiency": 0.747
+        },
+        "Iron Rod": {
+          "produced": 126.0,
+          "consumed": 44.8,
+          "efficiency": 0.747
+        },
+        "Screws": {
+          "produced": 268.8,
+          "consumed": 403.2,
+          "efficiency": 0.747
+        },
+        "Iron Rebar": {
+          "produced": 16.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Copper Ore": {
+          "produced": 336.0,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Copper Ingot": {
+          "produced": 336.0,
+          "consumed": 246.4,
+          "efficiency": 0.747
+        },
+        "Wire": {
+          "produced": 268.8,
+          "consumed": 67.2,
+          "efficiency": 0.747
+        },
+        "Cable": {
+          "produced": 134.4,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Copper Sheet": {
+          "produced": 44.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Coal": {
+          "produced": 907.2,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Steel Ingot": {
+          "produced": 907.2,
+          "consumed": 873.6,
+          "efficiency": 0.747
+        },
+        "Steel Beam": {
+          "produced": 336.0,
+          "consumed": 369.6,
+          "efficiency": 0.747
+        },
+        "Steel Pipe": {
+          "produced": 268.8,
+          "consumed": 313.6,
+          "efficiency": 0.747
+        },
+        "Caterium Ore": {
+          "produced": 268.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Caterium Ingot": {
+          "produced": 268.8,
+          "consumed": 201.6,
+          "efficiency": 0.747
+        },
+        "Quickwire": {
+          "produced": 134.4,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Encased Industrial Beam": {
+          "produced": 67.2,
+          "consumed": 44.8,
+          "efficiency": 0.747
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.7,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 67.2,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 44.8,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 268.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Concrete": {
+          "produced": 134.4,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        }
+      }
+    },
+    {
+      "factoryId": "cygnus",
+      "factoryName": "Cygnus Iron Foundry",
+      "savedAt": "2026-09-25T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1360.8,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Iron Ingot": {
+          "produced": 486.0,
+          "consumed": 405.0,
+          "efficiency": 0.72
+        },
+        "Iron Plate": {
+          "produced": 205.2,
+          "consumed": 194.4,
+          "efficiency": 0.72
+        },
+        "Iron Rod": {
+          "produced": 121.5,
+          "consumed": 43.2,
+          "efficiency": 0.72
+        },
+        "Screws": {
+          "produced": 259.2,
+          "consumed": 388.8,
+          "efficiency": 0.72
+        },
+        "Iron Rebar": {
+          "produced": 16.2,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Copper Ore": {
+          "produced": 324.0,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Copper Ingot": {
+          "produced": 324.0,
+          "consumed": 237.6,
+          "efficiency": 0.72
+        },
+        "Wire": {
+          "produced": 259.2,
+          "consumed": 64.8,
+          "efficiency": 0.72
+        },
+        "Cable": {
+          "produced": 129.6,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Copper Sheet": {
+          "produced": 43.2,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Coal": {
+          "produced": 874.8,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Steel Ingot": {
+          "produced": 874.8,
+          "consumed": 842.4,
+          "efficiency": 0.72
+        },
+        "Steel Beam": {
+          "produced": 324.0,
+          "consumed": 356.4,
+          "efficiency": 0.72
+        },
+        "Steel Pipe": {
+          "produced": 259.2,
+          "consumed": 302.4,
+          "efficiency": 0.72
+        },
+        "Caterium Ore": {
+          "produced": 259.2,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Caterium Ingot": {
+          "produced": 259.2,
+          "consumed": 194.4,
+          "efficiency": 0.72
+        },
+        "Quickwire": {
+          "produced": 129.6,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Encased Industrial Beam": {
+          "produced": 64.8,
+          "consumed": 43.2,
+          "efficiency": 0.72
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.57,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 64.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 43.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 259.2,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        },
+        "Concrete": {
+          "produced": 129.6,
+          "consumed": 0.0,
+          "efficiency": 0.72
+        }
+      }
+    },
+    {
+      "factoryId": "polaris",
+      "factoryName": "Polaris Copper Junction",
+      "savedAt": "2026-09-27T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1461.6,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Iron Ingot": {
+          "produced": 522.0,
+          "consumed": 435.0,
+          "efficiency": 0.773
+        },
+        "Iron Plate": {
+          "produced": 220.4,
+          "consumed": 208.8,
+          "efficiency": 0.773
+        },
+        "Iron Rod": {
+          "produced": 130.5,
+          "consumed": 46.4,
+          "efficiency": 0.773
+        },
+        "Screws": {
+          "produced": 278.4,
+          "consumed": 417.6,
+          "efficiency": 0.773
+        },
+        "Iron Rebar": {
+          "produced": 17.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Copper Ore": {
+          "produced": 348.0,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Copper Ingot": {
+          "produced": 348.0,
+          "consumed": 255.2,
+          "efficiency": 0.773
+        },
+        "Wire": {
+          "produced": 278.4,
+          "consumed": 69.6,
+          "efficiency": 0.773
+        },
+        "Cable": {
+          "produced": 139.2,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Copper Sheet": {
+          "produced": 46.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Coal": {
+          "produced": 939.6,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Steel Ingot": {
+          "produced": 939.6,
+          "consumed": 904.8,
+          "efficiency": 0.773
+        },
+        "Steel Beam": {
+          "produced": 348.0,
+          "consumed": 382.8,
+          "efficiency": 0.773
+        },
+        "Steel Pipe": {
+          "produced": 278.4,
+          "consumed": 324.8,
+          "efficiency": 0.773
+        },
+        "Caterium Ore": {
+          "produced": 278.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Caterium Ingot": {
+          "produced": 278.4,
+          "consumed": 208.8,
+          "efficiency": 0.773
+        },
+        "Quickwire": {
+          "produced": 139.2,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Encased Industrial Beam": {
+          "produced": 69.6,
+          "consumed": 46.4,
+          "efficiency": 0.773
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.84,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 69.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 46.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 278.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Concrete": {
+          "produced": 139.2,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        }
+      }
+    },
+    {
+      "factoryId": "vulcan",
+      "factoryName": "Vulcan Steelworks",
+      "savedAt": "2026-09-29T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1297.8,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Iron Ingot": {
+          "produced": 463.5,
+          "consumed": 386.25,
+          "efficiency": 0.687
+        },
+        "Iron Plate": {
+          "produced": 195.7,
+          "consumed": 185.4,
+          "efficiency": 0.687
+        },
+        "Iron Rod": {
+          "produced": 115.88,
+          "consumed": 41.2,
+          "efficiency": 0.687
+        },
+        "Screws": {
+          "produced": 247.2,
+          "consumed": 370.8,
+          "efficiency": 0.687
+        },
+        "Iron Rebar": {
+          "produced": 15.45,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Copper Ore": {
+          "produced": 309.0,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Copper Ingot": {
+          "produced": 309.0,
+          "consumed": 226.6,
+          "efficiency": 0.687
+        },
+        "Wire": {
+          "produced": 247.2,
+          "consumed": 61.8,
+          "efficiency": 0.687
+        },
+        "Cable": {
+          "produced": 123.6,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Copper Sheet": {
+          "produced": 41.2,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Coal": {
+          "produced": 834.3,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Steel Ingot": {
+          "produced": 834.3,
+          "consumed": 803.4,
+          "efficiency": 0.687
+        },
+        "Steel Beam": {
+          "produced": 309.0,
+          "consumed": 339.9,
+          "efficiency": 0.687
+        },
+        "Steel Pipe": {
+          "produced": 247.2,
+          "consumed": 288.4,
+          "efficiency": 0.687
+        },
+        "Caterium Ore": {
+          "produced": 247.2,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Caterium Ingot": {
+          "produced": 247.2,
+          "consumed": 185.4,
+          "efficiency": 0.687
+        },
+        "Quickwire": {
+          "produced": 123.6,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Encased Industrial Beam": {
+          "produced": 61.8,
+          "consumed": 41.2,
+          "efficiency": 0.687
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.41,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 61.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 41.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 247.2,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        },
+        "Concrete": {
+          "produced": 123.6,
+          "consumed": 0.0,
+          "efficiency": 0.687
+        }
+      }
+    },
+    {
+      "factoryId": "aurum",
+      "factoryName": "Aurum Caterium Refinery",
+      "savedAt": "2026-10-01T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1512.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Iron Ingot": {
+          "produced": 540.0,
+          "consumed": 450.0,
+          "efficiency": 0.8
+        },
+        "Iron Plate": {
+          "produced": 228.0,
+          "consumed": 216.0,
+          "efficiency": 0.8
+        },
+        "Iron Rod": {
+          "produced": 135.0,
+          "consumed": 48.0,
+          "efficiency": 0.8
+        },
+        "Screws": {
+          "produced": 288.0,
+          "consumed": 432.0,
+          "efficiency": 0.8
+        },
+        "Iron Rebar": {
+          "produced": 18.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Copper Ore": {
+          "produced": 360.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Copper Ingot": {
+          "produced": 360.0,
+          "consumed": 264.0,
+          "efficiency": 0.8
+        },
+        "Wire": {
+          "produced": 288.0,
+          "consumed": 72.0,
+          "efficiency": 0.8
+        },
+        "Cable": {
+          "produced": 144.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Copper Sheet": {
+          "produced": 48.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Coal": {
+          "produced": 972.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Steel Ingot": {
+          "produced": 972.0,
+          "consumed": 936.0,
+          "efficiency": 0.8
+        },
+        "Steel Beam": {
+          "produced": 360.0,
+          "consumed": 396.0,
+          "efficiency": 0.8
+        },
+        "Steel Pipe": {
+          "produced": 288.0,
+          "consumed": 336.0,
+          "efficiency": 0.8
+        },
+        "Caterium Ore": {
+          "produced": 288.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Caterium Ingot": {
+          "produced": 288.0,
+          "consumed": 216.0,
+          "efficiency": 0.8
+        },
+        "Quickwire": {
+          "produced": 144.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Encased Industrial Beam": {
+          "produced": 72.0,
+          "consumed": 48.0,
+          "efficiency": 0.8
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.97,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 72.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 48.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 288.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        },
+        "Concrete": {
+          "produced": 144.0,
+          "consumed": 0.0,
+          "efficiency": 0.8
+        }
+      }
+    },
+    {
+      "factoryId": "atlas",
+      "factoryName": "Atlas Frame Assembly",
+      "savedAt": "2026-10-03T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1411.2,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Iron Ingot": {
+          "produced": 504.0,
+          "consumed": 420.0,
+          "efficiency": 0.747
+        },
+        "Iron Plate": {
+          "produced": 212.8,
+          "consumed": 201.6,
+          "efficiency": 0.747
+        },
+        "Iron Rod": {
+          "produced": 126.0,
+          "consumed": 44.8,
+          "efficiency": 0.747
+        },
+        "Screws": {
+          "produced": 268.8,
+          "consumed": 403.2,
+          "efficiency": 0.747
+        },
+        "Iron Rebar": {
+          "produced": 16.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Copper Ore": {
+          "produced": 336.0,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Copper Ingot": {
+          "produced": 336.0,
+          "consumed": 246.4,
+          "efficiency": 0.747
+        },
+        "Wire": {
+          "produced": 268.8,
+          "consumed": 67.2,
+          "efficiency": 0.747
+        },
+        "Cable": {
+          "produced": 134.4,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Copper Sheet": {
+          "produced": 44.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Coal": {
+          "produced": 907.2,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Steel Ingot": {
+          "produced": 907.2,
+          "consumed": 873.6,
+          "efficiency": 0.747
+        },
+        "Steel Beam": {
+          "produced": 336.0,
+          "consumed": 369.6,
+          "efficiency": 0.747
+        },
+        "Steel Pipe": {
+          "produced": 268.8,
+          "consumed": 313.6,
+          "efficiency": 0.747
+        },
+        "Caterium Ore": {
+          "produced": 268.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Caterium Ingot": {
+          "produced": 268.8,
+          "consumed": 201.6,
+          "efficiency": 0.747
+        },
+        "Quickwire": {
+          "produced": 134.4,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Encased Industrial Beam": {
+          "produced": 67.2,
+          "consumed": 44.8,
+          "efficiency": 0.747
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.7,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 67.2,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 44.8,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 268.8,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        },
+        "Concrete": {
+          "produced": 134.4,
+          "consumed": 0.0,
+          "efficiency": 0.747
+        }
+      }
+    },
+    {
+      "factoryId": "meridian",
+      "factoryName": "Meridian Beam Works",
+      "savedAt": "2026-10-05T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1562.4,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Iron Ingot": {
+          "produced": 558.0,
+          "consumed": 465.0,
+          "efficiency": 0.827
+        },
+        "Iron Plate": {
+          "produced": 235.6,
+          "consumed": 223.2,
+          "efficiency": 0.827
+        },
+        "Iron Rod": {
+          "produced": 139.5,
+          "consumed": 49.6,
+          "efficiency": 0.827
+        },
+        "Screws": {
+          "produced": 297.6,
+          "consumed": 446.4,
+          "efficiency": 0.827
+        },
+        "Iron Rebar": {
+          "produced": 18.6,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Copper Ore": {
+          "produced": 372.0,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Copper Ingot": {
+          "produced": 372.0,
+          "consumed": 272.8,
+          "efficiency": 0.827
+        },
+        "Wire": {
+          "produced": 297.6,
+          "consumed": 74.4,
+          "efficiency": 0.827
+        },
+        "Cable": {
+          "produced": 148.8,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Copper Sheet": {
+          "produced": 49.6,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Coal": {
+          "produced": 1004.4,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Steel Ingot": {
+          "produced": 1004.4,
+          "consumed": 967.2,
+          "efficiency": 0.827
+        },
+        "Steel Beam": {
+          "produced": 372.0,
+          "consumed": 409.2,
+          "efficiency": 0.827
+        },
+        "Steel Pipe": {
+          "produced": 297.6,
+          "consumed": 347.2,
+          "efficiency": 0.827
+        },
+        "Caterium Ore": {
+          "produced": 297.6,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Caterium Ingot": {
+          "produced": 297.6,
+          "consumed": 223.2,
+          "efficiency": 0.827
+        },
+        "Quickwire": {
+          "produced": 148.8,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Encased Industrial Beam": {
+          "produced": 74.4,
+          "consumed": 49.6,
+          "efficiency": 0.827
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.1,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 74.4,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 49.6,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 297.6,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        },
+        "Concrete": {
+          "produced": 148.8,
+          "consumed": 0.0,
+          "efficiency": 0.827
+        }
+      }
+    },
+    {
+      "factoryId": "cygnus",
+      "factoryName": "Cygnus Iron Foundry",
+      "savedAt": "2026-10-07T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1461.6,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Iron Ingot": {
+          "produced": 522.0,
+          "consumed": 435.0,
+          "efficiency": 0.773
+        },
+        "Iron Plate": {
+          "produced": 220.4,
+          "consumed": 208.8,
+          "efficiency": 0.773
+        },
+        "Iron Rod": {
+          "produced": 130.5,
+          "consumed": 46.4,
+          "efficiency": 0.773
+        },
+        "Screws": {
+          "produced": 278.4,
+          "consumed": 417.6,
+          "efficiency": 0.773
+        },
+        "Iron Rebar": {
+          "produced": 17.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Copper Ore": {
+          "produced": 348.0,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Copper Ingot": {
+          "produced": 348.0,
+          "consumed": 255.2,
+          "efficiency": 0.773
+        },
+        "Wire": {
+          "produced": 278.4,
+          "consumed": 69.6,
+          "efficiency": 0.773
+        },
+        "Cable": {
+          "produced": 139.2,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Copper Sheet": {
+          "produced": 46.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Coal": {
+          "produced": 939.6,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Steel Ingot": {
+          "produced": 939.6,
+          "consumed": 904.8,
+          "efficiency": 0.773
+        },
+        "Steel Beam": {
+          "produced": 348.0,
+          "consumed": 382.8,
+          "efficiency": 0.773
+        },
+        "Steel Pipe": {
+          "produced": 278.4,
+          "consumed": 324.8,
+          "efficiency": 0.773
+        },
+        "Caterium Ore": {
+          "produced": 278.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Caterium Ingot": {
+          "produced": 278.4,
+          "consumed": 208.8,
+          "efficiency": 0.773
+        },
+        "Quickwire": {
+          "produced": 139.2,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Encased Industrial Beam": {
+          "produced": 69.6,
+          "consumed": 46.4,
+          "efficiency": 0.773
+        },
+        "Reinforced Iron Plate": {
+          "produced": 3.84,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 69.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 46.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 278.4,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        },
+        "Concrete": {
+          "produced": 139.2,
+          "consumed": 0.0,
+          "efficiency": 0.773
+        }
+      }
+    },
+    {
+      "factoryId": "polaris",
+      "factoryName": "Polaris Copper Junction",
+      "savedAt": "2026-10-09T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1612.8,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Iron Ingot": {
+          "produced": 576.0,
+          "consumed": 480.0,
+          "efficiency": 0.853
+        },
+        "Iron Plate": {
+          "produced": 243.2,
+          "consumed": 230.4,
+          "efficiency": 0.853
+        },
+        "Iron Rod": {
+          "produced": 144.0,
+          "consumed": 51.2,
+          "efficiency": 0.853
+        },
+        "Screws": {
+          "produced": 307.2,
+          "consumed": 460.8,
+          "efficiency": 0.853
+        },
+        "Iron Rebar": {
+          "produced": 19.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Copper Ore": {
+          "produced": 384.0,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Copper Ingot": {
+          "produced": 384.0,
+          "consumed": 281.6,
+          "efficiency": 0.853
+        },
+        "Wire": {
+          "produced": 307.2,
+          "consumed": 76.8,
+          "efficiency": 0.853
+        },
+        "Cable": {
+          "produced": 153.6,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Copper Sheet": {
+          "produced": 51.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Coal": {
+          "produced": 1036.8,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Steel Ingot": {
+          "produced": 1036.8,
+          "consumed": 998.4,
+          "efficiency": 0.853
+        },
+        "Steel Beam": {
+          "produced": 384.0,
+          "consumed": 422.4,
+          "efficiency": 0.853
+        },
+        "Steel Pipe": {
+          "produced": 307.2,
+          "consumed": 358.4,
+          "efficiency": 0.853
+        },
+        "Caterium Ore": {
+          "produced": 307.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Caterium Ingot": {
+          "produced": 307.2,
+          "consumed": 230.4,
+          "efficiency": 0.853
+        },
+        "Quickwire": {
+          "produced": 153.6,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Encased Industrial Beam": {
+          "produced": 76.8,
+          "consumed": 51.2,
+          "efficiency": 0.853
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.23,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 76.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 51.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 307.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Concrete": {
+          "produced": 153.6,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        }
+      }
+    },
+    {
+      "factoryId": "vulcan",
+      "factoryName": "Vulcan Steelworks",
+      "savedAt": "2026-10-11T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1524.6,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Iron Ingot": {
+          "produced": 544.5,
+          "consumed": 453.75,
+          "efficiency": 0.807
+        },
+        "Iron Plate": {
+          "produced": 229.9,
+          "consumed": 217.8,
+          "efficiency": 0.807
+        },
+        "Iron Rod": {
+          "produced": 136.12,
+          "consumed": 48.4,
+          "efficiency": 0.807
+        },
+        "Screws": {
+          "produced": 290.4,
+          "consumed": 435.6,
+          "efficiency": 0.807
+        },
+        "Iron Rebar": {
+          "produced": 18.15,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Copper Ore": {
+          "produced": 363.0,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Copper Ingot": {
+          "produced": 363.0,
+          "consumed": 266.2,
+          "efficiency": 0.807
+        },
+        "Wire": {
+          "produced": 290.4,
+          "consumed": 72.6,
+          "efficiency": 0.807
+        },
+        "Cable": {
+          "produced": 145.2,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Copper Sheet": {
+          "produced": 48.4,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Coal": {
+          "produced": 980.1,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Steel Ingot": {
+          "produced": 980.1,
+          "consumed": 943.8,
+          "efficiency": 0.807
+        },
+        "Steel Beam": {
+          "produced": 363.0,
+          "consumed": 399.3,
+          "efficiency": 0.807
+        },
+        "Steel Pipe": {
+          "produced": 290.4,
+          "consumed": 338.8,
+          "efficiency": 0.807
+        },
+        "Caterium Ore": {
+          "produced": 290.4,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Caterium Ingot": {
+          "produced": 290.4,
+          "consumed": 217.8,
+          "efficiency": 0.807
+        },
+        "Quickwire": {
+          "produced": 145.2,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Encased Industrial Beam": {
+          "produced": 72.6,
+          "consumed": 48.4,
+          "efficiency": 0.807
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.0,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 72.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 48.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 290.4,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        },
+        "Concrete": {
+          "produced": 145.2,
+          "consumed": 0.0,
+          "efficiency": 0.807
+        }
+      }
+    },
+    {
+      "factoryId": "aurum",
+      "factoryName": "Aurum Caterium Refinery",
+      "savedAt": "2026-10-13T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1663.2,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Iron Ingot": {
+          "produced": 594.0,
+          "consumed": 495.0,
+          "efficiency": 0.88
+        },
+        "Iron Plate": {
+          "produced": 250.8,
+          "consumed": 237.6,
+          "efficiency": 0.88
+        },
+        "Iron Rod": {
+          "produced": 148.5,
+          "consumed": 52.8,
+          "efficiency": 0.88
+        },
+        "Screws": {
+          "produced": 316.8,
+          "consumed": 475.2,
+          "efficiency": 0.88
+        },
+        "Iron Rebar": {
+          "produced": 19.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Copper Ore": {
+          "produced": 396.0,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Copper Ingot": {
+          "produced": 396.0,
+          "consumed": 290.4,
+          "efficiency": 0.88
+        },
+        "Wire": {
+          "produced": 316.8,
+          "consumed": 79.2,
+          "efficiency": 0.88
+        },
+        "Cable": {
+          "produced": 158.4,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Copper Sheet": {
+          "produced": 52.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Coal": {
+          "produced": 1069.2,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Steel Ingot": {
+          "produced": 1069.2,
+          "consumed": 1029.6,
+          "efficiency": 0.88
+        },
+        "Steel Beam": {
+          "produced": 396.0,
+          "consumed": 435.6,
+          "efficiency": 0.88
+        },
+        "Steel Pipe": {
+          "produced": 316.8,
+          "consumed": 369.6,
+          "efficiency": 0.88
+        },
+        "Caterium Ore": {
+          "produced": 316.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Caterium Ingot": {
+          "produced": 316.8,
+          "consumed": 237.6,
+          "efficiency": 0.88
+        },
+        "Quickwire": {
+          "produced": 158.4,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Encased Industrial Beam": {
+          "produced": 79.2,
+          "consumed": 52.8,
+          "efficiency": 0.88
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.37,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 79.2,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 52.8,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 316.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Concrete": {
+          "produced": 158.4,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        }
+      }
+    },
+    {
+      "factoryId": "atlas",
+      "factoryName": "Atlas Frame Assembly",
+      "savedAt": "2026-10-15T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1575.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Iron Ingot": {
+          "produced": 562.5,
+          "consumed": 468.75,
+          "efficiency": 0.833
+        },
+        "Iron Plate": {
+          "produced": 237.5,
+          "consumed": 225.0,
+          "efficiency": 0.833
+        },
+        "Iron Rod": {
+          "produced": 140.62,
+          "consumed": 50.0,
+          "efficiency": 0.833
+        },
+        "Screws": {
+          "produced": 300.0,
+          "consumed": 450.0,
+          "efficiency": 0.833
+        },
+        "Iron Rebar": {
+          "produced": 18.75,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Copper Ore": {
+          "produced": 375.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Copper Ingot": {
+          "produced": 375.0,
+          "consumed": 275.0,
+          "efficiency": 0.833
+        },
+        "Wire": {
+          "produced": 300.0,
+          "consumed": 75.0,
+          "efficiency": 0.833
+        },
+        "Cable": {
+          "produced": 150.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Copper Sheet": {
+          "produced": 50.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Coal": {
+          "produced": 1012.5,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Steel Ingot": {
+          "produced": 1012.5,
+          "consumed": 975.0,
+          "efficiency": 0.833
+        },
+        "Steel Beam": {
+          "produced": 375.0,
+          "consumed": 412.5,
+          "efficiency": 0.833
+        },
+        "Steel Pipe": {
+          "produced": 300.0,
+          "consumed": 350.0,
+          "efficiency": 0.833
+        },
+        "Caterium Ore": {
+          "produced": 300.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Caterium Ingot": {
+          "produced": 300.0,
+          "consumed": 225.0,
+          "efficiency": 0.833
+        },
+        "Quickwire": {
+          "produced": 150.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Encased Industrial Beam": {
+          "produced": 75.0,
+          "consumed": 50.0,
+          "efficiency": 0.833
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.13,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 75.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 50.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 300.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        },
+        "Concrete": {
+          "produced": 150.0,
+          "consumed": 0.0,
+          "efficiency": 0.833
+        }
+      }
+    },
+    {
+      "factoryId": "meridian",
+      "factoryName": "Meridian Beam Works",
+      "savedAt": "2026-10-17T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1713.6,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Iron Ingot": {
+          "produced": 612.0,
+          "consumed": 510.0,
+          "efficiency": 0.907
+        },
+        "Iron Plate": {
+          "produced": 258.4,
+          "consumed": 244.8,
+          "efficiency": 0.907
+        },
+        "Iron Rod": {
+          "produced": 153.0,
+          "consumed": 54.4,
+          "efficiency": 0.907
+        },
+        "Screws": {
+          "produced": 326.4,
+          "consumed": 489.6,
+          "efficiency": 0.907
+        },
+        "Iron Rebar": {
+          "produced": 20.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Copper Ore": {
+          "produced": 408.0,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Copper Ingot": {
+          "produced": 408.0,
+          "consumed": 299.2,
+          "efficiency": 0.907
+        },
+        "Wire": {
+          "produced": 326.4,
+          "consumed": 81.6,
+          "efficiency": 0.907
+        },
+        "Cable": {
+          "produced": 163.2,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Copper Sheet": {
+          "produced": 54.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Coal": {
+          "produced": 1101.6,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Steel Ingot": {
+          "produced": 1101.6,
+          "consumed": 1060.8,
+          "efficiency": 0.907
+        },
+        "Steel Beam": {
+          "produced": 408.0,
+          "consumed": 448.8,
+          "efficiency": 0.907
+        },
+        "Steel Pipe": {
+          "produced": 326.4,
+          "consumed": 380.8,
+          "efficiency": 0.907
+        },
+        "Caterium Ore": {
+          "produced": 326.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Caterium Ingot": {
+          "produced": 326.4,
+          "consumed": 244.8,
+          "efficiency": 0.907
+        },
+        "Quickwire": {
+          "produced": 163.2,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Encased Industrial Beam": {
+          "produced": 81.6,
+          "consumed": 54.4,
+          "efficiency": 0.907
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.5,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 81.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 54.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 326.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Concrete": {
+          "produced": 163.2,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        }
+      }
+    },
+    {
+      "factoryId": "cygnus",
+      "factoryName": "Cygnus Iron Foundry",
+      "savedAt": "2026-10-19T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1612.8,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Iron Ingot": {
+          "produced": 576.0,
+          "consumed": 480.0,
+          "efficiency": 0.853
+        },
+        "Iron Plate": {
+          "produced": 243.2,
+          "consumed": 230.4,
+          "efficiency": 0.853
+        },
+        "Iron Rod": {
+          "produced": 144.0,
+          "consumed": 51.2,
+          "efficiency": 0.853
+        },
+        "Screws": {
+          "produced": 307.2,
+          "consumed": 460.8,
+          "efficiency": 0.853
+        },
+        "Iron Rebar": {
+          "produced": 19.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Copper Ore": {
+          "produced": 384.0,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Copper Ingot": {
+          "produced": 384.0,
+          "consumed": 281.6,
+          "efficiency": 0.853
+        },
+        "Wire": {
+          "produced": 307.2,
+          "consumed": 76.8,
+          "efficiency": 0.853
+        },
+        "Cable": {
+          "produced": 153.6,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Copper Sheet": {
+          "produced": 51.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Coal": {
+          "produced": 1036.8,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Steel Ingot": {
+          "produced": 1036.8,
+          "consumed": 998.4,
+          "efficiency": 0.853
+        },
+        "Steel Beam": {
+          "produced": 384.0,
+          "consumed": 422.4,
+          "efficiency": 0.853
+        },
+        "Steel Pipe": {
+          "produced": 307.2,
+          "consumed": 358.4,
+          "efficiency": 0.853
+        },
+        "Caterium Ore": {
+          "produced": 307.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Caterium Ingot": {
+          "produced": 307.2,
+          "consumed": 230.4,
+          "efficiency": 0.853
+        },
+        "Quickwire": {
+          "produced": 153.6,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Encased Industrial Beam": {
+          "produced": 76.8,
+          "consumed": 51.2,
+          "efficiency": 0.853
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.23,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 76.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 51.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 307.2,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        },
+        "Concrete": {
+          "produced": 153.6,
+          "consumed": 0.0,
+          "efficiency": 0.853
+        }
+      }
+    },
+    {
+      "factoryId": "polaris",
+      "factoryName": "Polaris Copper Junction",
+      "savedAt": "2026-10-21T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1764.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Iron Ingot": {
+          "produced": 630.0,
+          "consumed": 525.0,
+          "efficiency": 0.933
+        },
+        "Iron Plate": {
+          "produced": 266.0,
+          "consumed": 252.0,
+          "efficiency": 0.933
+        },
+        "Iron Rod": {
+          "produced": 157.5,
+          "consumed": 56.0,
+          "efficiency": 0.933
+        },
+        "Screws": {
+          "produced": 336.0,
+          "consumed": 504.0,
+          "efficiency": 0.933
+        },
+        "Iron Rebar": {
+          "produced": 21.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Copper Ore": {
+          "produced": 420.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Copper Ingot": {
+          "produced": 420.0,
+          "consumed": 308.0,
+          "efficiency": 0.933
+        },
+        "Wire": {
+          "produced": 336.0,
+          "consumed": 84.0,
+          "efficiency": 0.933
+        },
+        "Cable": {
+          "produced": 168.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Copper Sheet": {
+          "produced": 56.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Coal": {
+          "produced": 1134.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Steel Ingot": {
+          "produced": 1134.0,
+          "consumed": 1092.0,
+          "efficiency": 0.933
+        },
+        "Steel Beam": {
+          "produced": 420.0,
+          "consumed": 462.0,
+          "efficiency": 0.933
+        },
+        "Steel Pipe": {
+          "produced": 336.0,
+          "consumed": 392.0,
+          "efficiency": 0.933
+        },
+        "Caterium Ore": {
+          "produced": 336.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Caterium Ingot": {
+          "produced": 336.0,
+          "consumed": 252.0,
+          "efficiency": 0.933
+        },
+        "Quickwire": {
+          "produced": 168.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Encased Industrial Beam": {
+          "produced": 84.0,
+          "consumed": 56.0,
+          "efficiency": 0.933
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.63,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 84.0,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 56.0,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 336.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        },
+        "Concrete": {
+          "produced": 168.0,
+          "consumed": 0.0,
+          "efficiency": 0.933
+        }
+      }
+    },
+    {
+      "factoryId": "vulcan",
+      "factoryName": "Vulcan Steelworks",
+      "savedAt": "2026-10-23T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1663.2,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Iron Ingot": {
+          "produced": 594.0,
+          "consumed": 495.0,
+          "efficiency": 0.88
+        },
+        "Iron Plate": {
+          "produced": 250.8,
+          "consumed": 237.6,
+          "efficiency": 0.88
+        },
+        "Iron Rod": {
+          "produced": 148.5,
+          "consumed": 52.8,
+          "efficiency": 0.88
+        },
+        "Screws": {
+          "produced": 316.8,
+          "consumed": 475.2,
+          "efficiency": 0.88
+        },
+        "Iron Rebar": {
+          "produced": 19.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Copper Ore": {
+          "produced": 396.0,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Copper Ingot": {
+          "produced": 396.0,
+          "consumed": 290.4,
+          "efficiency": 0.88
+        },
+        "Wire": {
+          "produced": 316.8,
+          "consumed": 79.2,
+          "efficiency": 0.88
+        },
+        "Cable": {
+          "produced": 158.4,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Copper Sheet": {
+          "produced": 52.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Coal": {
+          "produced": 1069.2,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Steel Ingot": {
+          "produced": 1069.2,
+          "consumed": 1029.6,
+          "efficiency": 0.88
+        },
+        "Steel Beam": {
+          "produced": 396.0,
+          "consumed": 435.6,
+          "efficiency": 0.88
+        },
+        "Steel Pipe": {
+          "produced": 316.8,
+          "consumed": 369.6,
+          "efficiency": 0.88
+        },
+        "Caterium Ore": {
+          "produced": 316.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Caterium Ingot": {
+          "produced": 316.8,
+          "consumed": 237.6,
+          "efficiency": 0.88
+        },
+        "Quickwire": {
+          "produced": 158.4,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Encased Industrial Beam": {
+          "produced": 79.2,
+          "consumed": 52.8,
+          "efficiency": 0.88
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.37,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 79.2,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 52.8,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 316.8,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        },
+        "Concrete": {
+          "produced": 158.4,
+          "consumed": 0.0,
+          "efficiency": 0.88
+        }
+      }
+    },
+    {
+      "factoryId": "aurum",
+      "factoryName": "Aurum Caterium Refinery",
+      "savedAt": "2026-10-25T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1814.4,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Iron Ingot": {
+          "produced": 648.0,
+          "consumed": 540.0,
+          "efficiency": 0.96
+        },
+        "Iron Plate": {
+          "produced": 273.6,
+          "consumed": 259.2,
+          "efficiency": 0.96
+        },
+        "Iron Rod": {
+          "produced": 162.0,
+          "consumed": 57.6,
+          "efficiency": 0.96
+        },
+        "Screws": {
+          "produced": 345.6,
+          "consumed": 518.4,
+          "efficiency": 0.96
+        },
+        "Iron Rebar": {
+          "produced": 21.6,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Copper Ore": {
+          "produced": 432.0,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Copper Ingot": {
+          "produced": 432.0,
+          "consumed": 316.8,
+          "efficiency": 0.96
+        },
+        "Wire": {
+          "produced": 345.6,
+          "consumed": 86.4,
+          "efficiency": 0.96
+        },
+        "Cable": {
+          "produced": 172.8,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Copper Sheet": {
+          "produced": 57.6,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Coal": {
+          "produced": 1166.4,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Steel Ingot": {
+          "produced": 1166.4,
+          "consumed": 1123.2,
+          "efficiency": 0.96
+        },
+        "Steel Beam": {
+          "produced": 432.0,
+          "consumed": 475.2,
+          "efficiency": 0.96
+        },
+        "Steel Pipe": {
+          "produced": 345.6,
+          "consumed": 403.2,
+          "efficiency": 0.96
+        },
+        "Caterium Ore": {
+          "produced": 345.6,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Caterium Ingot": {
+          "produced": 345.6,
+          "consumed": 259.2,
+          "efficiency": 0.96
+        },
+        "Quickwire": {
+          "produced": 172.8,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Encased Industrial Beam": {
+          "produced": 86.4,
+          "consumed": 57.6,
+          "efficiency": 0.96
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.76,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 86.4,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 57.6,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 345.6,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        },
+        "Concrete": {
+          "produced": 172.8,
+          "consumed": 0.0,
+          "efficiency": 0.96
+        }
+      }
+    },
+    {
+      "factoryId": "atlas",
+      "factoryName": "Atlas Frame Assembly",
+      "savedAt": "2026-10-27T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1713.6,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Iron Ingot": {
+          "produced": 612.0,
+          "consumed": 510.0,
+          "efficiency": 0.907
+        },
+        "Iron Plate": {
+          "produced": 258.4,
+          "consumed": 244.8,
+          "efficiency": 0.907
+        },
+        "Iron Rod": {
+          "produced": 153.0,
+          "consumed": 54.4,
+          "efficiency": 0.907
+        },
+        "Screws": {
+          "produced": 326.4,
+          "consumed": 489.6,
+          "efficiency": 0.907
+        },
+        "Iron Rebar": {
+          "produced": 20.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Copper Ore": {
+          "produced": 408.0,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Copper Ingot": {
+          "produced": 408.0,
+          "consumed": 299.2,
+          "efficiency": 0.907
+        },
+        "Wire": {
+          "produced": 326.4,
+          "consumed": 81.6,
+          "efficiency": 0.907
+        },
+        "Cable": {
+          "produced": 163.2,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Copper Sheet": {
+          "produced": 54.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Coal": {
+          "produced": 1101.6,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Steel Ingot": {
+          "produced": 1101.6,
+          "consumed": 1060.8,
+          "efficiency": 0.907
+        },
+        "Steel Beam": {
+          "produced": 408.0,
+          "consumed": 448.8,
+          "efficiency": 0.907
+        },
+        "Steel Pipe": {
+          "produced": 326.4,
+          "consumed": 380.8,
+          "efficiency": 0.907
+        },
+        "Caterium Ore": {
+          "produced": 326.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Caterium Ingot": {
+          "produced": 326.4,
+          "consumed": 244.8,
+          "efficiency": 0.907
+        },
+        "Quickwire": {
+          "produced": 163.2,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Encased Industrial Beam": {
+          "produced": 81.6,
+          "consumed": 54.4,
+          "efficiency": 0.907
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.5,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 81.6,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 54.4,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 326.4,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        },
+        "Concrete": {
+          "produced": 163.2,
+          "consumed": 0.0,
+          "efficiency": 0.907
+        }
+      }
+    },
+    {
+      "factoryId": "meridian",
+      "factoryName": "Meridian Beam Works",
+      "savedAt": "2026-10-29T00:00:00Z",
+      "values": {
+        "Iron Ore": {
+          "produced": 1864.8,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Iron Ingot": {
+          "produced": 666.0,
+          "consumed": 555.0,
+          "efficiency": 0.987
+        },
+        "Iron Plate": {
+          "produced": 281.2,
+          "consumed": 266.4,
+          "efficiency": 0.987
+        },
+        "Iron Rod": {
+          "produced": 166.5,
+          "consumed": 59.2,
+          "efficiency": 0.987
+        },
+        "Screws": {
+          "produced": 355.2,
+          "consumed": 532.8,
+          "efficiency": 0.987
+        },
+        "Iron Rebar": {
+          "produced": 22.2,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Copper Ore": {
+          "produced": 444.0,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Copper Ingot": {
+          "produced": 444.0,
+          "consumed": 325.6,
+          "efficiency": 0.987
+        },
+        "Wire": {
+          "produced": 355.2,
+          "consumed": 88.8,
+          "efficiency": 0.987
+        },
+        "Cable": {
+          "produced": 177.6,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Copper Sheet": {
+          "produced": 59.2,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Coal": {
+          "produced": 1198.8,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Steel Ingot": {
+          "produced": 1198.8,
+          "consumed": 1154.4,
+          "efficiency": 0.987
+        },
+        "Steel Beam": {
+          "produced": 444.0,
+          "consumed": 488.4,
+          "efficiency": 0.987
+        },
+        "Steel Pipe": {
+          "produced": 355.2,
+          "consumed": 414.4,
+          "efficiency": 0.987
+        },
+        "Caterium Ore": {
+          "produced": 355.2,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Caterium Ingot": {
+          "produced": 355.2,
+          "consumed": 266.4,
+          "efficiency": 0.987
+        },
+        "Quickwire": {
+          "produced": 177.6,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Encased Industrial Beam": {
+          "produced": 88.8,
+          "consumed": 59.2,
+          "efficiency": 0.987
+        },
+        "Reinforced Iron Plate": {
+          "produced": 4.9,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Modular Frame": {
+          "produced": 0.0,
+          "consumed": 88.8,
+          "efficiency": null
+        },
+        "Heavy Modular Frame": {
+          "produced": 0.0,
+          "consumed": 59.2,
+          "efficiency": null
+        },
+        "Limestone": {
+          "produced": 355.2,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        },
+        "Concrete": {
+          "produced": 177.6,
+          "consumed": 0.0,
+          "efficiency": 0.987
+        }
+      }
     }
   ]
 }
