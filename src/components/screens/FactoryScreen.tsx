@@ -2,7 +2,7 @@ import { ProductionLineConnections } from '../ProductionLineConnections';
 import { ResourceBalanceModal, efficiencyLabel } from '../modals/ResourceBalanceModal';
 import { LineEditor } from '../LineEditor';
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
-import { RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
+import { ITEMS, RECIPES, fmt, recipeById, statusMeta } from '../../data/gameData';
 import { aggregate, aggregateEffective, exportRemainder, importedByItem, itemExported, itemSupply, localInputByItem } from '../../state/derive';
 import {
   lineName, computeFactoryLineFeeds, effectiveOutputRate, rowEfficiency, resourceProduction,
@@ -699,7 +699,10 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
 
   let content: React.ReactNode;
   if (pk) {
-    const pq = (st.pickerSearch || '').toLowerCase();
+    const pq = (st.pickerSearch || '').trim().toLowerCase();
+    const localResources = pq ? Object.keys(ITEMS).filter((item) =>
+      ['Raw Ore', 'Raw Fluid', 'Gas'].includes(ITEMS[item].cat) && item.toLowerCase().includes(pq),
+    ) : [];
     let curRecipeId: string | null = null;
     if (pk.mode === 'edit') {
       const ps = f.sections.find((x) => x.id === pk.sectionId);
@@ -711,7 +714,7 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
       return (
         r.name.toLowerCase().includes(pq) ||
         r.building.toLowerCase().includes(pq) ||
-        r.inputs.concat(r.outputs).some((x) => x.item.toLowerCase().includes(pq))
+        r.outputs.some((x) => x.item.toLowerCase().includes(pq))
       );
     }).sort((a, b) => (a.alt === b.alt ? a.name.localeCompare(b.name) : a.alt ? 1 : -1));
     content = (
@@ -728,9 +731,26 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
         <input
           value={st.pickerSearch}
           onChange={(e) => up({ pickerSearch: e.target.value })}
-          placeholder="Search recipes…"
+          placeholder="Search recipe, output, or machine…"
           style={{ width: '100%', background: '#0C0D11', border: '1px solid #262B34', borderRadius: 8, color: '#E7E9ED', padding: '8px 11px', fontSize: 12.5, marginBottom: 10 }}
         />
+        <div style={{ fontSize: 11, color: '#8A909A', marginBottom: 10 }}>
+          Search matches recipe names, outputs, and machines.
+        </div>
+        {localResources.map((item) => (
+          <div key={item} style={{ background: '#0F1116', border: '1px solid #262B34', borderRadius: 9, padding: 10, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+              <ItemSquare item={item} size={22} />
+              <span style={{ fontWeight: 500 }}>{item}</span>
+            </div>
+            <div style={{ fontSize: 11, color: '#8A909A', marginBottom: 9 }}>
+              Add extracted {item.toLowerCase()} as a local input, then claim its supply on a production line.
+            </div>
+            <button onClick={() => openLocalInput(f.id, item)} style={{ background: '#181B21', border: '1px solid #33373F', borderRadius: 6, color: '#E7E9ED', padding: '6px 9px', cursor: 'pointer' }}>
+              + Add {item} input
+            </button>
+          </div>
+        ))}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {list.map((r) => {
             const prim = r.outputs[0];
@@ -761,7 +781,15 @@ function RightPanel({ f, effAgg }: { f: Factory; effAgg: ReturnType<typeof aggre
                   <span style={{ fontFamily: MONO }}>{r.building}</span>
                   <span style={{ color: '#3F454E' }}>·</span>
                   <span style={{ fontFamily: MONO, color: '#F5A95B' }}>{r.power} MW</span>
-                  <span style={{ marginLeft: 'auto', fontFamily: MONO, color: '#5BCB86' }}>+{fmt(prim.rate)}/m</span>
+                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                  {r.outputs.map((output) => (
+                    <div key={output.item} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5 }}>
+                      <ItemSquare item={output.item} size={16} fontSize={6} />
+                      <span style={{ color: '#AEB4BE' }}>{output.item}</span>
+                      <span style={{ marginLeft: 'auto', fontFamily: MONO, color: '#5BCB86' }}>+{fmt(output.rate)}/m</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             );

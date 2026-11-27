@@ -162,6 +162,8 @@ export type PersistedStateV2 = z.infer<typeof PersistedStateSchema>;
 export const WorldTemplateSchema = z.object({
   name: z.string(),
   factories: z.array(FactorySchema.omit({ baseline: true })),
+  /** Optional seeded commit history for bundled development/sample worlds. */
+  resourceMetricHistory: z.array(ResourceMetricSnapshotSchema).default([]),
   routes: z.array(RouteSchema),
   stations: z.array(StationSchema).default([]),
 });

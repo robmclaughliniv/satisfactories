@@ -166,21 +166,8 @@ export function ReferenceScreen() {
           <span style={{ fontFamily: SG, fontWeight: 600, fontSize: 15 }}>Used to make</span>
           <span style={{ fontSize: 11, color: '#5E646E' }}>{useR.length}</span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {useR.map((rc) => {
-            const prim = rc.outputs[0];
-            return (
-              <div
-                key={rc.id}
-                onClick={() => up({ refSel: prim.item })}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#0F1116', border: '1px solid #20242D', borderRadius: 8, padding: '7px 11px', cursor: 'pointer' }}
-              >
-                <ItemSquare item={prim.item} />
-                <span style={{ fontSize: 12 }}>{prim.item}</span>
-                {rc.alt && <span style={{ fontSize: 8, fontWeight: 600, color: '#C58BE0' }}>ALT</span>}
-              </div>
-            );
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          {useR.map((rc) => recipeCard(rc, false, true))}
           {useR.length === 0 && <div style={{ fontSize: 12, color: '#5E646E', fontStyle: 'italic' }}>Not used as an ingredient — this is an end product.</div>}
         </div>
       </div>

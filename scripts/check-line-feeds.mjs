@@ -191,7 +191,11 @@ try {
   const { commitFactoryWithMetrics } = await server.ssrLoadModule('/src/state/resourceMetrics.ts');
   const historyWorld = instantiateTemplate(SAMPLE_WORLD);
   const historyFactory = historyWorld.factories[0];
-  assert.deepEqual(historyWorld.resourceMetricHistory, [], 'Templates begin without invented commits');
+  assert.equal(historyWorld.resourceMetricHistory.length, 30, 'The sample world starts with a seeded development history');
+  assert.ok(historyWorld.resourceMetricHistory.some(snapshot => snapshot.values['Iron Ingot']?.produced > 0));
+  assert.ok(historyWorld.resourceMetricHistory.some(snapshot => snapshot.values['Steel Pipe']?.consumed > 0));
+  assert.ok(historyWorld.resourceMetricHistory.every((snapshot, index, history) => index === 0 || snapshot.savedAt > history[index - 1].savedAt), 'Seeded commits are chronological');
+  historyWorld.resourceMetricHistory = [];
   commitFactoryWithMetrics(historyWorld, 'missing');
   commitFactoryWithMetrics(historyWorld, historyFactory.id);
   assert.equal(historyWorld.resourceMetricHistory.length, 0, 'Unchanged commits do not create history');
