@@ -34,7 +34,7 @@ pnpm build       # type-check + production build to apps/web/dist/
 pnpm test        # production, logistics, and persistence regression checks
 ```
 
-Built with React 18, Vite, and TypeScript. Use Node 20 to match CI.
+Built with React 18, Vite, and TypeScript. Use Node 24 to match CI.
 
 See the [maintainer guide](docs/maintainer-guide.md) for the code map and
 manual smoke checks, or [AGENTS.md](AGENTS.md) for a quick contributor handoff.
