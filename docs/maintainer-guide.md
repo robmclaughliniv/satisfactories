@@ -8,16 +8,16 @@ and save compatibility.
 
 | Area | Entry points |
 | --- | --- |
-| App and persistence | `src/App.tsx` mounts screens and shared modals. `src/state/store.tsx` handles navigation, active-world changes, and browser storage. |
-| Factory editor | `src/components/screens/FactoryScreen.tsx` composes `LineEditor.tsx` and `ProductionLineConnections.tsx` under `src/components/`. The claim dialog lives in `src/components/modals/InputSupplyModal.tsx`. |
-| Production and rollups | Under `src/state/`, `lineFeeds.ts` calculates effective line rates and deliveries, `inputSupply.ts` validates claims, and `derive.ts` computes aggregates and world rollups. |
-| Logistics and map | `src/model/logistics.ts` calculates shipments. `src/state/flows.ts` and `src/model/mapConnections.ts` assemble sidebar and map data. `src/components/screens/MapScreen.tsx` and its sibling `useMapCamera.ts` handle map interactions. `src/components/SplitLayout.tsx` and `src/styles/global.css` handle shared layout. |
-| Saves and sample worlds | Under `src/model/`, `schema.ts` defines persisted data, `migrations.ts` upgrades it, `production.ts` converts legacy connections, `baseline.ts` manages factory snapshots, and `backup.ts` handles JSON files. `world.ts` initializes worlds from templates in `src/data/templates/`. |
-| Game reference | `src/data/satisfactory-game-data.json` and `src/data/gameData.ts` supply `src/components/screens/ReferenceScreen.tsx`. Worlds persist recipe IDs. |
+| App and persistence | `apps/web/src/App.tsx` mounts screens and shared modals. `apps/web/src/state/store.tsx` handles navigation, active-world changes, and browser storage. |
+| Factory editor | `apps/web/src/components/screens/FactoryScreen.tsx` composes `LineEditor.tsx` and `ProductionLineConnections.tsx` under `apps/web/src/components/`. The claim dialog lives in `apps/web/src/components/modals/InputSupplyModal.tsx`. |
+| Production and rollups | Under `apps/web/src/state/`, `lineFeeds.ts` calculates effective line rates and deliveries, `inputSupply.ts` validates claims, and `derive.ts` computes aggregates and world rollups. |
+| Logistics and map | `packages/model` holds pure logistics helpers; `apps/web/src/model/shipments.ts` combines them with line feeds. `apps/web/src/state/flows.ts` and map connection builders in `@satisfactories/model` assemble sidebar and map data (shipments passed in). `apps/web/src/components/screens/MapScreen.tsx` and its sibling `useMapCamera.ts` handle map interactions. `apps/web/src/components/SplitLayout.tsx` and `apps/web/src/styles/global.css` handle shared layout. |
+| Saves and sample worlds | `@satisfactories/model` defines persisted schemas, migrations, baselines, and backup envelopes. `apps/web/src/model/backup.ts` handles browser file I/O. Worlds initialize from templates in `apps/web/src/data/templates/`. |
+| Game reference | `apps/web/src/data/satisfactory-game-data.json` and `apps/web/src/data/gameData.ts` supply `apps/web/src/components/screens/ReferenceScreen.tsx`. Worlds persist recipe IDs. |
 
 ## Verify changes
 
-Run `npm test` and `npm run build`. The test script is
+Run `pnpm test` and `pnpm build`. The test script is
 `scripts/check-line-feeds.mjs`. It exercises model and state code through Vite,
 including allocation shortages, shared claims, shipment deduplication,
 version 9 migration, sample initialization, and factory snapshots. Use the
@@ -54,11 +54,11 @@ commits in chronological order. Draft autosaves and reset do not create entries;
 reset leaves history intact. History belongs to each world and is included in
 local storage and JSON backups. Existing saves and new templates begin with an
 empty history; past commits cannot be reconstructed. Snapshot metrics come from
-`src/state/resourceMetrics.ts` and use the same effective rates and configured
+`apps/web/src/state/resourceMetrics.ts` and use the same effective rates and configured
 capacity as the resource cards. Current filters choose which resource series to
 show; they never change saved snapshots.
 
-Use `npm run preview` to check the production build. If an old bundle appears,
+Use `pnpm preview` to check the production build. If an old bundle appears,
 check the production service worker before clearing site data.
 
 ## Troubleshoot browser storage
