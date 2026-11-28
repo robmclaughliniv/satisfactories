@@ -10,10 +10,19 @@ export default defineConfig({
   server: {
     fs: { allow: [repoRoot] },
   },
+  // sqlite-wasm resolves sqlite3.wasm with `new URL(..., import.meta.url)`; pre-bundling breaks that path.
+  optimizeDeps: {
+    exclude: ['@sqlite.org/sqlite-wasm'],
+  },
+  // The snapshot worker is a module worker with code-split deps (sqlite-wasm, Comlink).
+  worker: {
+    format: 'es',
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Amendment 6: prompt-to-update. PwaUpdateToast asks; nothing auto-reloads.
+      registerType: 'prompt',
       includeAssets: [
         'favicon.ico',
         'favicon-16x16.png',
@@ -55,7 +64,8 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
-        globPatterns: ['**/*.{js,css,html,ico,png,woff2}'],
+        // wasm so the snapshot store's SQLite works offline (sqlite3.wasm is ~835 KiB, under the 2 MiB default limit).
+        globPatterns: ['**/*.{js,css,html,ico,png,woff2,wasm}'],
       },
     }),
   ],
