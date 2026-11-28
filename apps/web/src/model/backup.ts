@@ -1,28 +1,13 @@
-import { migratePersisted } from './migrations';
-import { SCHEMA_VERSION, type PersistedStateV2 } from './schema';
-import type { World } from '../types';
+import {
+  buildBackupEnvelope,
+  defaultBackupFilename,
+  parseBackupJson,
+  serializeBackup,
+  type PersistedStateV2,
+} from '@satisfactories/model';
+import { recipeById } from '../data/gameData';
 
-export interface BackupSource {
-  worlds: World[];
-  worldId: string | null;
-  favItems: string[];
-  favFactories: string[];
-}
-
-export function buildBackupEnvelope(source: BackupSource): PersistedStateV2 {
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    worlds: source.worlds,
-    worldId: source.worldId,
-    favItems: source.favItems,
-    favFactories: source.favFactories,
-  };
-}
-
-export function defaultBackupFilename(): string {
-  const date = new Date().toISOString().slice(0, 10);
-  return `satisfactories-backup-${date}.json`;
-}
+export { buildBackupEnvelope, defaultBackupFilename } from '@satisfactories/model';
 
 const LAST_BACKUP_KEY = 'satisfactories:last-backup-at';
 
@@ -44,10 +29,6 @@ export function recordLastBackupAt(at = new Date().toISOString()): string {
     // best-effort metadata
   }
   return at;
-}
-
-function serializeBackup(envelope: PersistedStateV2): string {
-  return JSON.stringify(envelope, null, 2);
 }
 
 async function writeBackup(handle: FileSystemFileHandle, envelope: PersistedStateV2): Promise<void> {
@@ -100,11 +81,7 @@ async function readBackupFile(file: File): Promise<PersistedStateV2> {
   } catch {
     throw new Error('Could not read backup file — invalid JSON.');
   }
-  const migrated = migratePersisted(parsed);
-  if (!migrated) {
-    throw new Error('Could not read backup file — unrecognized or unsupported format.');
-  }
-  return migrated;
+  return parseBackupJson(parsed, recipeById);
 }
 
 async function loadViaFilePicker(): Promise<PersistedStateV2> {

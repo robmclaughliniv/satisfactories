@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { ResourceMetricSnapshot } from '../model/schema';
+import type { ResourceMetricSnapshot } from '@satisfactories/model';
 import { seriesColor } from './ResourceCharts';
 
 const metrics = { produced: 'Production / min', consumed: 'Consumption / min', efficiency: 'Efficiency %' };

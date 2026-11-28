@@ -1,6 +1,6 @@
-import type { Status, Transport, StationType, StationRole } from './model/schema';
+import type { Status, Transport, StationType, StationRole } from '@satisfactories/model';
 
-// Persisted data shapes live in src/model/schema.ts (zod) — re-exported here
+// Persisted data shapes live in @satisfactories/model — re-exported here
 // so the rest of the app keeps importing from types.ts.
 export type {
   Status,
@@ -20,7 +20,7 @@ export type {
   World,
   WorldTemplate,
   PersistedStateV2,
-} from './model/schema';
+} from '@satisfactories/model';
 
 export type Screen = 'map' | 'factory' | 'factories' | 'rollup' | 'reference' | 'worlds';
 

@@ -8,8 +8,8 @@ import {
   lineName, computeFactoryLineFeeds, effectiveOutputRate, rowEfficiency, resourceProduction,
   rowFeedStatus, sectionFeedStatus, lineResourceBalances,
 } from '../../state/lineFeeds';
-import { isFactoryDirty } from '../../model/baseline';
-import { buildMapConnections } from '../../model/mapConnections';
+import { buildMapConnections, isFactoryDirty } from '@satisfactories/model';
+import { allocationShipments } from '../../model/shipments';
 import { applyFlowOrder, buildFlows } from '../../state/flows';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, Row, Section, World } from '../../types';
@@ -57,7 +57,7 @@ function IdentityPanel({
   const sm = statusMeta(f.status);
   const linked: { name: string; color: string; dir: string; item: string; id: string }[] = [];
   const seen = new Set<string>();
-  buildMapConnections(world).forEach(connection => connection.items.forEach(item => {
+  buildMapConnections(world, allocationShipments(world)).forEach(connection => connection.items.forEach(item => {
     const outbound = item.from === f.id;
     if (!outbound && item.to !== f.id) return;
     const other = world.factories.find(x => x.id === (outbound ? item.to : item.from));

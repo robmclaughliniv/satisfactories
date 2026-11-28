@@ -1,5 +1,5 @@
 import { recipeById } from '../data/gameData';
-import { importedByItem } from '../model/logistics';
+import { importedByItem } from '../model/shipments';
 import { allLines } from './lineFeeds';
 import type { Factory, RowSource, World } from '../types';
 

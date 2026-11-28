@@ -1,6 +1,7 @@
 import { recipeById } from '../data/gameData';
 import type { Factory, World } from '../types';
-import { allocationShipments, legacyRouteDelivery, exportStations, importedByItem, vehicleHops } from '../model/logistics';
+import { exportStations, legacyRouteDelivery, vehicleHops } from '@satisfactories/model';
+import { allocationShipments, importedByItem } from '../model/shipments';
 import { computeFactoryLineFeeds, rowDestinationShares } from './lineFeeds';
 
 export interface Aggregate {

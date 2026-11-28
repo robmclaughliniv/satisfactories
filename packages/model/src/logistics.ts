@@ -1,5 +1,4 @@
 import type { Factory, Station, StationRole, StationType, Vehicle, World } from './schema';
-import { computeFactoryLineFeeds, computeWorldLineFeeds } from '../state/lineFeeds';
 import { freshId } from './world';
 
 const STATION_TRANSPORT_TYPES = new Set<StationType>(['train', 'truck', 'drone']);
@@ -236,24 +235,10 @@ export function stationReservedTotal(station: Station): number {
   return station.totalRate;
 }
 
-export function importedByItem(world: World, factory: Factory, item: string): number {
-  return transportImportedByItem(world, factory, item) + (computeFactoryLineFeeds(world, factory).imports[item] || 0);
-}
-
 /** A factory allocation owns its shipment; matching legacy transport is metadata. */
 export function hasFactoryAllocation(world: World, from: string, to: string, item: string): boolean {
   return world.factories.find(f => f.id === from)?.sections.some(s => s.rows.some(r =>
     r.allocations?.some(a => a.kind === 'factory' && a.targetId === to && a.item === item))) || false;
-}
-
-export function allocationShipments(world: World) {
-  const feeds = computeWorldLineFeeds(world);
-  return world.factories.flatMap(f => f.sections.flatMap(s => s.rows.flatMap(row =>
-    (row.allocations || []).filter(a => a.kind === 'factory' && world.factories.some(target => target.id === a.targetId)).map(a => ({
-      allocationId: a.id, rowId: row.id, from: f.id, to: a.targetId, item: a.item,
-      rate: feeds[f.id]?.delivered[a.id] || 0, requested: a.rate,
-      t: a.transport || 'Unset',
-    })))));
 }
 
 /** Legacy transport may move unassigned raw local supply, never implicit line output. */

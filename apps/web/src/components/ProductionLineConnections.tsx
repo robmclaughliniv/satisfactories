@@ -1,8 +1,8 @@
 import { InputSupplyModal } from './modals/InputSupplyModal';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { fmt, recipeById } from '../data/gameData';
-import { importedByItem } from '../model/logistics';
-import { freshId } from '../model/world';
+import { freshId } from '@satisfactories/model';
+import { importedByItem } from '../model/shipments';
 import { allLines, computeFactoryLineFeeds, lineResourceBalances, lineName, outputRemaining, type FactoryLineFeeds } from '../state/lineFeeds';
 import { useStore } from '../state/store';
 import type { Factory, OutputAllocation, Row, RowSource, Transport, World } from '../types';

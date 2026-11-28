@@ -1,4 +1,4 @@
-import { WorldTemplateSchema, type WorldTemplate } from '../model/schema';
+import { WorldTemplateSchema, type WorldTemplate } from '@satisfactories/model';
 import northernStretch from './templates/northern-stretch.json';
 
 /** Bundled sample worlds, validated at module load so bad JSON fails fast in dev. */

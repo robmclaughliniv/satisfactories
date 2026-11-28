@@ -1,5 +1,11 @@
 import type { Factory, World } from '../types';
-import { allocationShipments, hasFactoryAllocation, legacyRouteDelivery, transportFromStationType, vehicleHops } from '../model/logistics';
+import {
+  hasFactoryAllocation,
+  legacyRouteDelivery,
+  transportFromStationType,
+  vehicleHops,
+} from '@satisfactories/model';
+import { allocationShipments } from '../model/shipments';
 import { recipeById } from '../data/gameData';
 import { itemSupply } from './derive';
 export interface FlowLeg {

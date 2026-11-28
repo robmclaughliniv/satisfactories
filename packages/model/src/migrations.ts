@@ -1,4 +1,4 @@
-import { upgradeProduction } from './production';
+import { upgradeProduction, type RecipeLookup } from './production';
 import { PersistedStateSchema, SCHEMA_VERSION, type Factory, type PersistedStateV2, type Route, type Station, type StationType, type World } from './schema';
 import { parseBaseline } from './baseline';
 import { createVehicle, nextStationSeq, stationName } from './logistics';
@@ -8,7 +8,7 @@ import { createVehicle, nextStationSeq, stationName } from './logistics';
  * or null if the data is unrecoverable — boot then falls back to the
  * empty state instead of crashing.
  */
-export function migratePersisted(raw: unknown): PersistedStateV2 | null {
+export function migratePersisted(raw: unknown, recipes: RecipeLookup): PersistedStateV2 | null {
   if (raw === null || typeof raw !== 'object') return null;
   let obj = raw as Record<string, unknown>;
 
@@ -50,13 +50,22 @@ export function migratePersisted(raw: unknown): PersistedStateV2 | null {
     // Parse defaults before migrating legacy rows and their committed snapshots.
     const candidate = PersistedStateSchema.safeParse({ ...obj, schemaVersion: 10 });
     if (!candidate.success) return null;
-    candidate.data.worlds.forEach(world => world.factories.forEach(factory => {
-      upgradeProduction(factory, world);
-      const baseline = parseBaseline(factory.baseline);
-      const committed = { ...factory, ...baseline };
-      upgradeProduction(committed, { routes: baseline.routes, stations: [...(world.stations || []).filter(s => s.homeFactoryId !== factory.id), ...baseline.stations] });
-      factory.baseline = JSON.stringify({ ...baseline, sections: committed.sections });
-    }));
+    candidate.data.worlds.forEach((world) =>
+      world.factories.forEach((factory) => {
+        upgradeProduction(factory, world, recipes);
+        const baseline = parseBaseline(factory.baseline);
+        const committed = { ...factory, ...baseline };
+        upgradeProduction(
+          committed,
+          {
+            routes: baseline.routes,
+            stations: [...(world.stations || []).filter((s) => s.homeFactoryId !== factory.id), ...baseline.stations],
+          },
+          recipes,
+        );
+        factory.baseline = JSON.stringify({ ...baseline, sections: committed.sections });
+      }),
+    );
     obj = candidate.data;
   }
 

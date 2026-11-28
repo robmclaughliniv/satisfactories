@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { fmt, recipeById } from '../../data/gameData';
-import { importedByItem } from '../../model/logistics';
+import { importedByItem } from '../../model/shipments';
 import { availableInputSupply, assignInputSupply, inputSourceKey, validateInputSupply, type InputSupplyRequest } from '../../state/inputSupply';
 import { useStore } from '../../state/store';
 import type { Factory, Row, RowSource, World } from '../../types';

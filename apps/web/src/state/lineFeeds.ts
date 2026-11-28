@@ -1,5 +1,5 @@
 import { recipeById } from '../data/gameData';
-import { transportImportedByItem } from '../model/logistics';
+import { transportImportedByItem } from '@satisfactories/model';
 import type { Factory, Row, Section, World } from '../types';
 
 const EPS = 0.001;

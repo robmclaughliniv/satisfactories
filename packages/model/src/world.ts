@@ -1,4 +1,4 @@
-import { upgradeProduction } from './production';
+import { upgradeProduction, type RecipeLookup } from './production';
 import type { Factory, World, WorldTemplate } from './schema';
 import { captureBaseline } from './baseline';
 import { normalizeWorldLogistics } from './migrations';
@@ -29,7 +29,7 @@ export function createEmptyWorld(name: string): World {
  * Clone a bundled template into a real World: fresh world id, timestamps,
  * and each factory's baseline computed from its committed draft state.
  */
-export function instantiateTemplate(template: WorldTemplate): World {
+export function instantiateTemplate(template: WorldTemplate, recipes: RecipeLookup): World {
   const now = new Date().toISOString();
   const routes = JSON.parse(JSON.stringify(template.routes));
   const stations = JSON.parse(JSON.stringify(template.stations ?? []));
@@ -55,7 +55,7 @@ export function instantiateTemplate(template: WorldTemplate): World {
     updatedAt: now,
   };
   normalizeWorldLogistics(world);
-  world.factories.forEach(f => upgradeProduction(f, world));
+  world.factories.forEach((f) => upgradeProduction(f, world, recipes));
   world.factories.forEach((factory) => {
     factory.baseline = captureBaseline(factory, world.routes, world.stations ?? []);
   });

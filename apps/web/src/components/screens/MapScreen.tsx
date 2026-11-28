@@ -2,7 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProper
 import { fmt, initials, statusMeta } from '../../data/gameData';
 import { aggregate, aggregateEffective, exportRemainder, itemExported, itemSupply, localInputByItem, rollupWorld } from '../../state/derive';
 import { buildFlows, applyFlowOrder } from '../../state/flows';
-import { buildMapConnections, connectionCount } from '../../model/mapConnections';
+import { buildMapConnections, connectionCount } from '@satisfactories/model';
+import { allocationShipments } from '../../model/shipments';
 import { useActions, useStore, useWorld } from '../../state/store';
 import type { Factory, World } from '../../types';
 import { FlowList, ItemSquare, MONO, ProducedRow, SG, SectionLabel, TransportBadge } from '../bits';
@@ -582,7 +583,8 @@ export function MapScreen({ cameras }: { cameras: Map<string, MapCamera> }) {
 
   const { connMap, connections } = useMemo(() => {
     const visibleIds = visible.map((f) => f.id);
-    const allConnections = buildMapConnections(world);
+    const shipments = allocationShipments(world);
+    const allConnections = buildMapConnections(world, shipments);
     const routesVis = allConnections.filter((c) => visibleIds.includes(c.a) && visibleIds.includes(c.b));
     const cm: Record<string, Conn> = {};
     routesVis.forEach((c) => {
@@ -979,7 +981,7 @@ function MapSidebar({ connMap, facById }: { connMap: Record<string, Conn>; facBy
         <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #161A21' }}>
           <div style={{ fontFamily: SG, fontWeight: 600, fontSize: 15 }}>{world.name}</div>
           <div style={{ fontSize: 11, color: '#7B828D', marginTop: 2 }}>
-            {facs.length} factories · {connectionCount(world)} routes
+            {facs.length} factories · {connectionCount(world, allocationShipments(world))} routes
           </div>
         </div>
         <div style={{ display: 'flex', borderBottom: '1px solid #161A21' }}>

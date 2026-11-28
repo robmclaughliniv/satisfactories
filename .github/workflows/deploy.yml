@@ -43,7 +43,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm --filter web build
+        run: pnpm --filter @satisfactories/model check && pnpm --filter web build
       # --- end toolchain ---
 
       - name: Configure AWS credentials

@@ -1,6 +1,5 @@
 import { aggregate, localInputByItem, rollupWorld } from './derive';
-import { captureBaseline, isFactoryDirty } from '../model/baseline';
-import type { World, ResourceMetricSnapshot } from '../model/schema';
+import { captureBaseline, isFactoryDirty, type ResourceMetricSnapshot, type World } from '@satisfactories/model';
 
 /** Capture world-wide effective rates at an explicit factory commit, independent of UI filters. */
 export function captureResourceMetrics(world: World, factoryId: string, savedAt = new Date().toISOString()): ResourceMetricSnapshot {

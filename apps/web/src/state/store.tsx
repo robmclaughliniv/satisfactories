@@ -2,11 +2,28 @@ import { commitFactoryWithMetrics } from './resourceMetrics';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { recipeById, defaultTransportForItem } from '../data/gameData';
 import { SAMPLE_WORLD } from '../data/templates';
+import {
+  applyBaseline,
+  captureBaseline,
+  createEmptyWorld,
+  emptyBaseline,
+  instantiateTemplate,
+  migratePersisted,
+  parseBaseline,
+  SCHEMA_VERSION,
+  touchWorld,
+  type PersistedStateV2,
+  createStation,
+  createVehicle,
+  exportStations,
+  freshId,
+  reconcileLogistics,
+  removeStation as removeStationFromWorld,
+  recomputeVehicleRates,
+  stationById,
+  suggestStationName,
+} from '@satisfactories/model';
 import { buildBackupEnvelope, getLastBackupAt, loadBackupFromFile, recordLastBackupAt, saveBackupToFile } from '../model/backup';
-import { migratePersisted } from '../model/migrations';
-import { applyBaseline, captureBaseline, emptyBaseline, parseBaseline } from '../model/baseline';
-import { SCHEMA_VERSION, type PersistedStateV2 } from '../model/schema';
-import { createEmptyWorld, instantiateTemplate, touchWorld } from '../model/world';
 import { exportRemainder, exportableItems, itemExported, itemSupply } from './derive';
 import type {
   AddExportResourceModalState,
@@ -27,17 +44,6 @@ import type {
   World,
 } from '../types';
 import { nextLineName } from './lineFeeds';
-import {
-  createStation,
-  createVehicle,
-  reconcileLogistics,
-  removeStation as removeStationFromWorld,
-  exportStations,
-  recomputeVehicleRates,
-  stationById,
-  suggestStationName,
-} from '../model/logistics';
-import { freshId } from '../model/world';
 
 export interface AppState {
   screen: Screen;
@@ -84,7 +90,7 @@ function readAndMigrate(key: string): PersistedStateV2 | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
-    return migratePersisted(JSON.parse(raw));
+    return migratePersisted(JSON.parse(raw), recipeById);
   } catch {
     return null;
   }
@@ -897,7 +903,7 @@ export function useActions() {
   const loadSampleWorld = () => {
     up((s) => {
       const worlds: World[] = JSON.parse(JSON.stringify(s.worlds));
-      const w = instantiateTemplate(SAMPLE_WORLD);
+      const w = instantiateTemplate(SAMPLE_WORLD, recipeById);
       worlds.push(w);
       return { worlds, worldId: w.id, screen: 'map' as Screen, selFactory: null, mapLock: null };
     });

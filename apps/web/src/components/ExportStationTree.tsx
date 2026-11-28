@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { fmt } from '../data/gameData';
-import { exportStations, importStations, listDestinationStations, stationById, stationTypeLabel } from '../model/logistics';
+import {
+  exportStations,
+  importStations,
+  listDestinationStations,
+  stationById,
+  stationTypeLabel,
+} from '@satisfactories/model';
 import type { Factory, Station, World } from '../types';
 import { MONO, TransportBadge } from './bits';
 

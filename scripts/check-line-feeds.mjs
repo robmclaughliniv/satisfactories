@@ -3,17 +3,27 @@ import { createWebViteServer } from './vite-web-root.mjs';
 
 const server = await createWebViteServer();
 try {
-  const { FactorySchema, WorldSchema, SCHEMA_VERSION } = await server.ssrLoadModule('/src/model/schema.ts');
+  const {
+    FactorySchema,
+    WorldSchema,
+    SCHEMA_VERSION,
+    migratePersisted,
+    captureBaseline,
+    applyBaseline,
+    parseBaseline,
+    isFactoryDirty,
+    buildBackupEnvelope,
+    instantiateTemplate,
+    buildMapConnections,
+  } = await server.ssrLoadModule('@satisfactories/model');
+  const { recipeById } = await server.ssrLoadModule('/src/data/gameData.ts');
   const { computeFactoryLineFeeds, computeWorldLineFeeds, outputRemaining, nextLineName } = await server.ssrLoadModule('/src/state/lineFeeds.ts');
-  const { importedByItem, allocationShipments } = await server.ssrLoadModule('/src/model/logistics.ts');
+  const { importedByItem, allocationShipments } = await server.ssrLoadModule('/src/model/shipments.ts');
   const { aggregateEffective, itemExported, rollupWorld } = await server.ssrLoadModule('/src/state/derive.ts');
   const { buildFlows } = await server.ssrLoadModule('/src/state/flows.ts');
-  const { buildMapConnections } = await server.ssrLoadModule('/src/model/mapConnections.ts');
-  const { migratePersisted } = await server.ssrLoadModule('/src/model/migrations.ts');
-  const { captureBaseline, applyBaseline, parseBaseline, isFactoryDirty } = await server.ssrLoadModule('/src/model/baseline.ts');
-  const { buildBackupEnvelope } = await server.ssrLoadModule('/src/model/backup.ts');
   const { SAMPLE_WORLD } = await server.ssrLoadModule('/src/data/templates.ts');
-  const { instantiateTemplate } = await server.ssrLoadModule('/src/model/world.ts');
+  const shipments = (w) => allocationShipments(w);
+  const mapConnections = (w) => buildMapConnections(w, shipments(w));
   const factory=(id,sections=[],localInputs=[]) => FactorySchema.parse({id,name:id,color:'#F5882E',status:'planned',tier:'Mini-factory',tagline:'',tags:[],cover:'',x:0,y:0,sections,localInputs,baseline:''});
   const row=(id,recipeId,count=1) => ({id,name:id,recipeId,count,allocations:[],destinations:[],sources:[]});
   const smelt=row('Iron Ingot 1','iron_ingot',4);
@@ -55,11 +65,11 @@ try {
   assert.equal(buildFlows(world,b).find(f => f.key === 'import|Coal').total, 0);
   world.stations.pop();
   assert.deepEqual(buildFlows(world,b).filter(f => f.dir === 'import').map(f => f.item), ['Iron Ingot']);
-  assert.equal(buildMapConnections(world)[0].items[0].rate,30);
+  assert.equal(mapConnections(world)[0].items[0].rate,30);
   world.routes=[{id:'existing-transport',from:'A',to:'B',item:'Iron Ingot',rate:30,t:'Belt'}];
   assert.equal(importedByItem(world,b,'Iron Ingot'),30,'Transport must not duplicate allocation delivery');
   assert.equal(itemExported(world,a,'Iron Ingot'),30);
-  assert.equal(buildMapConnections(world)[0].items.length,1);
+  assert.equal(mapConnections(world)[0].items.length,1);
   // Falling production retains every request, holds affected shipments, and reports the deficit.
   a.localInputs[0].rate=80;source.sources[0].rate=80;
   assert.equal(outputRemaining(feed(),source,'Iron Ingot'),-30);
@@ -89,13 +99,13 @@ try {
   assert.equal(a.sections[0].rows[0].allocations[0].rate,60);
   assert.equal(isFactoryDirty(a,world.routes,world.stations),false);
   const backup=buildBackupEnvelope({worlds:[world],worldId:'w',favItems:[],favFactories:[]});
-  assert.equal(migratePersisted(JSON.parse(JSON.stringify(backup))).schemaVersion,SCHEMA_VERSION);
+  assert.equal(migratePersisted(JSON.parse(JSON.stringify(backup)), recipeById).schemaVersion,SCHEMA_VERSION);
   // v9 migration preserves IDs, names categories, converts feeds and snapshots.
   const legacy=JSON.parse(JSON.stringify(backup));legacy.schemaVersion=9;
   legacy.worlds[0].factories[0].sections[0].rows[0].destinations=[{kind:'section',sectionId:'floor2'},{kind:'export'}];
   legacy.worlds[0].factories[0].sections[0].rows[0].allocations=[];
   legacy.worlds[0].factories.forEach(f => f.sections.forEach(s => s.rows.forEach(r => {delete r.name;r.sources.forEach(s => delete s.rate);})));
-  const migrated=migratePersisted(legacy);
+  const migrated=migratePersisted(legacy, recipeById);
   assert.ok(migrated);
   const upgraded=migrated.worlds[0].factories[0].sections[0].rows[0];
   assert.equal(upgraded.id,'Iron Ingot 1');
@@ -104,7 +114,7 @@ try {
   assert.ok(upgraded.allocations.some(a => a.kind==='review'));
   assert.ok(upgraded.allocations.some(a => a.kind==='factory' && a.targetId==='B' && a.rate===30));
   assert.equal(upgraded.sources[0].rate,80);
-  const sample=instantiateTemplate(SAMPLE_WORLD);
+  const sample=instantiateTemplate(SAMPLE_WORLD, recipeById);
   const [favoriteFactory, otherFactory] = sample.factories;
   favoriteFactory.favoriteItems = ['Modular Frame'];
   otherFactory.favoriteItems = [];
@@ -113,12 +123,12 @@ try {
   const sampleBackup = buildBackupEnvelope({
     worlds: [sample], worldId: sample.id, favItems: ['Iron Ore'], favFactories: [],
   });
-  const restoredSample = migratePersisted(JSON.parse(JSON.stringify(sampleBackup)));
+  const restoredSample = migratePersisted(JSON.parse(JSON.stringify(sampleBackup)), recipeById);
   assert.deepEqual(restoredSample.worlds[0].factories[0].favoriteItems, ['Modular Frame']);
   assert.deepEqual(restoredSample.worlds[0].factories[1].favoriteItems, []);
   assert.deepEqual(restoredSample.favItems, ['Iron Ore']);
   delete sampleBackup.worlds[0].factories[0].favoriteItems;
-  const restoredLegacy = migratePersisted(JSON.parse(JSON.stringify(sampleBackup)));
+  const restoredLegacy = migratePersisted(JSON.parse(JSON.stringify(sampleBackup)), recipeById);
   assert.equal(restoredLegacy.worlds[0].factories[0].favoriteItems, undefined);
   assert.deepEqual(restoredLegacy.favItems, ['Iron Ore']);
   assert.ok(sample.factories.every(f => f.sections.every(s => s.rows.every(r => !!r.name))));
@@ -190,7 +200,7 @@ try {
   recipeFactory.localInputs.forEach(input => input.rate = 0);
   assert.equal(rollupWorld(mixWorld)['Screws'].recipes.length, 0, 'Unfed recipes contribute no actual production');
   const { commitFactoryWithMetrics } = await server.ssrLoadModule('/src/state/resourceMetrics.ts');
-  const historyWorld = instantiateTemplate(SAMPLE_WORLD);
+  const historyWorld = instantiateTemplate(SAMPLE_WORLD, recipeById);
   const historyFactory = historyWorld.factories[0];
   assert.equal(historyWorld.resourceMetricHistory.length, 30, 'The sample world starts with a seeded development history');
   assert.ok(historyWorld.resourceMetricHistory.some(snapshot => snapshot.values['Iron Ingot']?.produced > 0));
@@ -218,11 +228,11 @@ try {
   assert.equal(historyWorld.resourceMetricHistory.length, 2);
   assert.equal(JSON.stringify(historyWorld.resourceMetricHistory[0]), savedMetrics);
   const historyEnvelope = buildBackupEnvelope({ worlds: [historyWorld], worldId: historyWorld.id, favItems: [], favFactories: [] });
-  const reloadedHistory = migratePersisted(JSON.parse(JSON.stringify(historyEnvelope)));
+  const reloadedHistory = migratePersisted(JSON.parse(JSON.stringify(historyEnvelope)), recipeById);
   assert.deepEqual(reloadedHistory.worlds[0].resourceMetricHistory, historyWorld.resourceMetricHistory, 'Storage and backup JSON retain history');
   const oldHistoryEnvelope = JSON.parse(JSON.stringify(historyEnvelope));
   delete oldHistoryEnvelope.worlds[0].resourceMetricHistory;
-  assert.deepEqual(migratePersisted(oldHistoryEnvelope).worlds[0].resourceMetricHistory, [], 'Existing saves default to empty history');
+  assert.deepEqual(migratePersisted(oldHistoryEnvelope, recipeById).worlds[0].resourceMetricHistory, [], 'Existing saves default to empty history');
   console.log('Passed: commit metrics, immutable history, reset, template defaults, existing saves, storage and backup round trips.');
   console.log('Passed: shared factory nodes and imports, exact claims, overclaim prevention, editing and releasing claims without deleting supply.');
   console.log('Passed: exact line allocations, remaining budgets, same-category feeds, cross-factory deliveries, shortage holds, transport deduplication, category moves, names, migration, templates, commit/reset and backup round trips.');

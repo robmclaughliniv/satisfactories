@@ -1,5 +1,5 @@
 import { fmt } from '../../data/gameData';
-import { stationTypeLabel } from '../../model/logistics';
+import { stationTypeLabel } from '@satisfactories/model';
 import { exportRemainder } from '../../state/derive';
 import { useActions, useStore } from '../../state/store';
 import type { StationType } from '../../types';
