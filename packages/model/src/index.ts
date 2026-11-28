@@ -100,3 +100,39 @@ export {
   type MapConnection,
   type MapConnectionShipment,
 } from './mapConnections';
+
+export {
+  SNAPSHOT_SCHEMA_VERSION,
+  DECISIONS_SCHEMA_VERSION,
+  EXPORT_FORMAT_VERSION,
+  COMMAND_SCHEMA_VERSION,
+} from './versions';
+
+export { CmSchema, PerMinSchema, MWSchema, ClockFractionSchema, PointCmSchema } from './units';
+export type { Cm, PerMin, MW, ClockFraction, PointCm } from './units';
+
+export * from './snapshot';
+export * from './decisions';
+export * from './drafts';
+export * from './derived/types';
+
+export { COMMAND_NAMES, type CommandName } from './commands/names';
+export { CommandEnvelopeSchema, type CommandEnvelope } from './commands/envelope';
+export { CommandError, type CommandErrorCode } from './commands/error';
+export { parseCommandEnvelope } from './commands/validate';
+export { apply } from './commands/apply';
+export { replay } from './commands/replay';
+export { COMMAND_PAYLOAD_SCHEMAS } from './commands/payloads';
+
+export {
+  ExportEnvelopeSchema,
+  buildExport,
+  parseExport,
+  upgradeExport,
+  webStreamsGzipCodec,
+  type ExportEnvelope,
+  type BuildExportInput,
+  type ByteCodec,
+} from './export';
+
+export { v10ToDecisionsV1, type V10ToDecisionsV1Result } from './migrations/decisions/v10ToDecisionsV1';
