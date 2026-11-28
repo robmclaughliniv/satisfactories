@@ -6,16 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@satisfactories/model": "workspace:*",
+    "@satisfactories/snapshot-store": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^3.11.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

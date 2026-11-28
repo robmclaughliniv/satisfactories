@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "packageManager": "pnpm@12.5.1",
   "scripts": {
-    "test": "pnpm --filter @satisfactories/model test && node scripts/check-line-feeds.mjs",
+    "test": "pnpm --filter @satisfactories/model test && pnpm --filter @satisfactories/snapshot-store test && node scripts/check-line-feeds.mjs",
     "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter @satisfactories/model check && pnpm --filter web build",
-    "preview": "pnpm --filter web preview"
+    "build": "pnpm --filter @satisfactories/model check && pnpm --filter @satisfactories/snapshot-store check && pnpm --filter web build",
+    "preview": "pnpm --filter web preview",
+    "test:e2e": "pnpm --filter web test:e2e"
   }
 }
