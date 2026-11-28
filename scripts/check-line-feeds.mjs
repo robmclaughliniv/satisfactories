@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { createServer } from 'vite';
-const server = await createServer({ server: { middlewareMode:true,hmr:false,ws:false }, appType:'custom' });
+
+const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../apps/web');
+const server = await createServer({
+  root: webRoot,
+  configFile: path.join(webRoot, 'vite.config.ts'),
+  server: { middlewareMode: true, hmr: false, ws: false },
+  appType: 'custom',
+});
 try {
   const { FactorySchema, WorldSchema, SCHEMA_VERSION } = await server.ssrLoadModule('/src/model/schema.ts');
   const { computeFactoryLineFeeds, computeWorldLineFeeds, outputRemaining, nextLineName } = await server.ssrLoadModule('/src/state/lineFeeds.ts');

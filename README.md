@@ -28,10 +28,10 @@ backups.
 ## Development
 
 ```bash
-npm ci
-npm run dev      # dev server at http://localhost:5173
-npm run build    # type-check + production build to dist/
-npm test         # production, logistics, and persistence regression checks
+pnpm install
+pnpm dev         # dev server at http://localhost:5173
+pnpm build       # type-check + production build to apps/web/dist/
+pnpm test        # production, logistics, and persistence regression checks
 ```
 
 Built with React 18, Vite, and TypeScript. Use Node 20 to match CI.
