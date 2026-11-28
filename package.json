@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "packageManager": "pnpm@12.5.1",
   "scripts": {
-    "test": "node scripts/check-line-feeds.mjs",
+    "test": "node scripts/check-line-feeds.mjs && node scripts/check-v8-migration.mjs",
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "preview": "pnpm --filter web preview"
