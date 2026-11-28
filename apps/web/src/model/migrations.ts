@@ -354,5 +354,5 @@ function migrateV8ToV9(obj: Record<string, unknown>): Record<string, unknown> {
         return { ...world, factories };
       })
     : obj.worlds;
-  return { ...obj, schemaVersion: SCHEMA_VERSION, worlds };
+  return { ...obj, schemaVersion: 9, worlds };
 }
